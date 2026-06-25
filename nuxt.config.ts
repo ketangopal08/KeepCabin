@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -8,6 +9,13 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
   modules: [],
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        types: ['node'],
+      },
+    },
+  },
   runtimeConfig: {
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY,
     public: {
