@@ -8,19 +8,30 @@ function onSynced() { refreshKey.value++ }
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-background text-foreground">
-    <AppNavbar />
-    <div class="flex flex-1 overflow-hidden">
-      <AppSidebar />
-      <main class="flex-1 flex flex-col overflow-hidden p-4 gap-4">
-        <SyncButtons @synced="onSynced" />
-        <div class="flex flex-1 gap-4 overflow-hidden">
-          <!-- ReceiptsTable slot -->
-          <ReceiptsTable :key="refreshKey" class="flex-1 overflow-auto" @select="selectedReceipt = $event" />
-          <!-- ReceiptPanel -->
-          <ReceiptPanel :receipt="selectedReceipt" class="w-80 shrink-0" />
+  <SidebarProvider>
+    <AppSidebar />
+    <div class="flex flex-1 flex-col min-h-screen overflow-hidden">
+      <!-- Top navbar -->
+      <header class="border-b bg-background h-14 flex items-center gap-3 px-4 shrink-0">
+        <SidebarTrigger />
+        <span class="font-semibold text-sm">KeepCabin</span>
+        <div class="ml-auto">
+          <AppSyncButtons @synced="onSynced" />
         </div>
+      </header>
+
+      <!-- Main content -->
+      <main class="flex flex-1 overflow-hidden gap-4 p-4">
+        <AppReceiptsTable
+          :key="refreshKey"
+          class="flex-1 overflow-auto"
+          @select="selectedReceipt = $event"
+        />
+        <AppReceiptPanel
+          :receipt="selectedReceipt"
+          class="w-80 shrink-0"
+        />
       </main>
     </div>
-  </div>
+  </SidebarProvider>
 </template>
