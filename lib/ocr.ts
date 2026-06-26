@@ -42,5 +42,5 @@ export function parseReceiptText(text: string): OcrResult {
       }
     })
 
-  return { raw, merchant, date, items, total }
+  return { raw: text, merchant, date, items, total }
 }

@@ -17,8 +17,8 @@ function onSynced() { refreshKey.value++ }
         <div class="flex flex-1 gap-4 overflow-hidden">
           <!-- ReceiptsTable slot -->
           <ReceiptsTable :key="refreshKey" class="flex-1 overflow-auto" @select="selectedReceipt = $event" />
-          <!-- ReceiptPanel slot — Task 9 will replace this -->
-          <div class="w-80 shrink-0" />
+          <!-- ReceiptPanel -->
+          <ReceiptPanel :receipt="selectedReceipt" class="w-80 shrink-0" />
         </div>
       </main>
     </div>
