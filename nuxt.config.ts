@@ -9,6 +9,14 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
   modules: [],
+  // UI components registered without path prefix so <Button>, <Card>, <Sidebar> etc. work directly.
+  // The full ~/components scan still runs (for landing/ and app/ prefixed components),
+  // registering UI components a second time as <UiButton> etc. — different names, no conflict.
+  // extensions: ['.vue'] on both entries prevents index.ts files from being picked up as components.
+  components: [
+    { path: '~/components/ui', pathPrefix: false, extensions: ['.vue'] },
+    { path: '~/components', extensions: ['.vue'] },
+  ],
   typescript: {
     tsConfig: {
       compilerOptions: {
