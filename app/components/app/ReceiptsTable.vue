@@ -5,13 +5,19 @@ const emit = defineEmits<{ select: [receipt: Receipt] }>()
 const supabase = useSupabase()
 const receipts = ref<Receipt[]>([])
 const loadingReceipts = ref(true)
+const fetchErrorMsg = ref('')
 
 async function fetchReceipts() {
   loadingReceipts.value = true
-  const { data } = await supabase
+  fetchErrorMsg.value = ''
+  const { data, error: fetchError } = await supabase
     .from('receipts')
     .select('*')
     .order('created_at', { ascending: false })
+  if (fetchError) {
+    console.error('Failed to fetch receipts:', fetchError.message)
+    fetchErrorMsg.value = fetchError?.message ?? ''
+  }
   receipts.value = data ?? []
   loadingReceipts.value = false
 }
@@ -35,6 +41,11 @@ defineExpose({ fetchReceipts })
         <TableRow v-if="loadingReceipts">
           <TableCell colspan="4" class="text-center text-muted-foreground py-8">
             Loading…
+          </TableCell>
+        </TableRow>
+        <TableRow v-else-if="fetchErrorMsg">
+          <TableCell colspan="4" class="text-center text-destructive py-8">
+            Failed to load receipts: {{ fetchErrorMsg }}
           </TableCell>
         </TableRow>
         <TableRow v-else-if="receipts.length === 0">

@@ -10,6 +10,10 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ folderUrl: string }>(event)
   const config = useRuntimeConfig()
 
+  if (!body?.folderUrl) {
+    throw createError({ statusCode: 400, message: 'folderUrl is required' })
+  }
+
   const folderId = extractFolderId(body.folderUrl)
   if (!folderId) {
     throw createError({ statusCode: 400, message: 'Invalid Google Drive folder URL' })
@@ -39,6 +43,12 @@ export default defineEventHandler(async (event) => {
       const imageUrl = `https://drive.google.com/uc?export=download&id=${file.id}`
       const imgRes = await fetch(imageUrl)
       if (!imgRes.ok) throw new Error(`Failed to download ${file.name}`)
+
+      const imgContentType = imgRes.headers.get('content-type') ?? ''
+      if (!imgContentType.startsWith('image/')) {
+        errors.push(`${file.name}: not an image (got ${imgContentType || 'no content-type'})`)
+        continue
+      }
 
       const buffer = await imgRes.arrayBuffer()
       const path = `drive/${file.id}/${file.name}`

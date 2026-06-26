@@ -54,11 +54,14 @@ function copyToClipboard() {
 function downloadText() {
   if (!ocrResult.value?.raw) return
   const blob = new Blob([ocrResult.value.raw], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
+  a.href = url
   a.download = `${props.receipt?.filename ?? 'receipt'}.txt`
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(a.href)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 </script>
 
