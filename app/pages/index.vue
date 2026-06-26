@@ -4,9 +4,9 @@
 <template>
   <div class="min-h-screen bg-background text-foreground">
     <LandingNavbar />
-    <HeroSection />
-    <FeaturesSection />
-    <PricingSection />
-    <FooterSection />
+    <LandingHeroSection />
+    <LandingFeaturesSection />
+    <LandingPricingSection />
+    <LandingFooterSection />
   </div>
 </template>
