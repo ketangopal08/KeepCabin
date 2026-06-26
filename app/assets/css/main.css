@@ -119,9 +119,15 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans;
+  }
+  input, textarea, select, button {
     @apply font-sans;
   }
 }
