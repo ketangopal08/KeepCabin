@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import type { Receipt } from '~~/lib/supabase'
+
 const refreshKey = ref(0)
+const selectedReceipt = ref<Receipt | null>(null)
+
 function onSynced() { refreshKey.value++ }
 </script>
 
@@ -12,8 +16,8 @@ function onSynced() { refreshKey.value++ }
         <SyncButtons @synced="onSynced" />
         <div class="flex flex-1 gap-4 overflow-hidden">
           <!-- ReceiptsTable slot -->
-          <div :key="refreshKey" class="flex-1" />
-          <!-- ReceiptPanel slot -->
+          <ReceiptsTable :key="refreshKey" class="flex-1 overflow-auto" @select="selectedReceipt = $event" />
+          <!-- ReceiptPanel slot — Task 9 will replace this -->
           <div class="w-80 shrink-0" />
         </div>
       </main>
