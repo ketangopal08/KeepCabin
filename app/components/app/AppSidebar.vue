@@ -2,10 +2,10 @@
 import {
   Star, Clock, Tag,
   FolderOpen, FileText, Share2,
-  Settings, RefreshCw, Plus,
+  Settings, RefreshCw, Plus, Check,
 } from '@lucide/vue'
 import type { Category } from '~~/lib/supabase'
-import { nextCategoryColor } from '~~/lib/categorize'
+import { CATEGORY_COLORS, nextCategoryColor } from '~~/lib/categorize'
 
 const props = defineProps<{ categories: Category[] }>()
 const emit  = defineEmits<{
@@ -14,10 +14,40 @@ const emit  = defineEmits<{
   receiptAssigned: []
 }>()
 
-const activeCategoryId   = ref<string | null>(null)
-const creatingCategory   = ref(false)
-const newCategoryName    = ref('')
-const dragOverId         = ref<string>('')   // '' = none; 'all' = All receipts
+const activeCategoryId = ref<string | null>(null)
+const dragOverId       = ref<string>('')
+
+// Dialog state
+const dialogOpen      = ref(false)
+const newCategoryName = ref('')
+const newCategoryColor = ref('')
+const creating        = ref(false)
+const nameError       = ref('')
+
+function openDialog() {
+  newCategoryName.value  = ''
+  newCategoryColor.value = nextCategoryColor(props.categories)
+  nameError.value        = ''
+  dialogOpen.value       = true
+  nextTick(() => (document.getElementById('cat-name-input') as HTMLInputElement | null)?.focus())
+}
+
+async function submitCreate() {
+  const name = newCategoryName.value.trim()
+  if (!name) { nameError.value = 'Name is required'; return }
+  if (name.length > 50) { nameError.value = 'Max 50 characters'; return }
+  creating.value = true
+  try {
+    const cat = await $fetch<Category>('/api/categories', {
+      method: 'POST',
+      body: { name, color: newCategoryColor.value },
+    })
+    emit('categoryCreated', cat)
+    dialogOpen.value = false
+  } finally {
+    creating.value = false
+  }
+}
 
 const mainNav = [
   { label: 'Favorites', icon: Star,        to: '/app' },
@@ -44,25 +74,6 @@ function selectAll() {
 function selectCategory(id: string) {
   activeCategoryId.value = id
   emit('selectCategory', id)
-}
-
-function startCreate() {
-  creatingCategory.value = true
-  newCategoryName.value  = ''
-  nextTick(() => (document.getElementById('new-cat-input') as HTMLInputElement | null)?.focus())
-}
-
-async function confirmCreate() {
-  const name = newCategoryName.value.trim()
-  creatingCategory.value = false
-  newCategoryName.value  = ''
-  if (!name) return
-  const color = nextCategoryColor(props.categories)
-  const cat   = await $fetch<Category>('/api/categories', {
-    method: 'POST',
-    body: { name, color },
-  })
-  emit('categoryCreated', cat)
 }
 
 function onDragOver(e: DragEvent, id: string) {
@@ -107,7 +118,7 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
           <button
             class="text-muted-foreground hover:text-foreground transition-colors group-data-[collapsible=icon]:hidden"
             aria-label="New category"
-            @click="startCreate"
+            @click="openDialog"
           >
             <Plus class="size-3.5" />
           </button>
@@ -142,22 +153,6 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
                 <span class="size-2 rounded-full shrink-0" :style="{ backgroundColor: cat.color }" />
                 <span>{{ cat.name }}</span>
               </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <!-- Inline create input -->
-            <SidebarMenuItem v-if="creatingCategory">
-              <div class="px-2 py-1">
-                <input
-                  id="new-cat-input"
-                  v-model="newCategoryName"
-                  placeholder="Category name…"
-                  maxlength="50"
-                  class="w-full text-sm bg-muted/50 border border-border rounded-md px-2 py-1 outline-none focus:border-primary"
-                  @keydown.enter.prevent="confirmCreate"
-                  @keydown.escape="creatingCategory = false"
-                  @blur="confirmCreate"
-                />
-              </div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
@@ -221,4 +216,64 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
 
     <SidebarRail />
   </Sidebar>
+
+  <!-- Create Category Dialog -->
+  <Dialog v-model:open="dialogOpen">
+    <DialogContent class="sm:max-w-sm">
+      <DialogHeader>
+        <DialogTitle>New category</DialogTitle>
+        <DialogDescription>
+          Give your category a name and pick a color.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="flex flex-col gap-4 py-2">
+        <!-- Name input -->
+        <div class="flex flex-col gap-1.5">
+          <label for="cat-name-input" class="text-sm font-medium">Name</label>
+          <Input
+            id="cat-name-input"
+            v-model="newCategoryName"
+            placeholder="e.g. Food & dining"
+            maxlength="50"
+            :class="nameError ? 'border-destructive focus-visible:ring-destructive' : ''"
+            @keydown.enter.prevent="submitCreate"
+          />
+          <p v-if="nameError" class="text-xs text-destructive">{{ nameError }}</p>
+        </div>
+
+        <!-- Color picker -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium">Color</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="color in CATEGORY_COLORS"
+              :key="color"
+              type="button"
+              class="size-7 rounded-full transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background"
+              :style="{ backgroundColor: color }"
+              :class="newCategoryColor === color ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : ''"
+              :aria-label="color"
+              @click="newCategoryColor = color"
+            >
+              <Check v-if="newCategoryColor === color" class="size-3.5 text-white mx-auto drop-shadow" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50">
+          <span class="size-2.5 rounded-full shrink-0" :style="{ backgroundColor: newCategoryColor }" />
+          <span class="text-sm text-foreground truncate">{{ newCategoryName || 'Category preview' }}</span>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" @click="dialogOpen = false">Cancel</Button>
+        <Button :disabled="creating" @click="submitCreate">
+          {{ creating ? 'Creating…' : 'Create category' }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
