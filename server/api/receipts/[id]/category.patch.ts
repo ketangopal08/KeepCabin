@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
   if (!id) throw createError({ statusCode: 400, message: 'id is required' })
+  if (!body) throw createError({ statusCode: 400, message: 'body is required' })
 
   const supabase = createClient(config.public.supabaseUrl, config.public.supabaseAnonKey)
   const { data, error } = await supabase

@@ -11,6 +11,7 @@ const props = defineProps<{ categories: Category[] }>()
 const emit  = defineEmits<{
   selectCategory:  [id: string | null]
   categoryCreated: [category: Category]
+  receiptAssigned: []
 }>()
 
 const activeCategoryId   = ref<string | null>(null)
@@ -77,6 +78,7 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
     method: 'PATCH',
     body: { categoryId, confirmed: true },
   })
+  emit('receiptAssigned')
 }
 </script>
 

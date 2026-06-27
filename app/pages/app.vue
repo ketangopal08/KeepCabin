@@ -74,6 +74,7 @@ const gridColumns = computed(() => {
       :categories="categories"
       @select-category="onSelectCategory"
       @category-created="onCategoryCreated"
+      @receipt-assigned="onCategoryAssigned"
     />
 
     <div class="flex flex-1 flex-col min-h-screen overflow-hidden bg-background">
