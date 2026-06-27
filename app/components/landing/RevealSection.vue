@@ -52,8 +52,8 @@ function wordStyle(index: number) {
 <template>
   <section ref="sectionEl" class="bg-[#0e0e10] border-b border-[#232323] relative" style="height: 300vh">
     <div class="sticky top-0 h-screen flex items-center px-6 border-b border-[#232323]">
-      <div class="max-w-[1088px] mx-auto">
-        <p class="text-[32px] md:text-[48px] lg:text-[56px] font-bold leading-[1.3]">
+      <div class="max-w-[898px] mx-auto">
+        <p class="text-[32px] md:text-[48px] lg:text-[40px] font-bold leading-[1.3]" style="font-weight: 400;">
           <span
             v-for="(word, i) in words"
             :key="i"

@@ -8,7 +8,6 @@
     <div class="fixed inset-y-0 left-1/2 translate-x-[543px] border-l border-dashed border-[#232323] hidden xl:block pointer-events-none z-10" />
     <LandingNavbar />
     <LandingHeroSection />
-    <LandingLogosSection />
     <LandingRevealSection />
     <LandingHowItWorksSection />
     <LandingFeaturesSection />

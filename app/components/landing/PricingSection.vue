@@ -46,7 +46,7 @@ const tiers = [
 
 <template>
   <section id="pricing" ref="sectionEl" class="bg-[#0e0e10] border-b border-[#232323] py-24 px-6">
-    <div class="max-w-[1088px] mx-auto">
+    <div class="max-w-[1088px] mx-auto px-6">
       <div class="text-left">
         <p class="text-xs text-[#7c7c7c] tracking-widest uppercase mb-4">Pricing</p>
         <h2 class="text-[36px] md:text-[40px] font-bold text-white leading-[1.1]">

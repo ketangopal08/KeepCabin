@@ -24,7 +24,7 @@ useIntersectionObserver(
       :class="revealed ? 'animate-fade-blur-in-up' : 'opacity-0'"
       :style="{ animationDelay: '0ms' }"
     >
-      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center px-6">
         <div>
           <p class="text-xs text-[#7c7c7c] tracking-widest uppercase mb-3">Sync</p>
           <h2 class="text-[32px] md:text-[40px] font-bold text-white leading-[1.1] mb-4">
@@ -77,7 +77,7 @@ useIntersectionObserver(
       :class="revealed ? 'animate-fade-blur-in-up' : 'opacity-0'"
       :style="{ animationDelay: '100ms' }"
     >
-      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center px-6">
         <div class="bg-[#141414] border border-[#2c2c2c] rounded-[10px] p-5 shadow-[0_0_0_1px_#2b2b2f]">
           <p class="text-xs text-[#4b4b4b] mb-3">OCR result — starbucks_jun25.jpg</p>
           <div class="flex justify-between py-1.5 border-b border-[#1a1a1a]">
@@ -132,7 +132,7 @@ useIntersectionObserver(
       :class="revealed ? 'animate-fade-blur-in-up' : 'opacity-0'"
       :style="{ animationDelay: '200ms' }"
     >
-      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <div class="max-w-[1088px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center px-6">
         <div>
           <p class="text-xs text-[#7c7c7c] tracking-widest uppercase mb-3">Dashboard</p>
           <h2 class="text-[32px] md:text-[40px] font-bold text-white leading-[1.1] mb-4">

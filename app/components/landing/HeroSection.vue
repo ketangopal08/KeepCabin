@@ -16,7 +16,8 @@ const receipts = [
       <!-- Headline -->
       <h1
         class="text-[52px] md:text-[72px] lg:text-[80px] font-bold leading-[1.05] text-white animate-fade-blur-in-up"
-        style="animation-delay: 0ms"
+        style="animation-delay: 0ms;font-size: 55px;
+    font-weight: 400;"
       >
         Your receipts,<br />organized instantly.
       </h1>
