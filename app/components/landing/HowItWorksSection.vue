@@ -62,7 +62,7 @@ const steps = [
           <p class="text-[11px] text-[var(--lp-faint)] font-mono mb-4">{{ step.number }}</p>
 
           <div class="size-10 rounded-[8px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center mb-4">
-            <component :is="step.icon" class="size-5 text-[#0c8ce9]" />
+            <component :is="step.icon" class="size-5 text-[#05df72]" />
           </div>
 
           <h3 class="text-sm font-semibold text-[var(--lp-text)] mb-2">{{ step.title }}</h3>

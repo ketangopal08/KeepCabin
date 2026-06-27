@@ -35,7 +35,7 @@ const { isDark, toggle } = useLandingTheme()
           :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         >
           <Sun v-if="!isDark" class="size-4" />
-          <Moon v-else class="size-4" />
+          <Moon v-else class="size-4 " />
         </button>
 
         <NuxtLink
