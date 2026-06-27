@@ -202,6 +202,37 @@
   display: inline;
 }
 
+/* Landing page theme tokens — dark is the default */
+:root {
+  --lp-bg: #0e0e10;
+  --lp-card: #141414;
+  --lp-card-inner: #1a1a1a;
+  --lp-border: #2c2c2c;
+  --lp-border-section: #232323;
+  --lp-text: #ffffff;
+  --lp-muted: #7c7c7c;
+  --lp-faint: #4b4b4b;
+  --lp-btn-bg: #ffffff;
+  --lp-btn-text: #0e0e10;
+  --lp-featured-border: rgba(255, 255, 255, 0.2);
+  --lp-featured-shadow: rgba(255, 255, 255, 0.1);
+}
+
+.lp-light {
+  --lp-bg: #ffffff;
+  --lp-card: #f3f4f6;
+  --lp-card-inner: #e9ecef;
+  --lp-border: #d1d5dc;
+  --lp-border-section: #e5e7eb;
+  --lp-text: #1e1e1e;
+  --lp-muted: #6a7282;
+  --lp-faint: #9ca3af;
+  --lp-btn-bg: #1e1e1e;
+  --lp-btn-text: #ffffff;
+  --lp-featured-border: rgba(0, 0, 0, 0.12);
+  --lp-featured-shadow: rgba(0, 0, 0, 0.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-blur-in-up {
     animation: none;

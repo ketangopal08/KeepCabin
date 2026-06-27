@@ -45,11 +45,11 @@ const tiers = [
 </script>
 
 <template>
-  <section id="pricing" ref="sectionEl" class="bg-[#0e0e10] border-b border-[#232323] py-24 px-6">
+  <section id="pricing" ref="sectionEl" class="bg-[var(--lp-bg)] border-b border-[var(--lp-border-section)] py-24 px-6">
     <div class="max-w-[1088px] mx-auto px-6">
       <div class="text-left">
-        <p class="text-xs text-[#7c7c7c] tracking-widest uppercase mb-4">Pricing</p>
-        <h2 class="text-[36px] md:text-[40px] font-bold text-white leading-[1.1]">
+        <p class="text-xs text-[var(--lp-muted)] tracking-widest uppercase mb-4">Pricing</p>
+        <h2 class="text-[36px] md:text-[40px] font-bold text-[var(--lp-text)] leading-[1.1]">
           Simple pricing
         </h2>
       </div>
@@ -61,24 +61,24 @@ const tiers = [
           class="relative rounded-[10px] p-6 flex flex-col gap-6"
           :class="[
             tier.highlighted
-              ? 'bg-[#1a1a1a] border border-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.1)]'
-              : 'bg-[#141414] border border-[#2c2c2c] shadow-[0_0_0_1px_#2b2b2f]',
+              ? 'bg-[var(--lp-card-inner)] border border-[var(--lp-featured-border)] '
+              : 'bg-[var(--lp-card)] border border-[var(--lp-border)] ',
             revealed ? 'animate-fade-blur-in-up' : 'opacity-0',
           ]"
           :style="{ animationDelay: `${i * 100}ms` }"
         >
           <div
             v-if="tier.highlighted"
-            class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-white text-[#0e0e10] text-[11px] font-medium"
+            class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[var(--lp-btn-bg)] text-[var(--lp-btn-text)] text-[11px] font-medium"
           >
             Most popular
           </div>
 
           <div>
-            <p class="text-sm font-medium text-[#7c7c7c]">{{ tier.name }}</p>
+            <p class="text-sm font-medium text-[var(--lp-muted)]">{{ tier.name }}</p>
             <div class="flex items-baseline gap-1 mt-2">
-              <span class="text-[40px] font-bold leading-none text-white">{{ tier.price }}</span>
-              <span class="text-sm text-[#7c7c7c]">/mo</span>
+              <span class="text-[40px] font-bold leading-none text-[var(--lp-text)]">{{ tier.price }}</span>
+              <span class="text-sm text-[var(--lp-muted)]">/mo</span>
             </div>
           </div>
 
@@ -86,9 +86,9 @@ const tiers = [
             <li
               v-for="feat in tier.features"
               :key="feat"
-              class="flex items-center gap-2 text-sm text-[#7c7c7c]"
+              class="flex items-center gap-2 text-sm text-[var(--lp-muted)]"
             >
-              <span class="text-white font-bold text-xs">✓</span>
+              <span class="text-[var(--lp-text)] font-bold text-xs">✓</span>
               {{ feat }}
             </li>
           </ul>
@@ -97,8 +97,8 @@ const tiers = [
             :href="tier.href"
             class="block w-full py-2.5 rounded-[10px] text-sm font-medium text-center transition-all duration-150 hover:opacity-90"
             :class="tier.highlighted
-              ? 'bg-white text-[#0e0e10]'
-              : 'border border-[#2c2c2c] text-white bg-transparent hover:bg-[#1a1a1a]'"
+              ? 'bg-[var(--lp-btn-bg)] text-[var(--lp-btn-text)]'
+              : 'border border-[var(--lp-border)] text-[var(--lp-text)] bg-transparent hover:bg-[var(--lp-card-inner)]'"
           >
             {{ tier.cta }}
           </a>

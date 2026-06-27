@@ -9,13 +9,13 @@ const receipts = [
 </script>
 
 <template>
-  <section class="bg-[#0e0e10] border-b border-[#232323] relative overflow-hidden">
+  <section class="bg-[var(--lp-bg)] border-b border-[var(--lp-border-section)] relative overflow-hidden">
 
     <div class="max-w-[1088px] mx-auto px-6 pt-16 pb-0 text-center">
 
       <!-- Headline -->
       <h1
-        class="text-[52px] md:text-[72px] lg:text-[80px] font-bold leading-[1.05] text-white animate-fade-blur-in-up"
+        class="text-[52px] md:text-[72px] lg:text-[80px] font-bold leading-[1.05] text-[var(--lp-text)] animate-fade-blur-in-up"
         style="animation-delay: 0ms;font-size: 55px;
     font-weight: 400;"
       >
@@ -24,7 +24,7 @@ const receipts = [
 
       <!-- Subtitle -->
       <p
-        class="mt-5 text-base md:text-lg text-[#7c7c7c] max-w-[480px] mx-auto leading-relaxed animate-fade-blur-in-up"
+        class="mt-5 text-base md:text-lg text-[var(--lp-muted)] max-w-[480px] mx-auto leading-relaxed animate-fade-blur-in-up"
         style="animation-delay: 80ms"
       >
         Sync receipt images from Google Drive, extract text with OCR, and track your expenses — all in one place.
@@ -37,13 +37,13 @@ const receipts = [
       >
         <NuxtLink
           to="/app"
-          class="px-5 py-2.5 bg-white text-[#0e0e10] text-sm font-medium rounded-[10px] hover:opacity-90 transition-opacity duration-150"
+          class="px-5 py-2.5 bg-[var(--lp-btn-bg)] text-[var(--lp-btn-text)] text-sm font-medium rounded-[10px] hover:opacity-90 transition-opacity duration-150"
         >
           Get Started →
         </NuxtLink>
         <a
           href="#how-it-works"
-          class="px-5 py-2.5 border border-[#2c2c2c] text-white text-sm font-medium rounded-[10px] hover:bg-[#141414] transition-colors duration-150"
+          class="px-5 py-2.5 border border-[var(--lp-border)] text-[var(--lp-text)] text-sm font-medium rounded-[10px] hover:bg-[var(--lp-card)] transition-colors duration-150"
         >
           See how it works
         </a>
@@ -54,16 +54,16 @@ const receipts = [
         class="mt-12 animate-fade-blur-in-up"
         style="animation-delay: 240ms"
       >
-        <div class="border border-[#2c2c2c] border-b-0 rounded-t-[10px] bg-[#141414] text-left overflow-hidden shadow-[0_0_0_1px_#2b2b2f]">
+        <div class="border border-[var(--lp-border)] border-b-0 rounded-t-[10px] bg-[var(--lp-card)] text-left overflow-hidden ">
 
           <!-- Browser chrome -->
-          <div class="flex items-center gap-2 px-4 py-3 border-b border-[#2c2c2c] bg-[#0e0e10]">
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-[var(--lp-border)] bg-[var(--lp-bg)]">
             <div class="flex items-center gap-1.5">
-              <div class="size-3 rounded-full bg-[#2c2c2c]" />
-              <div class="size-3 rounded-full bg-[#2c2c2c]" />
-              <div class="size-3 rounded-full bg-[#2c2c2c]" />
+              <div class="size-3 rounded-full bg-[var(--lp-border)]" />
+              <div class="size-3 rounded-full bg-[var(--lp-border)]" />
+              <div class="size-3 rounded-full bg-[var(--lp-border)]" />
             </div>
-            <div class="flex-1 mx-4 bg-[#1a1a1a] border border-[#2c2c2c] rounded-[6px] px-3 py-1 text-xs text-[#4b4b4b] text-center">
+            <div class="flex-1 mx-4 bg-[var(--lp-card-inner)] border border-[var(--lp-border)] rounded-[6px] px-3 py-1 text-xs text-[var(--lp-faint)] text-center">
               keepcabin.app/receipts
             </div>
           </div>
@@ -72,35 +72,35 @@ const receipts = [
           <div class="flex" style="min-height: 340px">
 
             <!-- Sidebar -->
-            <div class="w-44 border-r border-[#2c2c2c] px-3 py-4 shrink-0 hidden sm:block">
-              <p class="text-[10px] text-[#4b4b4b] uppercase tracking-widest mb-3 font-medium">Receipts</p>
+            <div class="w-44 border-r border-[var(--lp-border)] px-3 py-4 shrink-0 hidden sm:block">
+              <p class="text-[10px] text-[var(--lp-faint)] uppercase tracking-widest mb-3 font-medium">Receipts</p>
               <div class="space-y-0.5">
-                <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px] bg-[#1a1a1a] border border-[#2c2c2c]">
-                  <div class="size-1.5 rounded-full bg-white shrink-0" />
-                  <span class="text-xs text-white">All receipts</span>
+                <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)]">
+                  <div class="size-1.5 rounded-full bg-[var(--lp-text)] shrink-0" />
+                  <span class="text-xs text-[var(--lp-text)]">All receipts</span>
                 </div>
                 <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px]">
-                  <div class="size-1.5 rounded-full bg-[#4b4b4b] shrink-0" />
-                  <span class="text-xs text-[#7c7c7c]">Food & dining</span>
+                  <div class="size-1.5 rounded-full bg-[var(--lp-faint)] shrink-0" />
+                  <span class="text-xs text-[var(--lp-muted)]">Food & dining</span>
                 </div>
                 <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px]">
-                  <div class="size-1.5 rounded-full bg-[#4b4b4b] shrink-0" />
-                  <span class="text-xs text-[#7c7c7c]">Office</span>
+                  <div class="size-1.5 rounded-full bg-[var(--lp-faint)] shrink-0" />
+                  <span class="text-xs text-[var(--lp-muted)]">Office</span>
                 </div>
                 <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px]">
-                  <div class="size-1.5 rounded-full bg-[#4b4b4b] shrink-0" />
-                  <span class="text-xs text-[#7c7c7c]">Travel</span>
+                  <div class="size-1.5 rounded-full bg-[var(--lp-faint)] shrink-0" />
+                  <span class="text-xs text-[var(--lp-muted)]">Travel</span>
                 </div>
                 <div class="flex items-center gap-2 px-2 py-1.5 rounded-[6px]">
-                  <div class="size-1.5 rounded-full bg-[#4b4b4b] shrink-0" />
-                  <span class="text-xs text-[#7c7c7c]">Software</span>
+                  <div class="size-1.5 rounded-full bg-[var(--lp-faint)] shrink-0" />
+                  <span class="text-xs text-[var(--lp-muted)]">Software</span>
                 </div>
               </div>
 
-              <p class="text-[10px] text-[#4b4b4b] uppercase tracking-widest mt-5 mb-3 font-medium">This month</p>
-              <div class="bg-[#1a1a1a] border border-[#2c2c2c] rounded-[6px] p-3">
-                <p class="text-[10px] text-[#7c7c7c]">Total spent</p>
-                <p class="text-xl font-bold text-white mt-0.5">$1,284</p>
+              <p class="text-[10px] text-[var(--lp-faint)] uppercase tracking-widest mt-5 mb-3 font-medium">This month</p>
+              <div class="bg-[var(--lp-card-inner)] border border-[var(--lp-border)] rounded-[6px] p-3">
+                <p class="text-[10px] text-[var(--lp-muted)]">Total spent</p>
+                <p class="text-xl font-bold text-[var(--lp-text)] mt-0.5">$1,284</p>
                 <p class="text-[10px] text-[#05df72] mt-1">↑ 12 receipts</p>
               </div>
             </div>
@@ -108,23 +108,23 @@ const receipts = [
             <!-- Main content -->
             <div class="flex-1 p-4 overflow-hidden">
               <div class="flex items-center justify-between mb-4">
-                <p class="text-sm font-semibold text-white">All receipts</p>
+                <p class="text-sm font-semibold text-[var(--lp-text)]">All receipts</p>
                 <div class="flex items-center gap-2">
-                  <div class="px-2.5 py-1 text-xs text-[#7c7c7c] border border-[#2c2c2c] rounded-[6px] bg-[#1a1a1a] cursor-pointer hover:text-white transition-colors">
+                  <div class="px-2.5 py-1 text-xs text-[var(--lp-muted)] border border-[var(--lp-border)] rounded-[6px] bg-[var(--lp-card-inner)] cursor-pointer hover:text-[var(--lp-text)] transition-colors">
                     Export CSV
                   </div>
-                  <div class="px-2.5 py-1 text-xs text-[#7c7c7c] border border-[#2c2c2c] rounded-[6px] bg-[#1a1a1a] cursor-pointer hover:text-white transition-colors">
+                  <div class="px-2.5 py-1 text-xs text-[var(--lp-muted)] border border-[var(--lp-border)] rounded-[6px] bg-[var(--lp-card-inner)] cursor-pointer hover:text-[var(--lp-text)] transition-colors">
                     Filter
                   </div>
                 </div>
               </div>
 
               <!-- Table header -->
-              <div class="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 pb-2 border-b border-[#2c2c2c]">
-                <span class="text-[10px] text-[#4b4b4b] uppercase tracking-wider font-medium">Merchant</span>
-                <span class="text-[10px] text-[#4b4b4b] uppercase tracking-wider font-medium hidden md:block">Date</span>
-                <span class="text-[10px] text-[#4b4b4b] uppercase tracking-wider font-medium">Amount</span>
-                <span class="text-[10px] text-[#4b4b4b] uppercase tracking-wider font-medium">Status</span>
+              <div class="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 pb-2 border-b border-[var(--lp-border)]">
+                <span class="text-[10px] text-[var(--lp-faint)] uppercase tracking-wider font-medium">Merchant</span>
+                <span class="text-[10px] text-[var(--lp-faint)] uppercase tracking-wider font-medium hidden md:block">Date</span>
+                <span class="text-[10px] text-[var(--lp-faint)] uppercase tracking-wider font-medium">Amount</span>
+                <span class="text-[10px] text-[var(--lp-faint)] uppercase tracking-wider font-medium">Status</span>
               </div>
 
               <!-- Receipt rows -->
@@ -132,22 +132,22 @@ const receipts = [
                 <div
                   v-for="r in receipts"
                   :key="r.name"
-                  class="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2.5 rounded-[6px] hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                  class="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2.5 rounded-[6px] hover:bg-[var(--lp-card-inner)] transition-colors cursor-pointer"
                 >
                   <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="size-7 rounded-[6px] bg-[#1a1a1a] border border-[#2c2c2c] flex items-center justify-center text-[10px] text-[#7c7c7c] shrink-0 font-bold">
+                    <div class="size-7 rounded-[6px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[var(--lp-muted)] shrink-0 font-bold">
                       {{ r.initials }}
                     </div>
                     <div class="min-w-0">
-                      <p class="text-xs text-white font-medium truncate">{{ r.name }}</p>
-                      <p class="text-[10px] text-[#4b4b4b]">{{ r.category }}</p>
+                      <p class="text-xs text-[var(--lp-text)] font-medium truncate">{{ r.name }}</p>
+                      <p class="text-[10px] text-[var(--lp-faint)]">{{ r.category }}</p>
                     </div>
                   </div>
-                  <span class="text-xs text-[#7c7c7c] hidden md:block">{{ r.date }}</span>
-                  <span class="text-xs font-medium text-white">{{ r.amount }}</span>
+                  <span class="text-xs text-[var(--lp-muted)] hidden md:block">{{ r.date }}</span>
+                  <span class="text-xs font-medium text-[var(--lp-text)]">{{ r.amount }}</span>
                   <span
                     class="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                    :class="r.status === 'Processed' ? 'bg-[#002c22] text-[#05df72]' : 'bg-[#1a1a1a] text-[#7c7c7c] border border-[#2c2c2c]'"
+                    :class="r.status === 'Processed' ? 'bg-[#002c22] text-[#05df72]' : 'bg-[var(--lp-card-inner)] text-[var(--lp-muted)] border border-[var(--lp-border)]'"
                   >{{ r.status }}</span>
                 </div>
               </div>
