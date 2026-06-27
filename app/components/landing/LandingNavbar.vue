@@ -1,6 +1,6 @@
 <template>
   <nav class="sticky top-0 z-50 bg-[#0e0e10] border-b border-[#232323]">
-    <div class="max-w-[1440px] mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="max-w-[1088px] mx-auto px-4 h-14 flex items-center justify-between">
 
       <span class="text-sm font-semibold text-white">KeepCabin</span>
 
