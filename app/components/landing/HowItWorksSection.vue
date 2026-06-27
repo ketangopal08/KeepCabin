@@ -40,12 +40,12 @@ const steps = [
 </script>
 
 <template>
-  <section id="how-it-works" ref="sectionEl" class="bg-[#0e0e10] border-b border-[#232323] py-24 px-6">
+  <section id="how-it-works" ref="sectionEl" class="bg-[var(--lp-bg)] border-b border-[var(--lp-border-section)] py-24 px-6">
     <div class="max-w-[1088px] mx-auto px-6">
 
       <div>
-        <p class="text-xs text-[#7c7c7c] tracking-widest uppercase mb-4">How it works</p>
-        <h2 class="text-[36px] md:text-[40px] font-bold text-white leading-[1.1]">
+        <p class="text-xs text-[var(--lp-muted)] tracking-widest uppercase mb-4">How it works</p>
+        <h2 class="text-[36px] md:text-[40px] font-bold text-[var(--lp-text)] leading-[1.1]">
           Up and running in minutes
         </h2>
       </div>
@@ -55,18 +55,18 @@ const steps = [
         <div
           v-for="(step, i) in steps"
           :key="step.number"
-          class="bg-[#141414] border border-[#2c2c2c] rounded-[10px] p-6 shadow-[0_0_0_1px_#2b2b2f]"
+          class="bg-[var(--lp-card)] border border-[var(--lp-border)] rounded-[10px] p-6"
           :class="revealed ? 'animate-fade-blur-in-up' : 'opacity-0'"
           :style="{ animationDelay: `${i * 100}ms` }"
         >
-          <p class="text-[11px] text-[#4b4b4b] font-mono mb-4">{{ step.number }}</p>
+          <p class="text-[11px] text-[var(--lp-faint)] font-mono mb-4">{{ step.number }}</p>
 
-          <div class="size-10 rounded-[8px] bg-[#1a1a1a] border border-[#2c2c2c] flex items-center justify-center mb-4">
+          <div class="size-10 rounded-[8px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center mb-4">
             <component :is="step.icon" class="size-5 text-[#0c8ce9]" />
           </div>
 
-          <h3 class="text-sm font-semibold text-white mb-2">{{ step.title }}</h3>
-          <p class="text-sm text-[#7c7c7c] leading-relaxed">{{ step.description }}</p>
+          <h3 class="text-sm font-semibold text-[var(--lp-text)] mb-2">{{ step.title }}</h3>
+          <p class="text-sm text-[var(--lp-muted)] leading-relaxed">{{ step.description }}</p>
         </div>
 
       </div>

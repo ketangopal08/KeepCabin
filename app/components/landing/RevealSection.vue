@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+const { isDark } = useLandingTheme()
+
 const sectionEl = ref<HTMLElement | null>(null)
 const scrollProgress = ref(0)
 
@@ -34,24 +36,28 @@ function wordStyle(index: number) {
   const progress = (scrollProgress.value - startReveal) / Math.max(endReveal - startReveal, 0.001)
   const clamped = Math.max(0, Math.min(1, progress))
 
-  // Color: #2c2c2c → #ffffff
-  const dark = 44
-  const light = 255
-  const v = Math.round(dark + (light - dark) * clamped)
-
-  // Blur: 14px → 0px
   const blur = (14 * (1 - clamped)).toFixed(1)
 
-  return {
-    color: `rgb(${v}, ${v}, ${v})`,
-    filter: `blur(${blur}px)`,
+  let color: string
+  if (isDark.value) {
+    // Dark: #2c2c2c (44) → #ffffff (255)
+    const v = Math.round(44 + (255 - 44) * clamped)
+    color = `rgb(${v}, ${v}, ${v})`
+  } else {
+    // Light: #d1d5dc (209,213,220) → #1e1e1e (30,30,30)
+    const r = Math.round(209 + (30 - 209) * clamped)
+    const g = Math.round(213 + (30 - 213) * clamped)
+    const b = Math.round(220 + (30 - 220) * clamped)
+    color = `rgb(${r}, ${g}, ${b})`
   }
+
+  return { color, filter: `blur(${blur}px)` }
 }
 </script>
 
 <template>
-  <section ref="sectionEl" class="bg-[#0e0e10] border-b border-[#232323] relative" style="height: 300vh">
-    <div class="sticky top-0 h-screen flex items-center px-6 border-b border-[#232323]">
+  <section ref="sectionEl" class="bg-[var(--lp-bg)] border-b border-[var(--lp-border-section)] relative" style="height: 300vh">
+    <div class="sticky top-0 h-screen flex items-center px-6 border-b border-[var(--lp-border-section)]">
       <div class="max-w-[898px] mx-auto">
         <p class="text-[32px] md:text-[48px] lg:text-[40px] font-bold leading-[1.3]" style="font-weight: 400;">
           <span
