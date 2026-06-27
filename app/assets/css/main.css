@@ -131,3 +131,94 @@
     @apply font-sans;
   }
 }
+
+/* ─── Landing page animations (Profound design system) ─────────────────── */
+
+@keyframes fadeBlurInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes scanLine {
+  0%   { top: 0;                   opacity: 1; }
+  80%  { top: calc(100% - 2px);    opacity: 1; }
+  90%  { top: calc(100% - 2px);    opacity: 0; }
+  100% { top: 0;                   opacity: 0; }
+}
+
+@keyframes revealText {
+  from { color: transparent; background-color: #e5e7eb; border-radius: 3px; }
+  to   { color: unset;       background-color: transparent; border-radius: 0; }
+}
+
+.animate-fade-blur-in-up {
+  animation: fadeBlurInUp 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-marquee {
+  animation: marqueeScroll 20s linear infinite;
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #0c8ce9;
+  animation: scanLine 2.5s ease-in-out infinite;
+}
+
+.receipt-text {
+  animation: revealText 0.3s ease-out forwards;
+  color: transparent;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+@keyframes revealTextDark {
+  from { color: transparent; background-color: #2c2c2c; border-radius: 3px; filter: blur(6px); }
+  to { color: #ffffff; background-color: transparent; border-radius: 0; filter: blur(0); }
+}
+.reveal-text-dark {
+  animation: revealTextDark 0.6s ease-out forwards;
+  color: transparent;
+  background-color: #2c2c2c;
+  border-radius: 3px;
+  display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-blur-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  .animate-marquee {
+    animation: none;
+  }
+  .scan-line {
+    display: none;
+  }
+  .receipt-text {
+    animation: none;
+    color: inherit;
+    background-color: transparent;
+    border-radius: 0;
+  }
+}
