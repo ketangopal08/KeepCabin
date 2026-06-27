@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSupabase, type Receipt, type Category } from '~~/lib/supabase'
-import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid, ChevronLeft } from '@lucide/vue'
+import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid } from '@lucide/vue'
 
 const refreshKey        = ref(0)
 const selectedReceipt   = ref<Receipt | null>(null)
@@ -79,84 +79,93 @@ const gridColumns = computed(() => {
 
     <div class="flex flex-1 flex-col min-h-screen overflow-hidden bg-background">
       <!-- Header -->
-      <header class="shrink-0 px-6 pt-5 pb-4 flex flex-col gap-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5 text-sm">
-            <SidebarTrigger class="mr-1" />
-            <NuxtLink
-              to="/"
-              class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft class="size-3.5" />
-              Home
-            </NuxtLink>
-            <span class="text-muted-foreground select-none">/</span>
-            <span class="font-semibold text-foreground">All Receipts</span>
-          </div>
-          <Button variant="ghost" size="icon" @click="toggle" aria-label="Toggle theme">
-            <Sun v-if="isDark" class="size-4" />
-            <Moon v-else class="size-4" />
-          </Button>
+      <header class="shrink-0 border-b border-border/60 px-5 py-3 flex items-center gap-3 bg-background">
+        <SidebarTrigger class="text-muted-foreground hover:text-foreground" />
+
+        <div class="w-px h-5 bg-border/60 shrink-0" />
+
+        <div class="relative flex-1 max-w-sm">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            v-model="searchQuery"
+            placeholder="Search receipts…"
+            class="pl-8 h-8 text-sm bg-muted/30 border-border/40 focus:border-border focus:bg-muted/50 rounded-lg"
+          />
         </div>
 
-        <div class="flex items-center gap-3">
-          <div class="relative flex-1 max-w-md">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              v-model="searchQuery"
-              placeholder="Search a receipt…"
-              class="pl-9 bg-muted/40 border-transparent focus:border-border focus:bg-background"
-            />
-          </div>
+        <div class="flex items-center gap-1.5 ml-auto">
           <AppSyncButtons @synced="onSynced" />
-          <Separator orientation="vertical" class="h-6" />
-          <Button variant="outline" size="sm" class="gap-2 font-normal">
-            <SlidersHorizontal class="size-4" />
-            Filters
+
+          <div class="w-px h-5 bg-border/60 shrink-0 mx-1" />
+
+          <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-normal text-sm">
+            <SlidersHorizontal class="size-3.5" />
+            Filter
           </Button>
-          <div class="flex items-center rounded-lg border overflow-hidden divide-x">
-            <Button
-              variant="ghost"
-              size="icon"
-              class="rounded-none size-8"
-              :class="viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground'"
+
+          <div class="flex items-center rounded-lg border border-border/60 overflow-hidden divide-x divide-border/60 bg-muted/20">
+            <button
+              class="size-8 flex items-center justify-center transition-colors"
+              :class="viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
               @click="viewMode = 'list'"
               aria-label="List view"
             >
-              <LayoutList class="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              class="rounded-none size-8"
-              :class="viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground'"
+              <LayoutList class="size-3.5" />
+            </button>
+            <button
+              class="size-8 flex items-center justify-center transition-colors"
+              :class="viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
               @click="viewMode = 'grid'"
               aria-label="Grid view"
             >
-              <LayoutGrid class="size-4" />
-            </Button>
+              <LayoutGrid class="size-3.5" />
+            </button>
           </div>
+
+          <div class="w-px h-5 bg-border/60 shrink-0 mx-1" />
+
+          <button
+            class="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            @click="toggle"
+            :aria-label="isDark ? 'Switch to light' : 'Switch to dark'"
+          >
+            <Sun v-if="isDark" class="size-3.5" />
+            <Moon v-else class="size-3.5" />
+          </button>
         </div>
       </header>
 
+      <!-- Page title bar -->
+      <div class="shrink-0 px-5 py-3 flex items-center gap-3 border-b border-border/40">
+        <div>
+          <h1 class="text-sm font-semibold text-foreground leading-none">
+            {{ selectedCategoryId ? (categories.find(c => c.id === selectedCategoryId)?.name ?? 'All Receipts') : 'All Receipts' }}
+          </h1>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            {{ allReceipts.length }} receipt{{ allReceipts.length === 1 ? '' : 's' }}
+          </p>
+        </div>
+      </div>
+
       <!-- List view -->
-      <main v-if="viewMode === 'list'" class="flex flex-1 overflow-hidden gap-4 px-6 pb-6">
+      <main v-if="viewMode === 'list'" class="flex flex-1 overflow-hidden">
         <AppReceiptsTable
           :key="refreshKey"
           :category-id="selectedCategoryId"
           class="flex-1 overflow-auto"
           @select="selectedReceipt = $event"
         />
+        <div class="w-px bg-border/60 shrink-0" />
         <AppReceiptPanel
           :receipt="selectedReceipt"
           :categories="categories"
-          class="w-80 shrink-0"
+          class="w-80 shrink-0 overflow-auto"
           @category-assigned="onCategoryAssigned"
         />
       </main>
 
       <!-- Grid view -->
-      <main v-else class="flex flex-1 overflow-x-auto gap-4 px-6 pb-6">
+      <main v-else class="flex flex-1 overflow-x-auto gap-3 p-5">
         <AppCategoryColumn
           v-for="col in gridColumns"
           :key="col.category?.id ?? 'uncategorized'"
