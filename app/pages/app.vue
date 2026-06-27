@@ -1,25 +1,84 @@
 <script setup lang="ts">
-import type { Receipt } from '~~/lib/supabase'
+import { useSupabase, type Receipt, type Category } from '~~/lib/supabase'
 import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid, ChevronLeft } from '@lucide/vue'
 
-const refreshKey = ref(0)
-const selectedReceipt = ref<Receipt | null>(null)
+const refreshKey        = ref(0)
+const selectedReceipt   = ref<Receipt | null>(null)
 const { isDark, toggle } = useTheme()
-const searchQuery = ref('')
-const viewMode = ref<'list' | 'grid'>('list')
+const searchQuery       = ref('')
+const viewMode          = ref<'list' | 'grid'>('list')
+const selectedCategoryId = ref<string | null>(null)
+const categories        = ref<Category[]>([])
+const allReceipts       = ref<Receipt[]>([])
 
-function onSynced() { refreshKey.value++ }
+async function fetchCategories() {
+  const supabase = useSupabase()
+  const { data } = await supabase.from('categories').select('*').order('created_at')
+  categories.value = data ?? []
+}
+
+async function fetchAllReceipts() {
+  const supabase = useSupabase()
+  const { data } = await supabase
+    .from('receipts')
+    .select('*')
+    .order('created_at', { ascending: false })
+  allReceipts.value = data ?? []
+}
+
+onMounted(() => {
+  fetchCategories()
+  fetchAllReceipts()
+})
+
+function onSynced() {
+  refreshKey.value++
+  fetchAllReceipts()
+}
+
+function onCategoryCreated(cat: Category) {
+  categories.value.push(cat)
+}
+
+function onSelectCategory(id: string | null) {
+  selectedCategoryId.value = id
+  refreshKey.value++
+}
+
+async function onAssign(receiptId: string, categoryId: string | null) {
+  await $fetch(`/api/receipts/${receiptId}/category`, {
+    method: 'PATCH',
+    body: { categoryId, confirmed: true },
+  })
+  fetchAllReceipts()
+}
+
+function onCategoryAssigned() {
+  refreshKey.value++
+  fetchAllReceipts()
+}
+
+const gridColumns = computed(() => {
+  const uncategorized = allReceipts.value.filter(r => !r.category_id)
+  const categoryColumns = categories.value.map(cat => ({
+    category: cat,
+    receipts: allReceipts.value.filter(r => r.category_id === cat.id),
+  }))
+  return [{ category: null as Category | null, receipts: uncategorized }, ...categoryColumns]
+})
 </script>
 
 <template>
   <SidebarProvider>
-    <AppSidebar />
+    <AppSidebar
+      :categories="categories"
+      @select-category="onSelectCategory"
+      @category-created="onCategoryCreated"
+    />
 
     <div class="flex flex-1 flex-col min-h-screen overflow-hidden bg-background">
-      <!-- ─── Header ────────────────────────────────────────────── -->
+      <!-- Header -->
       <header class="shrink-0 px-6 pt-5 pb-4 flex flex-col gap-4">
-
-        <!-- Row 1: breadcrumb + theme toggle -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5 text-sm">
             <SidebarTrigger class="mr-1" />
@@ -33,16 +92,13 @@ function onSynced() { refreshKey.value++ }
             <span class="text-muted-foreground select-none">/</span>
             <span class="font-semibold text-foreground">All Receipts</span>
           </div>
-
           <Button variant="ghost" size="icon" @click="toggle" aria-label="Toggle theme">
             <Sun v-if="isDark" class="size-4" />
             <Moon v-else class="size-4" />
           </Button>
         </div>
 
-        <!-- Row 2: search + actions -->
         <div class="flex items-center gap-3">
-          <!-- Search -->
           <div class="relative flex-1 max-w-md">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -51,20 +107,12 @@ function onSynced() { refreshKey.value++ }
               class="pl-9 bg-muted/40 border-transparent focus:border-border focus:bg-background"
             />
           </div>
-
-          <!-- Sync / Import buttons -->
           <AppSyncButtons @synced="onSynced" />
-
-          <!-- Divider -->
           <Separator orientation="vertical" class="h-6" />
-
-          <!-- Filters button -->
           <Button variant="outline" size="sm" class="gap-2 font-normal">
             <SlidersHorizontal class="size-4" />
             Filters
           </Button>
-
-          <!-- View toggle -->
           <div class="flex items-center rounded-lg border overflow-hidden divide-x">
             <Button
               variant="ghost"
@@ -90,16 +138,30 @@ function onSynced() { refreshKey.value++ }
         </div>
       </header>
 
-      <!-- ─── Main content ──────────────────────────────────────── -->
-      <main class="flex flex-1 overflow-hidden gap-4 px-6 pb-6">
+      <!-- List view -->
+      <main v-if="viewMode === 'list'" class="flex flex-1 overflow-hidden gap-4 px-6 pb-6">
         <AppReceiptsTable
           :key="refreshKey"
+          :category-id="selectedCategoryId"
           class="flex-1 overflow-auto"
           @select="selectedReceipt = $event"
         />
         <AppReceiptPanel
           :receipt="selectedReceipt"
+          :categories="categories"
           class="w-80 shrink-0"
+          @category-assigned="onCategoryAssigned"
+        />
+      </main>
+
+      <!-- Grid view -->
+      <main v-else class="flex flex-1 overflow-x-auto gap-4 px-6 pb-6">
+        <AppCategoryColumn
+          v-for="col in gridColumns"
+          :key="col.category?.id ?? 'uncategorized'"
+          :category="col.category"
+          :receipts="col.receipts"
+          @assign="onAssign"
         />
       </main>
     </div>
