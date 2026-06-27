@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import {
-  Receipt, Star, Clock, Tag,
+  Star, Clock, Tag,
   FolderOpen, FileText, Share2,
-  Settings, RefreshCw
+  Settings, RefreshCw, Plus,
 } from '@lucide/vue'
+import type { Category } from '~~/lib/supabase'
+import { nextCategoryColor } from '~~/lib/categorize'
+
+const props = defineProps<{ categories: Category[] }>()
+const emit  = defineEmits<{
+  selectCategory:  [id: string | null]
+  categoryCreated: [category: Category]
+}>()
+
+const activeCategoryId   = ref<string | null>(null)
+const creatingCategory   = ref(false)
+const newCategoryName    = ref('')
+const dragOverId         = ref<string>('')   // '' = none; 'all' = All receipts
 
 const mainNav = [
-  { label: 'All Receipts', icon: Receipt, to: '/app' },
-  { label: 'Favorites',    icon: Star,    to: '/app' },
-  { label: 'Recent',       icon: Clock,   to: '/app' },
-  { label: 'Tags',         icon: Tag,     to: '/app' },
+  { label: 'Favorites', icon: Star,        to: '/app' },
+  { label: 'Recent',    icon: Clock,       to: '/app' },
+  { label: 'Tags',      icon: Tag,         to: '/app' },
 ]
 
 const orderNav = [
@@ -19,16 +31,58 @@ const orderNav = [
 ]
 
 const settingsNav = [
-  { label: 'Settings',     icon: Settings,   to: '/app' },
-  { label: 'Sync Status',  icon: RefreshCw,  to: '/app' },
+  { label: 'Settings',    icon: Settings,  to: '/app' },
+  { label: 'Sync Status', icon: RefreshCw, to: '/app' },
 ]
 
-const activeLabel = ref('All Receipts')
+function selectAll() {
+  activeCategoryId.value = null
+  emit('selectCategory', null)
+}
+
+function selectCategory(id: string) {
+  activeCategoryId.value = id
+  emit('selectCategory', id)
+}
+
+function startCreate() {
+  creatingCategory.value = true
+  newCategoryName.value  = ''
+  nextTick(() => (document.getElementById('new-cat-input') as HTMLInputElement | null)?.focus())
+}
+
+async function confirmCreate() {
+  const name = newCategoryName.value.trim()
+  creatingCategory.value = false
+  newCategoryName.value  = ''
+  if (!name) return
+  const color = nextCategoryColor(props.categories)
+  const cat   = await $fetch<Category>('/api/categories', {
+    method: 'POST',
+    body: { name, color },
+  })
+  emit('categoryCreated', cat)
+}
+
+function onDragOver(e: DragEvent, id: string) {
+  e.preventDefault()
+  dragOverId.value = id
+}
+
+async function onDrop(e: DragEvent, categoryId: string | null) {
+  dragOverId.value = ''
+  const receiptId = e.dataTransfer?.getData('receiptId')
+  if (!receiptId) return
+  await $fetch(`/api/receipts/${receiptId}/category`, {
+    method: 'PATCH',
+    body: { categoryId, confirmed: true },
+  })
+}
 </script>
 
 <template>
   <Sidebar collapsible="icon">
-    <!-- User profile -->
+    <!-- Profile -->
     <SidebarHeader class="border-b px-4 py-4">
       <div class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
         <div class="size-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0 select-none">
@@ -42,6 +96,71 @@ const activeLabel = ref('All Receipts')
     </SidebarHeader>
 
     <SidebarContent class="py-2">
+      <!-- RECEIPTS -->
+      <SidebarGroup>
+        <div class="flex items-center justify-between px-4 mb-1">
+          <SidebarGroupLabel class="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/70 p-0">
+            Receipts
+          </SidebarGroupLabel>
+          <button
+            class="text-muted-foreground hover:text-foreground transition-colors group-data-[collapsible=icon]:hidden"
+            aria-label="New category"
+            @click="startCreate"
+          >
+            <Plus class="size-3.5" />
+          </button>
+        </div>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <!-- All receipts -->
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                :is-active="activeCategoryId === null"
+                :class="{ 'ring-2 ring-inset ring-primary/40': dragOverId === 'all' }"
+                @click="selectAll"
+                @dragover="onDragOver($event, 'all')"
+                @dragleave="dragOverId = ''"
+                @drop="onDrop($event, null)"
+              >
+                <span class="size-2 rounded-full bg-foreground/30 shrink-0" />
+                <span>All receipts</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <!-- Per-category rows -->
+            <SidebarMenuItem v-for="cat in categories" :key="cat.id">
+              <SidebarMenuButton
+                :is-active="activeCategoryId === cat.id"
+                :class="{ 'ring-2 ring-inset ring-primary/40': dragOverId === cat.id }"
+                @click="selectCategory(cat.id)"
+                @dragover="onDragOver($event, cat.id)"
+                @dragleave="dragOverId = ''"
+                @drop="onDrop($event, cat.id)"
+              >
+                <span class="size-2 rounded-full shrink-0" :style="{ backgroundColor: cat.color }" />
+                <span>{{ cat.name }}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <!-- Inline create input -->
+            <SidebarMenuItem v-if="creatingCategory">
+              <div class="px-2 py-1">
+                <input
+                  id="new-cat-input"
+                  v-model="newCategoryName"
+                  placeholder="Category name…"
+                  maxlength="50"
+                  class="w-full text-sm bg-muted/50 border border-border rounded-md px-2 py-1 outline-none focus:border-primary"
+                  @keydown.enter.prevent="confirmCreate"
+                  @keydown.escape="creatingCategory = false"
+                  @blur="confirmCreate"
+                />
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
       <!-- MAIN -->
       <SidebarGroup>
         <SidebarGroupLabel class="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/70 px-4">
@@ -50,11 +169,7 @@ const activeLabel = ref('All Receipts')
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in mainNav" :key="item.label">
-              <SidebarMenuButton
-                as-child
-                :is-active="activeLabel === item.label"
-                @click="activeLabel = item.label"
-              >
+              <SidebarMenuButton as-child>
                 <NuxtLink :to="item.to" class="flex items-center gap-3">
                   <component :is="item.icon" class="size-4 shrink-0" />
                   <span>{{ item.label }}</span>
@@ -85,7 +200,7 @@ const activeLabel = ref('All Receipts')
       </SidebarGroup>
     </SidebarContent>
 
-    <!-- SETTINGS pinned at bottom -->
+    <!-- SETTINGS -->
     <SidebarFooter class="border-t py-2">
       <SidebarGroupLabel class="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/70 px-4 mb-1">
         Settings
