@@ -2,10 +2,18 @@
 import {
   Star, Clock, Tag,
   FolderOpen, FileText, Share2,
-  Settings, RefreshCw, Plus, Check,
+  Settings, RefreshCw, Plus, Check, LogOut,
 } from '@lucide/vue'
+import { useSupabase } from '~~/lib/supabase'
 import type { Category } from '~~/lib/supabase'
 import { CATEGORY_COLORS, nextCategoryColor } from '~~/lib/categorize'
+
+const supabase = useSupabase()
+
+async function logout() {
+  await supabase.auth.signOut()
+  await navigateTo('/login')
+}
 
 const props = defineProps<{ categories: Category[] }>()
 const emit  = defineEmits<{
@@ -196,6 +204,12 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
               <component :is="item.icon" class="size-4 shrink-0" />
               <span>{{ item.label }}</span>
             </NuxtLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton class="text-muted-foreground hover:text-destructive hover:bg-destructive/10" @click="logout">
+            <LogOut class="size-4 shrink-0" />
+            <span>Log out</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

@@ -19,8 +19,8 @@ function onFileSelected(e: Event) {
 <template>
   <div class="flex flex-col items-center justify-center flex-1 py-24 px-6 select-none">
     <!-- Icon -->
-    <div class="size-20 rounded-2xl bg-muted/40 border border-border/50 flex items-center justify-center text-4xl mb-6 shadow-inner">
-      🗂️
+    <div class="size-20 rounded-2xl flex items-center justify-center mb-6">
+      <img src="/logo.svg" class="size-20 rounded-2xl" alt="KeepCabin"/>
     </div>
 
     <h2 class="text-base font-semibold text-foreground">No receipts yet</h2>

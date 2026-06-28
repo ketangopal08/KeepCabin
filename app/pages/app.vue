@@ -2,6 +2,8 @@
 import { useSupabase, type Receipt, type Category } from '~~/lib/supabase'
 import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid, Upload, Loader2, Camera } from '@lucide/vue'
 
+definePageMeta({ middleware: 'auth' })
+
 const refreshKey         = ref(0)
 const selectedReceipt    = ref<Receipt | null>(null)
 const { isDark, toggle } = useTheme()

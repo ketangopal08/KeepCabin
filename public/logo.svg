@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <pattern id="dots" width="3.5" height="3.5" patternUnits="userSpaceOnUse">
+      <circle cx="1.75" cy="1.75" r="0.21" fill="#0a0a00" opacity="0.26"/>
+    </pattern>
+    <clipPath id="bg">
+      <rect width="100" height="100" rx="17"/>
+    </clipPath>
+  </defs>
+  <!-- Lime-green background -->
+  <rect width="100" height="100" rx="17" fill="#C8E63C"/>
+  <!-- Dot grid overlay -->
+  <rect width="100" height="100" fill="url(#dots)" clip-path="url(#bg)"/>
+  <!-- Logo mark: G/bracket shape (C + floating crossbar) -->
+  <g fill="#181810">
+    <!-- Main C/bracket body -->
+    <path d="
+      M 35 29
+      L 60 29
+      Q 64 29 64 33
+      L 64 41
+      Q 64 43 61 43
+      L 43 43
+      L 43 57
+      L 64 57
+      Q 68 57 68 61
+      L 68 68
+      Q 68 72 64 72
+      L 35 72
+      Q 31 72 31 68
+      L 31 33
+      Q 31 29 35 29
+      Z
+    "/>
+    <!-- Floating crossbar element (the G serif / cursor) -->
+    <rect x="59" y="46" width="9" height="12" rx="2.5"/>
+  </g>
+</svg>
