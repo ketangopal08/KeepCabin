@@ -95,20 +95,7 @@ async function onDrop(e: DragEvent, categoryId: string | null) {
 
 <template>
   <Sidebar collapsible="icon">
-    <!-- Profile -->
-    <SidebarHeader class="border-b px-4 py-4">
-      <div class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-        <div class="size-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0 select-none">
-          🗂️
-        </div>
-        <div class="min-w-0 group-data-[collapsible=icon]:hidden">
-          <p class="text-sm font-semibold leading-tight truncate">KeepCabin</p>
-          <p class="text-xs text-muted-foreground truncate">Receipt organizer</p>
-        </div>
-      </div>
-    </SidebarHeader>
-
-    <SidebarContent class="py-2">
+<SidebarContent class="py-2">
       <!-- RECEIPTS -->
       <SidebarGroup>
         <div class="flex items-center justify-between px-4 mb-1">
