@@ -62,7 +62,7 @@ const orderNav = [
 ]
 
 const settingsNav = [
-  { label: 'Settings',    icon: Settings,  to: '/app' },
+  { label: 'Settings',    icon: Settings,  to: '/settings' },
   { label: 'Sync Status', icon: RefreshCw, to: '/app' },
 ]
 

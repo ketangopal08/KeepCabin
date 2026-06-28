@@ -1,35 +1,66 @@
 <script setup lang="ts">
 import { useSupabase, type Receipt, type Category } from '~~/lib/supabase'
-import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid } from '@lucide/vue'
+import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid, Upload, Loader2, Camera } from '@lucide/vue'
 
-const refreshKey        = ref(0)
-const selectedReceipt   = ref<Receipt | null>(null)
+const refreshKey         = ref(0)
+const selectedReceipt    = ref<Receipt | null>(null)
 const { isDark, toggle } = useTheme()
-const searchQuery       = ref('')
-const viewMode          = ref<'list' | 'grid'>('list')
+const searchQuery        = ref('')
+const viewMode           = ref<'list' | 'grid'>('list')
 const selectedCategoryId = ref<string | null>(null)
-const categories        = ref<Category[]>([])
-const allReceipts       = ref<Receipt[]>([])
+const categories         = ref<Category[]>([])
+const allReceipts        = ref<Receipt[]>([])
+const loadingReceipts    = ref(true)
+const uploading          = ref(false)
+const uploadError        = ref('')
+
+// Refs for programmatic triggers
+const syncButtonsRef   = ref<{ openSync: () => void } | null>(null)
+const cameraRef        = ref<{ open: () => void } | null>(null)
+const headerFileInput  = ref<HTMLInputElement | null>(null)
+
+const supabase = useSupabase()
 
 async function fetchCategories() {
-  const supabase = useSupabase()
   const { data } = await supabase.from('categories').select('*').order('created_at')
   categories.value = data ?? []
 }
 
 async function fetchAllReceipts() {
-  const supabase = useSupabase()
   const { data } = await supabase
     .from('receipts')
     .select('*')
     .order('created_at', { ascending: false })
   allReceipts.value = data ?? []
+  loadingReceipts.value = false
 }
 
 onMounted(() => {
   fetchCategories()
   fetchAllReceipts()
 })
+
+async function uploadFile(file: File) {
+  uploading.value  = true
+  uploadError.value = ''
+  try {
+    const body = new FormData()
+    body.append('file', file, file.name)
+    await $fetch('/api/receipts/upload', { method: 'POST', body })
+    await fetchAllReceipts()
+    refreshKey.value++
+  } catch (e: any) {
+    uploadError.value = e?.data?.message ?? e?.message ?? 'Upload failed'
+  } finally {
+    uploading.value = false
+  }
+}
+
+function onHeaderFileChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) uploadFile(file)
+  ;(e.target as HTMLInputElement).value = ''
+}
 
 function onSynced() {
   refreshKey.value++
@@ -59,13 +90,15 @@ function onCategoryAssigned() {
 }
 
 const gridColumns = computed(() => {
-  const uncategorized = allReceipts.value.filter(r => !r.category_id)
+  const uncategorized  = allReceipts.value.filter(r => !r.category_id)
   const categoryColumns = categories.value.map(cat => ({
     category: cat,
     receipts: allReceipts.value.filter(r => r.category_id === cat.id),
   }))
   return [{ category: null as Category | null, receipts: uncategorized }, ...categoryColumns]
 })
+
+const isEmpty = computed(() => !loadingReceipts.value && allReceipts.value.length === 0)
 </script>
 
 <template>
@@ -94,9 +127,36 @@ const gridColumns = computed(() => {
         </div>
 
         <div class="flex items-center gap-1.5 ml-auto">
-          <AppSyncButtons @synced="onSynced" />
+          <AppSyncButtons ref="syncButtonsRef" @synced="onSynced" />
 
           <div class="w-px h-5 bg-border/60 shrink-0 mx-1" />
+
+          <!-- Camera button -->
+          <button
+            class="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            aria-label="Snap receipt"
+            @click="cameraRef?.open()"
+          >
+            <Camera class="size-3.5" />
+          </button>
+
+          <!-- Upload button -->
+          <button
+            class="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+            :disabled="uploading"
+            aria-label="Upload receipt"
+            @click="headerFileInput?.click()"
+          >
+            <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
+            <Upload v-else class="size-3.5" />
+          </button>
+          <input
+            ref="headerFileInput"
+            type="file"
+            accept="image/*,.pdf"
+            class="hidden"
+            @change="onHeaderFileChange"
+          />
 
           <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-normal text-sm">
             <SlidersHorizontal class="size-3.5" />
@@ -107,16 +167,16 @@ const gridColumns = computed(() => {
             <button
               class="size-8 flex items-center justify-center transition-colors"
               :class="viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
-              @click="viewMode = 'list'"
               aria-label="List view"
+              @click="viewMode = 'list'"
             >
               <LayoutList class="size-3.5" />
             </button>
             <button
               class="size-8 flex items-center justify-center transition-colors"
               :class="viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
-              @click="viewMode = 'grid'"
               aria-label="Grid view"
+              @click="viewMode = 'grid'"
             >
               <LayoutGrid class="size-3.5" />
             </button>
@@ -126,8 +186,8 @@ const gridColumns = computed(() => {
 
           <button
             class="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            @click="toggle"
             :aria-label="isDark ? 'Switch to light' : 'Switch to dark'"
+            @click="toggle"
           >
             <Sun v-if="isDark" class="size-3.5" />
             <Moon v-else class="size-3.5" />
@@ -147,21 +207,44 @@ const gridColumns = computed(() => {
         </div>
       </div>
 
+      <!-- Upload error banner -->
+      <div
+        v-if="uploadError"
+        class="shrink-0 flex items-center gap-3 px-5 py-2.5 bg-destructive/10 border-b border-destructive/20 text-sm text-destructive"
+      >
+        <span class="flex-1">{{ uploadError }}</span>
+        <button class="shrink-0 underline underline-offset-2 text-xs hover:opacity-70" @click="uploadError = ''">Dismiss</button>
+      </div>
+
+      <!-- Camera dialog (always mounted, opened via ref) -->
+      <AppCameraCapture ref="cameraRef" @file-selected="uploadFile" />
+
+      <!-- Empty state -->
+      <AppEmptyState
+        v-if="isEmpty"
+        @file-selected="uploadFile"
+        @snap="cameraRef?.open()"
+        @sync="syncButtonsRef?.openSync()"
+      />
+
       <!-- List view -->
-      <main v-if="viewMode === 'list'" class="flex flex-1 overflow-hidden">
+      <main v-else-if="viewMode === 'list'" class="flex flex-1 overflow-hidden">
         <AppReceiptsTable
           :key="refreshKey"
           :category-id="selectedCategoryId"
+          :categories="categories"
           class="flex-1 overflow-auto"
           @select="selectedReceipt = $event"
         />
-        <div class="w-px bg-border/60 shrink-0" />
-        <AppReceiptPanel
-          :receipt="selectedReceipt"
-          :categories="categories"
-          class="w-80 shrink-0 overflow-auto"
-          @category-assigned="onCategoryAssigned"
-        />
+        <template v-if="selectedReceipt">
+          <div class="w-px bg-border/60 shrink-0" />
+          <AppReceiptPanel
+            :receipt="selectedReceipt"
+            :categories="categories"
+            class="w-80 shrink-0 overflow-auto"
+            @category-assigned="onCategoryAssigned"
+          />
+        </template>
       </main>
 
       <!-- Grid view -->

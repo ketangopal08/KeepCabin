@@ -125,6 +125,20 @@ function onDismiss() {
 
     <!-- Result -->
     <template v-else-if="ocrResult">
+      <!-- Receipt image -->
+      <div
+        v-if="receipt?.storage_url"
+        class="w-full rounded-lg overflow-hidden bg-muted/30 border border-border/40 flex items-center justify-center"
+        style="min-height: 180px; max-height: 260px"
+      >
+        <img
+          :src="receipt.storage_url"
+          :alt="receipt.filename"
+          class="w-full h-full object-contain"
+          style="max-height: 260px"
+        />
+      </div>
+
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-base">🧾 Receipt</h3>
         <div class="flex gap-2">

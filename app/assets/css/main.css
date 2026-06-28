@@ -133,6 +133,15 @@
   }
 }
 
+/* ─── App sidebar nav text ──────────────────────────────────────────────── */
+
+[data-sidebar="menu-button"] span,
+[data-sidebar="menu-button"] a span {
+  color: #ccc;
+  font-weight: 300;
+  font-size: 0.850rem;
+}
+
 /* ─── Landing page animations (Profound design system) ─────────────────── */
 
 @keyframes fadeBlurInUp {
