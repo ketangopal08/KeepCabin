@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
+import { toast } from 'vue-sonner'
 
 definePageMeta({ layout: false })
 
 const supabase = useSupabase()
 
 // ── Step state ──
-// 'email'    → show email + Continue
-// 'signin'   → email exists, show password to sign in
-// 'signup'   → email not found, show password to create account
-const step    = ref<'email' | 'signin' | 'signup'>('email')
-const email   = ref('')
+// 'email'  → email + Continue
+// 'signin' → existing user: password + Sign in
+// 'setup'  → new user: name + Continue
+// 'signup' → new user: create password + Create account
+const step     = ref<'email' | 'signin' | 'setup' | 'signup'>('email')
+const email    = ref('')
+const name     = ref('')
 const password = ref('')
-const loading = ref(false)
-const error   = ref('')
+const loading  = ref(false)
 
 // ── Dot grid canvas ──
 const dotCanvas = ref<HTMLCanvasElement | null>(null)
@@ -67,73 +69,87 @@ function initDotGrid() {
 // ── Step 1: check if email exists ──
 async function handleContinue() {
   const trimmed = email.value.trim()
-  if (!trimmed) { error.value = 'Please enter your email.'; return }
+  if (!trimmed) { toast.error('Please enter your email.'); return }
   loading.value = true
-  error.value   = ''
   try {
     const { exists } = await $fetch<{ exists: boolean }>('/api/auth/check-email', {
       method: 'POST',
       body: { email: trimmed },
     })
-    step.value = exists ? 'signin' : 'signup'
-    await nextTick()
-    ;(document.querySelector('input[type="password"]') as HTMLInputElement | null)?.focus()
+    if (exists) {
+      step.value = 'signin'
+      await nextTick()
+      ;(document.querySelector('input[type="password"]') as HTMLInputElement | null)?.focus()
+    } else {
+      step.value = 'setup'
+      await nextTick()
+      ;(document.getElementById('name-input') as HTMLInputElement | null)?.focus()
+    }
   } catch (e: any) {
-    error.value = e?.data?.message ?? e?.message ?? 'Something went wrong.'
+    toast.error(e?.data?.message ?? e?.message ?? 'Something went wrong.')
   } finally {
     loading.value = false
   }
 }
 
-// ── Step 2a: sign in ──
+// ── Step 2 (new user): collect name ──
+function handleSetup() {
+  if (!name.value.trim()) { toast.error('Please enter your name.'); return }
+  step.value = 'signup'
+  nextTick(() => {
+    ;(document.querySelector('input[type="password"]') as HTMLInputElement | null)?.focus()
+  })
+}
+
+// ── Step 2a (existing user): sign in ──
 async function handleSignIn() {
-  if (!password.value) { error.value = 'Please enter your password.'; return }
+  if (!password.value) { toast.error('Please enter your password.'); return }
   loading.value = true
-  error.value   = ''
   const { error: err } = await supabase.auth.signInWithPassword({
     email: email.value.trim(),
     password: password.value,
   })
-  if (err) { error.value = err.message; loading.value = false }
-  else navigateTo('/app')
+  if (err) { toast.error(err.message); loading.value = false }
+  else { toast.success('Welcome back!'); navigateTo('/app') }
 }
 
-// ── Step 2b: sign up ──
+// ── Step 3 (new user): create password + account ──
 async function handleSignUp() {
   if (!password.value || password.value.length < 6) {
-    error.value = 'Password must be at least 6 characters.'
+    toast.error('Password must be at least 6 characters.')
     return
   }
   loading.value = true
-  error.value   = ''
   const { error: err } = await supabase.auth.signUp({
     email: email.value.trim(),
     password: password.value,
+    options: { data: { full_name: name.value.trim() } },
   })
-  if (err) { error.value = err.message; loading.value = false }
-  else navigateTo('/app')
+  if (err) { toast.error(err.message); loading.value = false }
+  else { toast.success('Account created! Welcome to KeepCabin.'); navigateTo('/app') }
 }
 
 function handleSubmit() {
   if (step.value === 'email')  return handleContinue()
+  if (step.value === 'setup')  return handleSetup()
   if (step.value === 'signin') return handleSignIn()
   if (step.value === 'signup') return handleSignUp()
 }
 
 async function signInWithGoogle() {
   loading.value = true
-  error.value   = ''
   const { error: err } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${window.location.origin}/auth/callback` },
   })
-  if (err) { error.value = err.message; loading.value = false }
+  if (err) { toast.error(err.message); loading.value = false }
 }
 
 function goBack() {
+  if (step.value === 'signup') { step.value = 'setup'; password.value = ''; return }
   step.value     = 'email'
+  name.value     = ''
   password.value = ''
-  error.value    = ''
 }
 
 onMounted(async () => {
@@ -179,6 +195,7 @@ const testimonials = [
 
 <template>
   <div class="fixed inset-0 flex flex-col bg-white select-none" style="--fh:49px">
+    <Sonner position="top-right" theme="light" rich-colors />
 
     <!-- ══ BODY ══ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden" style="height:calc(100vh - var(--fh))">
@@ -198,20 +215,24 @@ const testimonials = [
           <!-- Heading -->
           <div>
             <template v-if="step === 'email'">
-              <h1 style="font-size:1.6rem;font-weight:400">What's your email?</h1>
+              <h1 style="font-size:1.6rem;font-weight:400;color:#333">What's your email?</h1>
               <p class="text-[14px] text-gray-500">Create your account or sign in.</p>
             </template>
             <template v-else-if="step === 'signin'">
-              <h1 style="font-size:1.6rem;font-weight:400">Welcome back</h1>
-              <p class="text-[14px] text-gray-500">Enter your password to sign in as <strong class="text-gray-700 font-medium">{{ email }}</strong>.</p>
+              <h1 style="font-size:1.6rem;font-weight:400;color:#333">Welcome back</h1>
+              <p class="text-[14px] text-gray-500">Sign in as <strong class="text-gray-700 font-medium">{{ email }}</strong>.</p>
+            </template>
+            <template v-else-if="step === 'setup'">
+              <h1 style="font-size:1.6rem;font-weight:400;color:#333">Let's set up your account</h1>
+              <p class="text-[14px] text-gray-500">No account found for <strong class="text-gray-700 font-medium">{{ email }}</strong>. What should we call you?</p>
             </template>
             <template v-else>
-              <h1 style="font-size:1.6rem;font-weight:400">Create your account</h1>
-              <p class="text-[14px] text-gray-500">Choose a password for <strong class="text-gray-700 font-medium">{{ email }}</strong>.</p>
+              <h1 style="font-size:1.6rem;font-weight:400;color:#333">Create a password</h1>
+              <p class="text-[14px] text-gray-500">Almost done, <strong class="text-gray-700 font-medium">{{ name }}</strong>. Choose a secure password.</p>
             </template>
           </div>
 
-          <!-- Email field (always shown) -->
+          <!-- Email field (always shown, locked after step 1) -->
           <div class="flex flex-col gap-1.5">
             <label class="text-[13px] font-medium text-gray-500">Email address</label>
             <div class="relative">
@@ -222,13 +243,12 @@ const testimonials = [
                 autocomplete="email"
                 :readonly="step !== 'email'"
                 :class="[
-                  'w-full px-4 py-2.5 text-sm text-gray-900 bg-white rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 transition-all',
+                  'w-full px-4 py-2.5 text-sm text-gray-900 rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 transition-all',
                   step === 'email'
-                    ? 'focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)]'
+                    ? 'bg-white focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)]'
                     : 'bg-gray-50 text-gray-500 cursor-default pr-16'
                 ]"
               />
-              <!-- Change link when locked -->
               <button
                 v-if="step !== 'email'"
                 type="button"
@@ -240,8 +260,21 @@ const testimonials = [
             </div>
           </div>
 
-          <!-- Password field (step 2 only) -->
-          <div v-if="step !== 'email'" class="flex flex-col gap-1.5">
+          <!-- Name field (setup step only) -->
+          <div v-if="step === 'setup'" class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-medium text-gray-500">Your name</label>
+            <input
+              id="name-input"
+              v-model="name"
+              type="text"
+              placeholder="Jane Smith"
+              autocomplete="name"
+              class="w-full px-4 py-2.5 text-sm text-gray-900 bg-white rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all"
+            />
+          </div>
+
+          <!-- Password field (signin or signup steps) -->
+          <div v-if="step === 'signin' || step === 'signup'" class="flex flex-col gap-1.5">
             <label class="text-[13px] font-medium text-gray-500">
               {{ step === 'signin' ? 'Password' : 'Create a password' }}
             </label>
@@ -260,16 +293,10 @@ const testimonials = [
             class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50"
             :disabled="loading"
           >
-            <template v-if="loading">
-              <span v-if="step === 'email'">Checking…</span>
-              <span v-else-if="step === 'signin'">Signing in…</span>
-              <span v-else>Creating account…</span>
-            </template>
-            <template v-else>
-              <span v-if="step === 'email'">Continue</span>
-              <span v-else-if="step === 'signin'">Sign in</span>
-              <span v-else>Create account</span>
-            </template>
+            <span v-if="step === 'email'">{{ loading ? 'Checking…' : 'Continue' }}</span>
+            <span v-else-if="step === 'setup'">Continue</span>
+            <span v-else-if="step === 'signin'">{{ loading ? 'Signing in…' : 'Sign in' }}</span>
+            <span v-else>{{ loading ? 'Creating account…' : 'Create account' }}</span>
           </button>
 
           <!-- Divider -->
@@ -295,7 +322,6 @@ const testimonials = [
             Continue with Google
           </button>
 
-          <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
         </form>
 
         <!-- Bottom "Want a tour?" card -->
