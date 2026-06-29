@@ -17,11 +17,47 @@ export const CATEGORY_COLORS = [
 ]
 
 const KEYWORD_MAP: Record<string, string[]> = {
-  'Food & dining': ['restaurant', 'cafe', 'mcdonald', 'pizza', 'food', 'dining', 'bakery', 'sushi', 'bar', 'grill', 'burger', 'coffee', 'starbucks'],
-  'Software':      ['amazon', 'microsoft', 'adobe', 'license', 'subscription', 'software', 'saas', 'app store', 'google play'],
-  'Travel':        ['hotel', 'flight', 'airline', 'uber', 'taxi', 'airbnb', 'travel', 'airport', 'booking', 'lyft'],
-  'Office':        ['staples', 'office', 'printer', 'supplies', 'fedex', 'ups', 'courier', 'postage', 'depot'],
-  'Health':        ['pharmacy', 'clinic', 'hospital', 'dentist', 'medical', 'health', 'cvs', 'walgreens'],
+  'Food & dining': [
+    'restaurant', 'cafe', 'mcdonald', 'pizza', 'food', 'dining', 'bakery', 'sushi', 'bar',
+    'grill', 'burger', 'coffee', 'starbucks', 'swiggy', 'zomato', 'dominos', 'kfc', 'haldiram',
+    'barbeque', 'biryani', 'dhaba', 'canteen', 'mess', 'hotel', 'chai', 'dosa', 'thali',
+    'curry', 'noodles', 'wrap', 'sandwich',
+  ],
+  'Groceries': [
+    'grocery', 'groceries', 'supermarket', 'mart', 'bigbasket', 'blinkit', 'zepto', 'dmart',
+    'reliance fresh', 'more supermarket', 'spencer', 'nature basket', 'vegetables', 'fruits',
+    'dairy', 'milk', 'ration', 'provision', 'general store', 'kirana',
+  ],
+  'Software': [
+    'amazon', 'microsoft', 'adobe', 'license', 'subscription', 'software', 'saas',
+    'app store', 'google play', 'aws', 'azure', 'digitalocean', 'github', 'netlify', 'vercel',
+    'zoho', 'tally', 'godaddy', 'hostinger',
+  ],
+  'Travel': [
+    'hotel', 'flight', 'airline', 'uber', 'taxi', 'airbnb', 'travel', 'airport', 'booking',
+    'lyft', 'ola', 'rapido', 'redbus', 'irctc', 'indigo', 'air india', 'spicejet', 'vistara',
+    'makemytrip', 'goibibo', 'cleartrip', 'bus', 'train', 'metro', 'auto', 'cab', 'toll',
+    'petrol', 'diesel', 'fuel', 'parking',
+  ],
+  'Office': [
+    'staples', 'office', 'printer', 'supplies', 'fedex', 'ups', 'courier', 'postage', 'depot',
+    'stationery', 'pen', 'paper', 'notebook', 'whiteboard', 'amazon business',
+  ],
+  'Health': [
+    'pharmacy', 'clinic', 'hospital', 'dentist', 'medical', 'health', 'cvs', 'walgreens',
+    'apollo', 'medplus', 'netmeds', '1mg', 'pharmeasy', 'doctor', 'diagnostic', 'lab',
+    'pathology', 'medicine', 'tablet', 'capsule', 'chemist', 'dispensary',
+  ],
+  'Shopping': [
+    'flipkart', 'myntra', 'ajio', 'nykaa', 'meesho', 'tatacliq', 'reliance digital',
+    'croma', 'vijay sales', 'clothing', 'apparel', 'fashion', 'electronics', 'mobile',
+    'gadget', 'shoes', 'footwear', 'jewellery', 'jewelry',
+  ],
+  'Utilities': [
+    'electricity', 'water', 'gas', 'broadband', 'internet', 'wifi', 'airtel', 'jio',
+    'vi ', 'bsnl', 'postpaid', 'prepaid', 'recharge', 'bill payment', 'insurance',
+    'emi', 'loan', 'rent',
+  ],
 }
 
 export function detectCategory(
