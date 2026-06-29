@@ -2,6 +2,8 @@
 const emit = defineEmits<{ synced: [] }>()
 
 const syncOpen = ref(false)
+
+defineExpose({ openSync: () => { syncOpen.value = true } })
 const importOpen = ref(false)
 const folderUrl = ref(process.client ? (localStorage.getItem('keepcabin_folder_url') ?? '') : '')
 const imageUrl = ref('')

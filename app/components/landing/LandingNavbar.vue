@@ -7,7 +7,10 @@ const { isDark, toggle } = useLandingTheme()
   <nav class="sticky top-0 z-50 bg-[var(--lp-bg)] border-b border-[var(--lp-border-section)]">
     <div class="max-w-[1088px] mx-auto px-4 h-14 flex items-center justify-between">
 
-      <span class="text-sm font-semibold text-[var(--lp-text)]">KeepCabin</span>
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" class="size-7 rounded-md" alt="KeepCabin"/>
+        <span class="text-sm font-semibold text-[var(--lp-text)]">KeepCabin</span>
+      </div>
 
       <div class="hidden md:flex items-center gap-0">
         <a href="#features" class="px-3 py-1.5 text-sm text-[var(--lp-muted)] hover:text-[var(--lp-text)] transition-colors duration-150">
@@ -35,7 +38,7 @@ const { isDark, toggle } = useLandingTheme()
           :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         >
           <Sun v-if="!isDark" class="size-4" />
-          <Moon v-else class="size-4" />
+          <Moon v-else class="size-4 " />
         </button>
 
         <NuxtLink

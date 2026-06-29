@@ -17,7 +17,7 @@ export function useTheme() {
     if (!import.meta.client) return
     const saved = localStorage.getItem('keepcabin-theme')
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const dark = saved ? saved === 'dark' : prefersDark
+    const dark = saved ? saved === 'dark' : true
     isDark.value = dark
     apply(dark)
   }
