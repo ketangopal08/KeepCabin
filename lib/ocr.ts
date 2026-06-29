@@ -17,7 +17,8 @@ export type OcrResult = {
 // ── Currency detection ────────────────────────────────────────────────────────
 
 const CURRENCIES = [
-  { symbol: '₹', re: /₹|(?:Rs\.?\s*)|(?:\bINR\b)/ },
+  // ₹ OCR often misreads as: Rs, R$, T, T., F — catch all common variants
+  { symbol: '₹', re: /₹|(?:Rs\.?\s*)|(?:\bINR\b)|(?:R\$\s*)/ },
   { symbol: '$', re: /\$|(?:\bUSD\b)/ },
   { symbol: '€', re: /€|(?:\bEUR\b)/ },
   { symbol: '£', re: /£|(?:\bGBP\b)/ },
@@ -35,8 +36,8 @@ function detectCurrency(text: string): string {
 // ── Amount regex ──────────────────────────────────────────────────────────────
 // Handles: 1,00,000.50 | 1,250.00 | 100 | 12.5 (Indian + Western formatting)
 const AMOUNT_CORE = '[\\d,]+(?:\\.\\d{1,2})?'
-// Optional currency prefix
-const CURR_PREFIX = '(?:₹|Rs\\.?\\s*|INR\\s*|\\$|€|£|¥|AED\\s*)?'
+// Optional currency prefix — includes OCR misreads of ₹ (R$, Rs)
+const CURR_PREFIX = '(?:₹|Rs\\.?\\s*|R\\$\\s*|INR\\s*|\\$|€|£|¥|AED\\s*)?'
 const AMOUNT_RE   = new RegExp(`${CURR_PREFIX}(${AMOUNT_CORE})`)
 
 // ── Public API ────────────────────────────────────────────────────────────────
