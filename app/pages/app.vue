@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSupabase, type Receipt, type Category } from '~~/lib/supabase'
 import { Sun, Moon, Search, SlidersHorizontal, LayoutList, LayoutGrid, Upload, Loader2, Camera } from '@lucide/vue'
+import { toast } from 'vue-sonner'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -43,18 +44,47 @@ onMounted(() => {
 })
 
 async function uploadFile(file: File) {
-  uploading.value  = true
+  uploading.value   = true
   uploadError.value = ''
+
+  // Create a local blob URL so OCR can start immediately from memory
+  const localUrl = URL.createObjectURL(file)
+
   try {
     const body = new FormData()
     body.append('file', file, file.name)
-    await $fetch('/api/receipts/upload', { method: 'POST', body })
+    const receipt = await $fetch<Receipt>('/api/receipts/upload', { method: 'POST', body })
+
     await fetchAllReceipts()
     refreshKey.value++
+
+    // Start OCR in the background — doesn't block the upload spinner
+    autoScan(receipt.id, localUrl)
   } catch (e: any) {
     uploadError.value = e?.data?.message ?? e?.message ?? 'Upload failed'
+    URL.revokeObjectURL(localUrl)
   } finally {
     uploading.value = false
+  }
+}
+
+async function autoScan(receiptId: string, localUrl: string) {
+  const tid = toast.loading('Scanning receipt…', { duration: Infinity })
+  try {
+    const { runOcr } = await import('~~/lib/ocr')
+    const result     = await runOcr(localUrl)
+
+    if (result.raw) {
+      await supabase.from('receipts').update({ ocr_text: result.raw }).eq('id', receiptId)
+      await fetchAllReceipts()
+      refreshKey.value++
+    }
+
+    toast.success('Receipt scanned!', { id: tid, duration: 3000 })
+  } catch {
+    toast.error('Scan failed — open the receipt to retry.', { id: tid, duration: 4000 })
+  } finally {
+    URL.revokeObjectURL(localUrl)
   }
 }
 
@@ -105,6 +135,7 @@ const isEmpty = computed(() => !loadingReceipts.value && allReceipts.value.lengt
 
 <template>
   <SidebarProvider>
+    <Sonner :theme="isDark ? 'dark' : 'light'" position="bottom-right" rich-colors />
     <AppSidebar
       :categories="categories"
       @select-category="onSelectCategory"

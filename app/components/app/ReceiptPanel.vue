@@ -10,10 +10,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{ categoryAssigned: [] }>()
 
-const ocrResult  = ref<OcrResult | null>(null)
-const loading    = ref(false)
-const ocrError   = ref('')
-const suggestion = ref<CategorySuggestion | null>(null)
+const ocrResult   = ref<OcrResult | null>(null)
+const loading     = ref(false)
+const ocrError    = ref('')
+const suggestion  = ref<CategorySuggestion | null>(null)
+const lightboxOpen = ref(false)
+const scanned      = ref(false) // toggle scanned document look
 
 async function runOcrForReceipt(r: Receipt) {
   ocrError.value  = ''
@@ -57,6 +59,13 @@ watch(
   },
   { immediate: true },
 )
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') lightboxOpen.value = false
+}
+
+onMounted(() => window.addEventListener('keydown', onKeyDown))
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 function copyToClipboard() {
   if (ocrResult.value?.raw) navigator.clipboard.writeText(ocrResult.value.raw)
@@ -125,19 +134,76 @@ function onDismiss() {
 
     <!-- Result -->
     <template v-else-if="ocrResult">
-      <!-- Receipt image -->
+      <!-- Receipt image thumbnail (click to open scanned viewer) -->
       <div
         v-if="receipt?.storage_url"
-        class="w-full rounded-lg overflow-hidden bg-muted/30 border border-border/40 flex items-center justify-center"
+        class="w-full rounded-lg overflow-hidden bg-muted/30 border border-border/40 flex items-center justify-center cursor-zoom-in group relative"
         style="min-height: 180px; max-height: 260px"
+        @click="lightboxOpen = true"
       >
         <img
           :src="receipt.storage_url"
           :alt="receipt.filename"
-          class="w-full h-full object-contain"
+          class="w-full h-full object-contain transition-opacity group-hover:opacity-80"
           style="max-height: 260px"
         />
+        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <span class="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full font-medium">View scan</span>
+        </div>
       </div>
+
+      <!-- Fullscreen scanned document viewer -->
+      <Teleport to="body">
+        <div
+          v-if="lightboxOpen"
+          class="fixed inset-0 z-50 flex flex-col bg-neutral-900/95 backdrop-blur-sm"
+          @click.self="lightboxOpen = false"
+        >
+          <!-- Toolbar -->
+          <div class="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/10">
+            <span class="text-white/70 text-sm font-medium truncate max-w-xs">{{ receipt?.filename }}</span>
+            <div class="flex items-center gap-2">
+              <!-- Scanned/Original toggle -->
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                :class="scanned ? 'bg-white text-gray-900' : 'bg-white/10 text-white/70 hover:bg-white/20'"
+                @click="scanned = !scanned"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+                </svg>
+                {{ scanned ? 'Scanned' : 'Original' }}
+              </button>
+              <button
+                class="size-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                @click="lightboxOpen = false"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Image area -->
+          <div class="flex-1 overflow-auto flex items-center justify-center p-6">
+            <img
+              :src="receipt?.storage_url"
+              :alt="receipt?.filename"
+              class="max-w-full max-h-full rounded shadow-2xl transition-all duration-300 select-none"
+              :style="scanned
+                ? 'filter: grayscale(1) contrast(1.6) brightness(1.15); background:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.08), 0 25px 60px rgba(0,0,0,0.7)'
+                : 'box-shadow:0 25px 60px rgba(0,0,0,0.7)'"
+              draggable="false"
+            />
+          </div>
+
+          <!-- Footer hint -->
+          <div class="shrink-0 flex items-center justify-center pb-4">
+            <span class="text-white/30 text-xs">Press Esc or click outside to close</span>
+          </div>
+        </div>
+      </Teleport>
 
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-base">🧾 Receipt</h3>
