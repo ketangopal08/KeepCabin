@@ -5,10 +5,15 @@ definePageMeta({ layout: false })
 
 const supabase = useSupabase()
 
-const email    = ref('')
+// ── Step state ──
+// 'email'    → show email + Continue
+// 'signin'   → email exists, show password to sign in
+// 'signup'   → email not found, show password to create account
+const step    = ref<'email' | 'signin' | 'signup'>('email')
+const email   = ref('')
 const password = ref('')
-const loading  = ref(false)
-const error    = ref('')
+const loading = ref(false)
+const error   = ref('')
 
 // ── Dot grid canvas ──
 const dotCanvas = ref<HTMLCanvasElement | null>(null)
@@ -21,8 +26,8 @@ function initDotGrid() {
   canvas.width  = parent.offsetWidth
   canvas.height = parent.offsetHeight
 
-  const SPACING = 22
-  const DOT     = 2.5
+  const SPACING = 14
+  const DOT     = 2
 
   const cols = Math.ceil(canvas.width  / SPACING) + 1
   const rows = Math.ceil(canvas.height / SPACING) + 1
@@ -59,14 +64,60 @@ function initDotGrid() {
   raf = requestAnimationFrame(tick)
 }
 
-async function handleSubmit() {
-  if (!email.value.trim()) { error.value = 'Please enter your email.'; return }
+// ── Step 1: check if email exists ──
+async function handleContinue() {
+  const trimmed = email.value.trim()
+  if (!trimmed) { error.value = 'Please enter your email.'; return }
+  loading.value = true
+  error.value   = ''
+  try {
+    const { exists } = await $fetch<{ exists: boolean }>('/api/auth/check-email', {
+      method: 'POST',
+      body: { email: trimmed },
+    })
+    step.value = exists ? 'signin' : 'signup'
+    await nextTick()
+    ;(document.querySelector('input[type="password"]') as HTMLInputElement | null)?.focus()
+  } catch (e: any) {
+    error.value = e?.data?.message ?? e?.message ?? 'Something went wrong.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// ── Step 2a: sign in ──
+async function handleSignIn() {
   if (!password.value) { error.value = 'Please enter your password.'; return }
   loading.value = true
   error.value   = ''
-  const { error: err } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value })
+  const { error: err } = await supabase.auth.signInWithPassword({
+    email: email.value.trim(),
+    password: password.value,
+  })
   if (err) { error.value = err.message; loading.value = false }
   else navigateTo('/app')
+}
+
+// ── Step 2b: sign up ──
+async function handleSignUp() {
+  if (!password.value || password.value.length < 6) {
+    error.value = 'Password must be at least 6 characters.'
+    return
+  }
+  loading.value = true
+  error.value   = ''
+  const { error: err } = await supabase.auth.signUp({
+    email: email.value.trim(),
+    password: password.value,
+  })
+  if (err) { error.value = err.message; loading.value = false }
+  else navigateTo('/app')
+}
+
+function handleSubmit() {
+  if (step.value === 'email')  return handleContinue()
+  if (step.value === 'signin') return handleSignIn()
+  if (step.value === 'signup') return handleSignUp()
 }
 
 async function signInWithGoogle() {
@@ -77,6 +128,12 @@ async function signInWithGoogle() {
     options: { redirectTo: `${window.location.origin}/auth/callback` },
   })
   if (err) { error.value = err.message; loading.value = false }
+}
+
+function goBack() {
+  step.value     = 'email'
+  password.value = ''
+  error.value    = ''
 }
 
 onMounted(async () => {
@@ -137,47 +194,82 @@ const testimonials = [
 
         <!-- ── FORM ── -->
         <form class="flex flex-col gap-5 w-full max-w-[420px]" @submit.prevent="handleSubmit">
+
+          <!-- Heading -->
           <div>
-            <h1 class="text-[1.85rem] font-bold text-gray-900 leading-tight tracking-tight mb-1.5" style="    font-size: 1.6rem;
-    font-weight: 400;">
-              What's your email?
-            </h1>
-            <p class="text-[14px] text-gray-500">Create your account or sign in.</p>
+            <template v-if="step === 'email'">
+              <h1 style="font-size:1.6rem;font-weight:400">What's your email?</h1>
+              <p class="text-[14px] text-gray-500">Create your account or sign in.</p>
+            </template>
+            <template v-else-if="step === 'signin'">
+              <h1 style="font-size:1.6rem;font-weight:400">Welcome back</h1>
+              <p class="text-[14px] text-gray-500">Enter your password to sign in as <strong class="text-gray-700 font-medium">{{ email }}</strong>.</p>
+            </template>
+            <template v-else>
+              <h1 style="font-size:1.6rem;font-weight:400">Create your account</h1>
+              <p class="text-[14px] text-gray-500">Choose a password for <strong class="text-gray-700 font-medium">{{ email }}</strong>.</p>
+            </template>
           </div>
 
-          <!-- Email -->
+          <!-- Email field (always shown) -->
           <div class="flex flex-col gap-1.5">
             <label class="text-[13px] font-medium text-gray-500">Email address</label>
-            <input
-              v-model="email"
-              type="email"
-              placeholder="name@company.com"
-              autocomplete="email"
-              required
-              class="w-full px-4 py-2.5 text-sm text-gray-900 bg-white rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all"
-            />
+            <div class="relative">
+              <input
+                v-model="email"
+                type="email"
+                placeholder="name@company.com"
+                autocomplete="email"
+                :readonly="step !== 'email'"
+                :class="[
+                  'w-full px-4 py-2.5 text-sm text-gray-900 bg-white rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 transition-all',
+                  step === 'email'
+                    ? 'focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)]'
+                    : 'bg-gray-50 text-gray-500 cursor-default pr-16'
+                ]"
+              />
+              <!-- Change link when locked -->
+              <button
+                v-if="step !== 'email'"
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                @click="goBack"
+              >
+                Change
+              </button>
+            </div>
           </div>
 
-          <!-- Password -->
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[13px] font-medium text-gray-500">Password</label>
+          <!-- Password field (step 2 only) -->
+          <div v-if="step !== 'email'" class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-medium text-gray-500">
+              {{ step === 'signin' ? 'Password' : 'Create a password' }}
+            </label>
             <input
               v-model="password"
               type="password"
-              placeholder="Your password"
-              autocomplete="current-password"
-              required
+              :placeholder="step === 'signin' ? 'Your password' : 'Min. 6 characters'"
+              :autocomplete="step === 'signin' ? 'current-password' : 'new-password'"
               class="w-full px-4 py-2.5 text-sm text-gray-900 bg-white rounded-xl border border-gray-200 outline-none shadow-sm placeholder:text-gray-400 focus:border-gray-400 focus:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all"
             />
           </div>
 
-          <!-- Sign in button -->
+          <!-- Primary action button -->
           <button
             type="submit"
             class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50"
             :disabled="loading"
           >
-            {{ loading ? 'Signing in…' : 'Sign in' }}
+            <template v-if="loading">
+              <span v-if="step === 'email'">Checking…</span>
+              <span v-else-if="step === 'signin'">Signing in…</span>
+              <span v-else>Creating account…</span>
+            </template>
+            <template v-else>
+              <span v-if="step === 'email'">Continue</span>
+              <span v-else-if="step === 'signin'">Sign in</span>
+              <span v-else>Create account</span>
+            </template>
           </button>
 
           <!-- Divider -->
@@ -187,7 +279,7 @@ const testimonials = [
             <div class="flex-1 h-px bg-gray-100" />
           </div>
 
-          <!-- Google -->
+          <!-- Google (always present) -->
           <button
             type="button"
             class="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 transition-all shadow-sm disabled:opacity-50"
@@ -247,11 +339,9 @@ const testimonials = [
                 class="shrink-0 flex flex-col justify-between rounded-2xl bg-white p-8 shadow-[0_2px_16px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]"
                 style="width:480px; height:290px"
               >
-                <!-- Quote -->
                 <p class="text-[15px] text-gray-700 leading-relaxed">
                   "{{ t.quote }}"
                 </p>
-                <!-- Author + company -->
                 <div class="flex items-end justify-between gap-3 mt-4">
                   <div class="flex items-center gap-3">
                     <div
@@ -295,7 +385,6 @@ const testimonials = [
 </template>
 
 <style scoped>
-/* ── Testimonial scroll ── */
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
@@ -306,5 +395,4 @@ const testimonials = [
 .animate-marquee:hover {
   animation-play-state: paused;
 }
-
 </style>
