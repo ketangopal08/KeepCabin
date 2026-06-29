@@ -191,6 +191,7 @@ const testimonials = [
     name: "Tom Nakamura", title: "Accountant", initials: "TN", company: "bench", color: "#06b6d4",
   },
 ]
+
 </script>
 
 <template>
