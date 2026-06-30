@@ -14,10 +14,11 @@ const loading = ref(false)
 
 async function fetchMembers() {
   if (!ctx.value?.member?.team_id) return
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('org_members')
     .select('id, user_id, role')
     .eq('team_id', ctx.value.member.team_id)
+  if (error) { console.error(error); return }
   members.value = data ?? []
 }
 

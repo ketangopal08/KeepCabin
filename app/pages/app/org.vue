@@ -16,23 +16,35 @@ const inviteTeamId = ref('')
 const loading = ref(false)
 
 async function fetchTeams() {
-  const { data: { session } } = await supabase.auth.getSession()
-  teams.value = await $fetch<{ id: string; name: string }[]>('/api/teams' as string, {
-    headers: { Authorization: `Bearer ${session!.access_token}` },
-  })
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    teams.value = await $fetch<{ id: string; name: string }[]>('/api/teams' as string, {
+      headers: { Authorization: `Bearer ${session!.access_token}` },
+    })
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Failed to load teams')
+  }
 }
 
 async function createTeam() {
   if (!newTeamName.value.trim()) return
-  const { data: { session } } = await supabase.auth.getSession()
-  await $fetch('/api/teams' as string, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${session!.access_token}` },
-    body: { name: newTeamName.value.trim() },
-  })
-  newTeamName.value = ''
-  await fetchTeams()
-  toast.success('Team created')
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    await $fetch('/api/teams' as string, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session!.access_token}` },
+      body: { name: newTeamName.value.trim() },
+    })
+    newTeamName.value = ''
+    await fetchTeams()
+    toast.success('Team created')
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Failed to create team')
+  }
+}
+
+function setInviteRole(r: string) {
+  inviteRole.value = r as 'manager' | 'finance'
 }
 
 async function sendInvite() {
@@ -110,7 +122,7 @@ onMounted(fetchTeams)
               'px-4 py-2 rounded-xl text-sm border transition-all',
               inviteRole === r ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
             ]"
-            @click="inviteRole = r as 'manager' | 'finance'"
+            @click="setInviteRole(r)"
           >{{ r.charAt(0).toUpperCase() + r.slice(1) }}</button>
         </div>
         <select
