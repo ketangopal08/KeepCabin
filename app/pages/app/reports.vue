@@ -16,11 +16,17 @@ async function downloadCSV() {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
+    if (!response.ok) {
+      console.error('Export failed', response.status)
+      return
+    }
     const blob = await response.blob()
     const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
+    const objectUrl = URL.createObjectURL(blob)
+    link.href = objectUrl
     link.download = `expenses-${selectedMonth.value}.csv`
     link.click()
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   } finally {
     downloading.value = false
   }

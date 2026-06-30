@@ -15,9 +15,15 @@ export default defineEventHandler(async (event) => {
 
   if (query.month) {
     const month = query.month as string  // e.g. "2026-06"
+    const parts = month.split('-')
+    const year = Number(parts[0] ?? '0')
+    const mon = Number(parts[1] ?? '1')
+    const nextMonth = mon === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(mon + 1).padStart(2, '0')}-01`
     dbQuery = dbQuery
-      .gte('created_at', `${month}-01`)
-      .lt('created_at', `${month}-31`)
+      .gte('expense_date', `${month}-01`)
+      .lt('expense_date', nextMonth)
   }
 
   const { data: expenses } = await dbQuery
@@ -34,7 +40,7 @@ export default defineEventHandler(async (event) => {
       e.amount,
       e.description ?? '',
       e.status,
-      e.utr_number ?? '',
+      e.utr ?? '',
       e.created_at.slice(0, 10),
       e.status === 'paid' ? e.updated_at.slice(0, 10) : '',
     ])
