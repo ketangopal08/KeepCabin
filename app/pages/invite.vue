@@ -28,7 +28,7 @@ async function acceptInvite() {
   accepting.value = true
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { await navigateTo(`/login?redirect=/invite?token=${token}`); return }
+    if (!session) { await navigateTo(`/login?redirect=${encodeURIComponent(`/invite?token=${token}`)}`); return }
     await $fetch('/api/invites/accept', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },

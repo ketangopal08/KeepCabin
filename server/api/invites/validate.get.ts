@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   return {
     email: invite.email,
     role: invite.role,
-    org_name: invite.organizations.name,
+    org_name: invite.organizations?.name ?? '',
     team_name: invite.teams?.name ?? null,
   }
 })

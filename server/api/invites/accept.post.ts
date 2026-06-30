@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const { token } = await readBody<{ token: string }>(event)
+  if (!token) throw createError({ statusCode: 400, message: 'Token required' })
   const authHeader = getHeader(event, 'authorization') ?? ''
   const accessToken = authHeader.replace('Bearer ', '')
 
