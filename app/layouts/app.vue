@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useOrgContext } from '~/composables/useOrgContext'
 
-const { ctx, load } = useOrgContext()
+const { load } = useOrgContext()
 onMounted(load)
 </script>
 
 <template>
   <SidebarProvider>
-    <AppSidebar :role="ctx?.member?.role ?? null" />
+    <AppSidebar />
     <SidebarInset>
       <AppNavbar />
       <main class="flex-1 overflow-auto p-6">
