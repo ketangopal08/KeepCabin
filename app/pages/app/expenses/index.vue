@@ -24,11 +24,17 @@ const statusLabels: Record<string, string> = {
 }
 
 async function fetchExpenses() {
-  const { data: { session } } = await supabase.auth.getSession()
-  expenses.value = await $fetch<Expense[]>('/api/expenses' as string, {
-    headers: { Authorization: `Bearer ${session!.access_token}` },
-  })
-  loading.value = false
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { await navigateTo('/login'); return }
+    expenses.value = await $fetch<Expense[]>('/api/expenses' as string, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+  } catch (e: any) {
+    console.error('Failed to load expenses:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(async () => { await load(); await fetchExpenses() })

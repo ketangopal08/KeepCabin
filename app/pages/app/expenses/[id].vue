@@ -7,6 +7,8 @@ definePageMeta({ layout: 'app', middleware: 'auth' })
 const route = useRoute()
 const supabase = useSupabase()
 const expense = ref<Expense | null>(null)
+const loading = ref(true)
+const fetchError = ref('')
 
 const statusLabels: Record<string, string> = {
   pending_manager: 'Pending Manager Approval',
@@ -22,15 +24,24 @@ function getExpenseId(): string {
 }
 
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  expense.value = await $fetch<Expense>(`/api/expenses/${getExpenseId()}` as string, {
-    headers: { Authorization: `Bearer ${session!.access_token}` },
-  })
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { await navigateTo('/login'); return }
+    expense.value = await $fetch<Expense>(`/api/expenses/${getExpenseId()}` as string, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+  } catch (e: any) {
+    fetchError.value = e?.data?.message ?? 'Failed to load expense'
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
 <template>
-  <div v-if="expense" class="flex flex-col gap-6 max-w-lg">
+  <div v-if="loading" class="text-sm text-gray-400">Loading…</div>
+  <div v-else-if="fetchError" class="text-sm text-red-600">{{ fetchError }}</div>
+  <div v-else-if="expense" class="flex flex-col gap-6 max-w-lg">
     <div class="flex items-start justify-between">
       <div>
         <h1 class="text-xl font-semibold text-gray-900">{{ expense.vendor ?? 'Expense' }}</h1>
