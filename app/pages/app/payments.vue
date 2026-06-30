@@ -9,6 +9,7 @@ const supabase = useSupabase()
 const expenses = ref<Expense[]>([])
 const loading = ref(true)
 const utrInputs = ref<Record<string, string>>({})
+const submitting = ref<Set<string>>(new Set())
 
 async function fetchPending() {
   try {
@@ -28,6 +29,8 @@ async function fetchPending() {
 async function markPaid(id: string) {
   const utr = utrInputs.value[id]?.trim()
   if (!utr) { toast.error('Enter UTR number'); return }
+  if (submitting.value.has(id)) return
+  submitting.value = new Set([...submitting.value, id])
   try {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { await navigateTo('/login'); return }
@@ -37,9 +40,11 @@ async function markPaid(id: string) {
       body: { utr_number: utr },
     })
     toast.success('Payment recorded')
-    await fetchPending()
   } catch (e: any) {
     toast.error(e?.data?.message ?? 'Failed to record payment')
+  } finally {
+    submitting.value = new Set([...submitting.value].filter(x => x !== id))
+    await fetchPending()
   }
 }
 
@@ -67,9 +72,10 @@ onMounted(fetchPending)
           <input v-model="utrInputs[e.id]" placeholder="Enter UTR / Reference number"
             class="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none focus:border-gray-400 font-mono" />
           <button
-            class="px-4 py-2 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-all"
+            :disabled="submitting.has(e.id)"
+            class="px-4 py-2 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-all disabled:opacity-50"
             @click="markPaid(e.id)">
-            Mark Paid
+            {{ submitting.has(e.id) ? 'Saving…' : 'Mark Paid' }}
           </button>
           <NuxtLink :to="`/app/expenses/${e.id}`"
             class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all">
