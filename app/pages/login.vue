@@ -165,30 +165,45 @@ onUnmounted(() => {
   window.removeEventListener('resize', initDotGrid)
 })
 
+const brandLogos: Record<string, string> = {
+  studio: `<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" stroke="#6366f1" stroke-width="1.5"/><circle cx="10" cy="10" r="3.5" fill="#6366f1"/></svg>`,
+  folio:  `<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="5" y="2" width="10" height="13" rx="2" fill="#10b981" opacity="0.35"/><rect x="3" y="5" width="10" height="13" rx="2" fill="#10b981"/></svg>`,
+  arc:    `<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M2.5 17a9 9 0 0115 0" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/><path d="M5.5 13a5 5 0 019 0" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" opacity="0.55"/></svg>`,
+  ramp:   `<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 16L15 5M15 5H8M15 5v7" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  vercel: `<svg width="14" height="13" viewBox="0 0 18 16" fill="none"><path d="M9 1L17.66 15H0.34L9 1Z" fill="#8b5cf6"/></svg>`,
+  bench:  `<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2.5" fill="#06b6d4" opacity="0.12"/><rect x="3" y="2" width="14" height="16" rx="2.5" stroke="#06b6d4" stroke-width="1.5"/><path d="M7 7h6M7 10h6M7 13h4" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+}
+
 const testimonials = [
   {
     quote: "Finally an app that makes receipt management painless. I used to dread expense reports — KeepCabin changed that completely.",
     name: "Sarah Mitchell", title: "Freelance Designer", initials: "SM", company: "studio", color: "#6366f1",
+    avatar: "https://i.pravatar.cc/150?img=47",
   },
   {
     quote: "The Google Drive sync alone is worth it. My receipts are automatically pulled in and sorted without any manual work.",
     name: "James Park", title: "Small Business Owner", initials: "JP", company: "folio", color: "#10b981",
+    avatar: "https://i.pravatar.cc/150?img=68",
   },
   {
     quote: "OCR accuracy is impressive. Snap a photo and the vendor, amount, and date are extracted instantly. Saves hours every month.",
     name: "Priya Sharma", title: "Startup Founder", initials: "PS", company: "arc", color: "#f59e0b",
+    avatar: "https://i.pravatar.cc/150?img=44",
   },
   {
     quote: "We process hundreds of receipts monthly. KeepCabin cut our accounting prep time by more than half. The categorization is spot on.",
     name: "Marcus Chen", title: "Finance Manager", initials: "MC", company: "ramp", color: "#ec4899",
+    avatar: "https://i.pravatar.cc/150?img=54",
   },
   {
     quote: "Clean, fast, and just works. No bloat. Does exactly what it promises without getting in the way.",
     name: "Lena Weber", title: "Product Manager", initials: "LW", company: "vercel", color: "#8b5cf6",
+    avatar: "https://i.pravatar.cc/150?img=5",
   },
   {
     quote: "After trying a few expense apps I finally found one I actually stick with. The interface is just so much better.",
     name: "Tom Nakamura", title: "Accountant", initials: "TN", company: "bench", color: "#06b6d4",
+    avatar: "https://i.pravatar.cc/150?img=60",
   },
 ]
 
@@ -196,7 +211,7 @@ const testimonials = [
 
 <template>
   <div class="fixed inset-0 flex flex-col bg-white select-none" style="--fh:49px">
-    <Sonner position="top-right" theme="light" rich-colors />
+    <Sonner position="bottom-right" theme="light" rich-colors />
 
     <!-- ══ BODY ══ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden" style="height:calc(100vh - var(--fh))">
@@ -291,13 +306,24 @@ const testimonials = [
           <!-- Primary action button -->
           <button
             type="submit"
-            class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50"
+            class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             :disabled="loading"
           >
+            <!-- Circle loader when loading -->
+            <svg v-if="loading" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+
             <span v-if="step === 'email'">{{ loading ? 'Checking…' : 'Continue' }}</span>
             <span v-else-if="step === 'setup'">Continue</span>
             <span v-else-if="step === 'signin'">{{ loading ? 'Signing in…' : 'Sign in' }}</span>
             <span v-else>{{ loading ? 'Creating account…' : 'Create account' }}</span>
+
+            <!-- Arrow icon when not loading -->
+            <svg v-if="!loading" class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
           </button>
 
           <!-- Divider -->
@@ -334,10 +360,10 @@ const testimonials = [
                 <p class="text-sm text-gray-500">See how KeepCabin organizes your receipts</p>
               </div>
               <div class="flex items-center -space-x-2 shrink-0">
-                <div v-for="(t, i) in testimonials.slice(0,5)" :key="i"
-                  class="size-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-semibold shrink-0"
-                  :style="{ background: t.color + '30', color: t.color }"
-                >{{ t.initials }}</div>
+                <img v-for="(t, i) in testimonials.slice(0,5)" :key="i"
+                  :src="t.avatar" :alt="t.name"
+                  class="size-8 rounded-full object-cover border-2 border-white shrink-0"
+                />
               </div>
             </div>
             <button class="mt-4 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
@@ -363,24 +389,33 @@ const testimonials = [
           <div class="flex gap-5 animate-marquee shrink-0 pl-8">
             <template v-for="(t, i) in [...testimonials, ...testimonials]" :key="i">
               <div
-                class="shrink-0 flex flex-col justify-between rounded-2xl bg-white p-8 shadow-[0_2px_16px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]"
-                style="width:480px; height:290px"
+                class="shrink-0 flex flex-col rounded-2xl bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]"
+                style="width:420px; height:240px"
               >
-                <p class="text-[15px] text-gray-700 leading-relaxed">
+                <!-- Quote -->
+                <p class="flex-1 text-[0.875rem] text-gray-800 leading-[1.6] font-normal tracking-[-0.01em]">
                   "{{ t.quote }}"
                 </p>
-                <div class="flex items-end justify-between gap-3 mt-4">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="size-10 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                      :style="{ background: t.color + '20', color: t.color }"
-                    >{{ t.initials }}</div>
+                <!-- Bottom row -->
+                <div class="flex items-center justify-between mt-4 shrink-0">
+                  <!-- Avatar portrait + name -->
+                  <div class="flex items-center gap-2.5">
+                    <img
+                      :src="t.avatar"
+                      :alt="t.name"
+                      class="size-9 rounded-full object-cover shrink-0"
+                      style="box-shadow: 0 0 0 2px white, 0 0 0 3px #e5e7eb"
+                    />
                     <div>
-                      <p class="text-sm font-semibold text-gray-900">{{ t.name }}</p>
-                      <p class="text-xs text-gray-400">{{ t.title }}</p>
+                      <p class="text-[12.5px] font-semibold text-gray-900 leading-snug">{{ t.name }}</p>
+                      <p class="text-[11px] text-gray-400 leading-snug">{{ t.title }}</p>
                     </div>
                   </div>
-                  <span class="text-lg font-bold tracking-tight text-gray-300 shrink-0">{{ t.company }}</span>
+                  <!-- Brand wordmark -->
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span v-html="brandLogos[t.company]" class="flex-none leading-none" />
+                    <span class="text-[13px] font-bold tracking-tight" :style="{ color: t.color }">{{ t.company }}</span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -417,7 +452,7 @@ const testimonials = [
   to   { transform: translateX(-50%); }
 }
 .animate-marquee {
-  animation: marquee 38s linear infinite;
+  animation: marquee 36s linear infinite;
 }
 .animate-marquee:hover {
   animation-play-state: paused;

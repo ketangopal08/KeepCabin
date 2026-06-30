@@ -17,12 +17,12 @@ const suggestion  = ref<CategorySuggestion | null>(null)
 const lightboxOpen = ref(false)
 const scanned      = ref(false) // toggle scanned document look
 
-async function runOcrForReceipt(r: Receipt) {
+async function runOcrForReceipt(r: Receipt, force = false) {
   ocrError.value  = ''
   ocrResult.value = null
   suggestion.value = null
 
-  if (r.ocr_text) {
+  if (r.ocr_text && !force) {
     const { parseReceiptText } = await import('~~/lib/ocr')
     ocrResult.value = parseReceiptText(r.ocr_text)
     maybeDetect(r.ocr_text, r)
@@ -42,6 +42,10 @@ async function runOcrForReceipt(r: Receipt) {
   } finally {
     loading.value = false
   }
+}
+
+function rescan() {
+  if (props.receipt) runOcrForReceipt(props.receipt, true)
 }
 
 function maybeDetect(text: string, r: Receipt) {
@@ -129,7 +133,7 @@ function onDismiss() {
     <!-- Error -->
     <div v-else-if="ocrError" class="flex-1 flex flex-col items-center justify-center gap-2">
       <p class="text-destructive text-sm">{{ ocrError }}</p>
-      <Button variant="outline" size="sm" @click="runOcrForReceipt(receipt!)">Retry</Button>
+      <Button variant="outline" size="sm" @click="rescan">Re-scan</Button>
     </div>
 
     <!-- Result -->
@@ -208,6 +212,10 @@ function onDismiss() {
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-base">🧾 Receipt</h3>
         <div class="flex gap-2">
+          <Button variant="ghost" size="sm" :disabled="loading" @click="rescan">
+            <svg v-if="loading" class="animate-spin mr-1" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Re-scan
+          </Button>
           <Button variant="ghost" size="sm" @click="copyToClipboard">Copy</Button>
           <Button variant="ghost" size="sm" @click="downloadText">Download</Button>
         </div>
