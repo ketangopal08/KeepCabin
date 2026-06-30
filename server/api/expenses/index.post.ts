@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     description: string
     category: string
     receipt_url: string
-    ocr_text: string
+    ocr_text?: string
   }>(event)
 
   if (!body.amount || body.amount <= 0) throw createError({ statusCode: 400, message: 'Valid amount required' })
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
   const log: ActionLogEntry[] = [{
     actor_id: ctx.member.user_id,
-    actor_name: 'Employee',
+    actor_name: ctx.member.role.charAt(0).toUpperCase() + ctx.member.role.slice(1),
     action: 'submitted',
     timestamp: new Date().toISOString(),
   }]

@@ -19,6 +19,7 @@ const form = reactive({
 const categories: ExpenseCategory[] = ['food', 'travel', 'accommodation', 'other']
 const receiptFile = ref<File | null>(null)
 const receiptPreviewUrl = ref('')
+const ocrText = ref('')
 const ocrLoading = ref(false)
 const submitting = ref(false)
 
@@ -49,6 +50,9 @@ async function handleFileChange(e: Event) {
       form.vendor = result.merchant.slice(0, 60)
     }
 
+    // Store raw OCR text for server-side audit
+    ocrText.value = result.raw ?? ''
+
     // Auto-fill date if found
     if (result.date && !form.expense_date) {
       form.expense_date = result.date
@@ -67,6 +71,7 @@ async function submit() {
   submitting.value = true
   try {
     const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { toast.error('Session expired, please log in again'); submitting.value = false; return }
 
     // Upload receipt to storage
     const ext = receiptFile.value.name.split('.').pop()
@@ -84,6 +89,7 @@ async function submit() {
         ...form,
         amount: Number(form.amount),
         receipt_url: publicUrl,
+        ocr_text: ocrText.value || undefined,
       },
     })
 
