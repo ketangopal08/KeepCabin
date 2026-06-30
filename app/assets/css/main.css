@@ -137,9 +137,32 @@
 
 [data-sidebar="menu-button"] span,
 [data-sidebar="menu-button"] a span {
+  color: #505050;
+  font-weight: 400;
+  font-size: 0.780rem;
+}
+
+.dark [data-sidebar="menu-button"] span,
+.dark [data-sidebar="menu-button"] a span {
   color: #ccc;
-  font-weight: 300;
-  font-size: 0.850rem;
+}
+
+[data-sidebar="menu-button"][data-active="true"] {
+  background-color: #1e1e1e !important;
+}
+
+[data-sidebar="menu-button"][data-active="true"] span,
+[data-sidebar="menu-button"][data-active="true"] a span {
+  color: #f5f5f5;
+}
+
+.dark [data-sidebar="menu-button"][data-active="true"] {
+  background-color: #e5e7eb !important;
+}
+
+.dark [data-sidebar="menu-button"][data-active="true"] span,
+.dark [data-sidebar="menu-button"][data-active="true"] a span {
+  color: #1e1e1e;
 }
 
 /* ─── Landing page animations (Profound design system) ─────────────────── */
