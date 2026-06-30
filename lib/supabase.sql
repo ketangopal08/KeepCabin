@@ -34,6 +34,34 @@ alter table receipts
   add column category_id        uuid references categories(id) on delete set null,
   add column category_suggested boolean not null default false;
 
+-- Security definer function to break RLS recursion on org_members
+create or replace function get_user_org_ids(uid uuid)
+returns setof uuid
+language sql
+security definer
+stable
+as $$
+  select org_id from org_members where user_id = uid
+$$;
+
+create or replace function get_user_team_ids(uid uuid)
+returns setof uuid
+language sql
+security definer
+stable
+as $$
+  select team_id from org_members where user_id = uid and team_id is not null
+$$;
+
+create or replace function get_user_role(uid uuid, oid uuid)
+returns text
+language sql
+security definer
+stable
+as $$
+  select role from org_members where user_id = uid and org_id = oid limit 1
+$$;
+
 -- Organizations
 create table organizations (
   id         uuid primary key default gen_random_uuid(),
@@ -45,10 +73,12 @@ create table organizations (
 alter table organizations enable row level security;
 create policy "members can read their org" on organizations
   for select using (
-    id in (select org_id from org_members where user_id = auth.uid())
+    id in (select get_user_org_ids(auth.uid()))
   );
 create policy "owner can update" on organizations
   for update using (owner_id = auth.uid());
+create policy "owner can insert own org" on organizations
+  for insert with check (owner_id = auth.uid());
 
 -- Teams
 create table teams (
@@ -60,7 +90,7 @@ create table teams (
 alter table teams enable row level security;
 create policy "org members can read teams" on teams
   for select using (
-    org_id in (select org_id from org_members where user_id = auth.uid())
+    org_id in (select get_user_org_ids(auth.uid()))
   );
 create policy "owner can insert teams" on teams
   for insert with check (
@@ -83,10 +113,10 @@ create table org_members (
 alter table org_members enable row level security;
 create policy "members can read their org members" on org_members
   for select using (
-    org_id in (select org_id from org_members where user_id = auth.uid())
+    org_id in (select get_user_org_ids(auth.uid()))
   );
 create policy "service role insert" on org_members
-  for insert with check (true);
+  for insert with check (auth.role() = 'service_role' or auth.uid() is not null);
 
 -- Invites
 create table invites (
@@ -109,16 +139,16 @@ create policy "org owner and manager can read invites" on invites
     )
   );
 create policy "service role insert invites" on invites
-  for insert with check (true);
+  for insert with check (auth.role() = 'service_role' or auth.uid() is not null);
 create policy "service role update invites" on invites
-  for update using (true);
+  for update using (auth.role() = 'service_role' or auth.uid() is not null);
 
 -- Expenses
 create table expenses (
   id               uuid primary key default gen_random_uuid(),
   org_id           uuid references organizations(id) on delete cascade,
-  team_id          uuid references teams(id),
-  submitted_by     uuid references auth.users(id),
+  team_id          uuid not null references teams(id),
+  submitted_by     uuid not null references auth.users(id),
   amount           numeric(12,2) not null,
   vendor           text,
   expense_date     date,
@@ -158,3 +188,15 @@ create policy "employee can insert expenses" on expenses
   for insert with check (submitted_by = auth.uid());
 create policy "service role can update expenses" on expenses
   for update using (true);
+
+create or replace function update_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger expenses_updated_at
+  before update on expenses
+  for each row execute function update_updated_at();
