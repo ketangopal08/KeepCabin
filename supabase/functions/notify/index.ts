@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       .eq('id', payload.expense_id)
       .single()
 
-    if (!expense) return new Response('Expense not found', { status: 404 })
+    if (!expense) return new Response('ok', { status: 200 })
 
     // Get submitted_by user email
     const { data: { user: submitter } } = await supabase.auth.admin.getUserById(expense.submitted_by)
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     } else if (payload.type === 'manager_rejected') {
       to = submitter?.email ? [submitter.email] : []
       subject = `Your expense was rejected`
-      html = `<p>Your expense of <strong>${amount}</strong> for <strong>${expense.vendor ?? 'unknown vendor'}</strong> was rejected.</p><p>Reason: ${expense.rejection_reason}</p>`
+      html = `<p>Your expense of <strong>${amount}</strong> for <strong>${expense.vendor ?? 'unknown vendor'}</strong> was rejected.</p><p>Reason: ${expense.rejection_reason ?? 'No reason provided'}</p>`
     } else if (payload.type === 'finance_paid') {
       to = submitter?.email ? [submitter.email] : []
       subject = `Your expense of ${amount} has been reimbursed`
