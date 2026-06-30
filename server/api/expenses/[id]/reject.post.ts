@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   if (!expense) throw createError({ statusCode: 404, message: 'Expense not found or not rejectable' })
 
   const newLog: ActionLogEntry[] = [
-    ...expense.action_log,
+    ...(expense.action_log ?? []),
     {
       actor_id: ctx.member.user_id,
       actor_name: 'Manager',
@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('team_id', ctx.member.team_id!)
 
   if (error) throw createError({ statusCode: 500, message: error.message })
 
