@@ -98,16 +98,14 @@ onUnmounted(() => {
     <Sonner position="bottom-right" theme="light" rich-colors />
 
     <!-- ─── LEFT: form ─── -->
-    <div class="flex h-full w-full shrink-0 flex-col items-center px-6 pt-12 pb-10 overflow-y-auto lg:w-1/2">
-
-      <!-- Logo -->
-      <div class="flex items-center gap-2 mb-12 shrink-0 w-full max-w-[420px]">
-        <img src="/logo.svg" class="size-7 rounded-md" alt="KeepCabin" />
-        <span class="text-[15px] font-semibold text-gray-900 tracking-tight">KeepCabin</span>
-      </div>
+    <div class="flex h-full w-full shrink-0 flex-col items-center justify-center px-6 py-10 overflow-y-auto lg:w-1/2">
 
       <!-- Form -->
       <form class="flex flex-col gap-5 w-full max-w-[420px]" @submit.prevent="handleCreate">
+        <div class="flex items-center gap-2 mb-2">
+          <img src="/logo.svg" class="size-7 rounded-md" alt="KeepCabin" />
+          <span class="text-[15px] font-semibold text-gray-900 tracking-tight">KeepCabin</span>
+        </div>
         <div>
           <h1 style="font-size:1.6rem;font-weight:400;color:#333">Set up your organization</h1>
           <p class="text-[14px] text-gray-500 mt-1">You'll be the owner. Invite your team next.</p>
