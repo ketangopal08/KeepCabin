@@ -21,6 +21,10 @@ const pendingCount = computed(() =>
   expenses.value.filter(e => ['pending_manager', 'pending_finance'].includes(e.status)).length
 )
 
+const pendingFinanceCount = computed(() =>
+  expenses.value.filter(e => e.status === 'pending_finance').length
+)
+
 const paidCount = computed(() =>
   expenses.value.filter(e => e.status === 'paid').length
 )
@@ -100,7 +104,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
           class="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all">
           <div>
             <p class="text-sm font-medium text-gray-900">{{ e.vendor ?? 'Expense' }}</p>
-            <p class="text-xs text-gray-400 capitalize">{{ e.category }} · {{ e.status.replace('_', ' ') }}</p>
+            <p class="text-xs text-gray-400 capitalize">{{ e.category }} · {{ e.status.replaceAll('_', ' ') }}</p>
           </div>
           <span class="text-sm font-semibold text-gray-900">₹{{ Number(e.amount).toLocaleString('en-IN') }}</span>
         </NuxtLink>
@@ -113,9 +117,9 @@ onMounted(async () => { await load(); await fetchExpenses() })
         <NuxtLink to="/app/approvals" class="text-sm font-medium text-yellow-700 hover:text-yellow-900 transition-colors">Review →</NuxtLink>
       </div>
 
-      <div v-if="ctx?.member?.role === 'finance' && pendingCount > 0"
+      <div v-if="ctx?.member?.role === 'finance' && pendingFinanceCount > 0"
         class="flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border border-blue-200">
-        <p class="text-sm font-medium text-blue-800">{{ pendingCount }} expense{{ pendingCount > 1 ? 's' : '' }} pending payment</p>
+        <p class="text-sm font-medium text-blue-800">{{ pendingFinanceCount }} expense{{ pendingFinanceCount > 1 ? 's' : '' }} pending payment</p>
         <NuxtLink to="/app/payments" class="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors">Pay now →</NuxtLink>
       </div>
     </template>
