@@ -116,7 +116,7 @@ create policy "members can read their org members" on org_members
     org_id in (select get_user_org_ids(auth.uid()))
   );
 create policy "service role insert" on org_members
-  for insert with check (auth.role() = 'service_role' or auth.uid() is not null);
+  for insert with check (auth.role() = 'service_role');
 
 -- Invites
 create table invites (
@@ -139,9 +139,9 @@ create policy "org owner and manager can read invites" on invites
     )
   );
 create policy "service role insert invites" on invites
-  for insert with check (auth.role() = 'service_role' or auth.uid() is not null);
+  for insert with check (auth.role() = 'service_role');
 create policy "service role update invites" on invites
-  for update using (auth.role() = 'service_role' or auth.uid() is not null);
+  for update using (auth.role() = 'service_role');
 
 -- Expenses
 create table expenses (
@@ -187,7 +187,7 @@ create policy "finance and owner see all" on expenses
 create policy "employee can insert expenses" on expenses
   for insert with check (submitted_by = auth.uid());
 create policy "service role can update expenses" on expenses
-  for update using (true);
+  for update using (auth.role() = 'service_role');
 
 create or replace function update_updated_at()
 returns trigger language plpgsql as $$

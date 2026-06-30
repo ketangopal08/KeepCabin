@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       e.amount,
       e.description ?? '',
       e.status,
-      e.utr ?? '',
+      e.utr_number ?? '',
       e.created_at.slice(0, 10),
       e.status === 'paid' ? e.updated_at.slice(0, 10) : '',
     ])
