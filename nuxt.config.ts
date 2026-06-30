@@ -36,7 +36,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY,
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY ?? '',
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     resendApiKey: process.env.RESEND_API_KEY ?? '',
     appUrl: process.env.APP_URL ?? 'http://localhost:3000',
     public: {
