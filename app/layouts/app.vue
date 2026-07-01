@@ -2,7 +2,12 @@
 import { useOrgContext } from '~/composables/useOrgContext'
 
 const { load } = useOrgContext()
-onMounted(load)
+onMounted(() => {
+  load()
+  // App shell is always light mode
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('keepcabin-theme', 'light')
+})
 </script>
 
 <template>

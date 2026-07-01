@@ -102,7 +102,7 @@ const orgColor = computed(() => {
 </script>
 
 <template>
-  <aside class="flex h-screen shrink-0">
+  <aside class="flex h-full shrink-0">
 
     <!-- ── Icon rail ── -->
     <div class="flex flex-col items-center w-10 shrink-0 bg-[#f8f8f8] border-r border-[#ebebeb] py-2 gap-0.5">
