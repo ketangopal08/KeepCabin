@@ -6,13 +6,13 @@ onMounted(load)
 </script>
 
 <template>
-  <SidebarProvider>
+  <div class="flex h-screen bg-gray-50 overflow-hidden">
     <AppSidebar />
-    <SidebarInset>
+    <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
       <AppNavbar />
-      <main class="flex-1 overflow-auto p-6">
+      <main class="flex-1 overflow-y-auto p-6">
         <slot />
       </main>
-    </SidebarInset>
-  </SidebarProvider>
+    </div>
+  </div>
 </template>
