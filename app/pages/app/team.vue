@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
+import { Users, Mail } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -45,30 +46,84 @@ watch(() => ctx.value, fetchMembers, { immediate: true })
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 max-w-xl">
-    <h1 class="text-xl font-semibold text-gray-900">My Team</h1>
+  <div class="-m-6 flex h-[calc(100vh-44px)]">
 
-    <div v-if="members.length === 0" class="text-sm text-gray-400">No members yet — invite some employees.</div>
-    <div v-for="m in members" :key="m.id" class="px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 flex items-center justify-between">
-      <span class="text-gray-500 text-xs font-mono">{{ m.user_id.slice(0,8) }}…</span>
-      <span class="capitalize text-xs text-gray-400 border border-gray-200 px-2 py-0.5 rounded-full">{{ m.role }}</span>
+    <!-- ── Left config panel ── -->
+    <div class="w-[360px] shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
+
+      <div class="px-5 pt-5 pb-4 border-b border-border">
+        <div class="flex items-center gap-2 mb-0.5">
+          <Users class="size-4 text-muted-foreground" />
+          <h1 class="text-[15px] font-semibold text-foreground">My Team</h1>
+        </div>
+        <p class="text-[12.5px] text-muted-foreground">Invite employees to your team</p>
+      </div>
+
+      <div class="flex flex-col gap-4 px-5 py-5 flex-1">
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11.5px] font-semibold text-muted-foreground uppercase tracking-wider">Email address</label>
+          <Input
+            v-model="inviteEmail"
+            type="email"
+            placeholder="employee@company.com"
+            @keydown.enter.prevent="sendInvite"
+          />
+        </div>
+
+        <Card size="sm">
+          <CardContent class="px-3.5 py-3 text-[12px] text-muted-foreground">
+            Invited members join as <span class="font-semibold text-foreground">employees</span> — they can submit and track their own expenses. You review and approve as their manager.
+          </CardContent>
+        </Card>
+
+        <div class="mt-auto pt-4 border-t border-border">
+          <Button :disabled="loading" class="w-full gap-2" @click="sendInvite">
+            <svg v-if="loading" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <Mail v-else class="size-4 shrink-0" />
+            {{ loading ? 'Sending…' : 'Send invite' }}
+          </Button>
+        </div>
+      </div>
     </div>
 
-    <div class="flex gap-2">
-      <input
-        v-model="inviteEmail"
-        type="email"
-        placeholder="employee@company.com"
-        class="flex-1 px-4 py-2 text-sm rounded-xl border border-gray-200 outline-none focus:border-gray-400"
-        @keydown.enter.prevent="sendInvite"
-      />
-      <button
-        :disabled="loading"
-        class="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-all disabled:opacity-50"
-        @click="sendInvite"
-      >
-        {{ loading ? '…' : 'Invite' }}
-      </button>
+    <!-- ── Right panel: team members ── -->
+    <div class="flex-1 bg-muted/30 flex flex-col overflow-auto">
+
+      <div v-if="members.length === 0" class="flex flex-col items-center justify-center flex-1 gap-3 text-center px-8">
+        <div class="size-14 rounded-2xl bg-card border border-border flex items-center justify-center mb-1">
+          <Users class="size-6 text-muted-foreground/50" />
+        </div>
+        <p class="text-[14px] font-semibold text-foreground">No team members yet</p>
+        <p class="text-[12.5px] text-muted-foreground max-w-[280px]">Invite employees from the panel on the left — they'll show up here once they accept.</p>
+      </div>
+
+      <div v-else class="p-6 flex flex-col gap-3 max-w-[640px] w-full mx-auto">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[13px] font-semibold text-foreground">Team members</p>
+          <span class="text-[12px] text-muted-foreground">{{ members.length }} member{{ members.length !== 1 ? 's' : '' }}</span>
+        </div>
+
+        <Card v-for="m in members" :key="m.id" size="sm">
+          <CardContent class="px-4 py-3 flex items-center gap-4">
+            <div class="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <span class="text-[13px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[13px] font-medium text-foreground font-mono">{{ m.user_id.slice(0, 8) }}…</p>
+              <p class="text-[11.5px] text-muted-foreground capitalize">{{ m.role }}</p>
+            </div>
+            <Badge
+              :variant="m.role === 'employee' ? 'secondary' : 'outline'"
+              class="capitalize"
+            >{{ m.role }}</Badge>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+
   </div>
 </template>

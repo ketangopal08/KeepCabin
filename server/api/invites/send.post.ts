@@ -35,16 +35,28 @@ export default defineEventHandler(async (event) => {
     .single()
   if (error) throw createError({ statusCode: 500, message: error.message })
 
-  // Send email via Resend (fire-and-forget)
+  // Send email via Resend
   const inviteUrl = `${config.appUrl}/invite?token=${invite.token}`
-  $fetch('https://api.resend.com/emails', {
+
+  if (!config.resendApiKey) {
+    console.warn('[invite] RESEND_API_KEY not set — skipping email, invite URL:', inviteUrl)
+    return { ok: true, inviteUrl }
+  }
+
+  // Use onboarding@resend.dev for dev (works without domain verification).
+  // Switch to a verified domain address in production.
+  const fromAddress = config.appUrl?.startsWith('http://localhost')
+    ? 'KeepCabin <onboarding@resend.dev>'
+    : 'KeepCabin <noreply@keepcabin.app>'
+
+  const res = await $fetch<{ id?: string; name?: string; message?: string }>('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.resendApiKey}`,
       'Content-Type': 'application/json',
     },
     body: {
-      from: 'KeepCabin <noreply@keepcabin.app>',
+      from: fromAddress,
       to: [body.email],
       subject: `You're invited to join ${ctx.org.name} on KeepCabin`,
       html: `
@@ -54,7 +66,9 @@ export default defineEventHandler(async (event) => {
         <p>This link expires in 7 days.</p>
       `,
     },
-  }).catch(() => {})  // fire-and-forget
+  }).catch((e: any) => {
+    throw createError({ statusCode: 502, message: `Email failed: ${e?.data?.message ?? e?.message ?? 'unknown'}` })
+  })
 
-  return { ok: true }
+  return { ok: true, emailId: (res as any).id }
 })

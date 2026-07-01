@@ -5,6 +5,12 @@ import { toast } from 'vue-sonner'
 definePageMeta({ layout: false })
 
 const supabase = useSupabase()
+const route = useRoute()
+
+function postLoginRedirect() {
+  const r = route.query.redirect
+  return navigateTo(typeof r === 'string' && r.startsWith('/') ? r : '/app')
+}
 
 // ── Step state ──
 // 'email'  → email + Continue
@@ -110,7 +116,7 @@ async function handleSignIn() {
     password: password.value,
   })
   if (err) { toast.error(err.message); loading.value = false }
-  else { toast.success('Welcome back!'); navigateTo('/app') }
+  else { toast.success('Welcome back!'); postLoginRedirect() }
 }
 
 // ── Step 3 (new user): create password + account ──
@@ -126,7 +132,7 @@ async function handleSignUp() {
     options: { data: { full_name: name.value.trim() } },
   })
   if (err) { toast.error(err.message); loading.value = false }
-  else { toast.success('Account created! Welcome to KeepCabin.'); navigateTo('/app') }
+  else { toast.success('Account created! Welcome to KeepCabin.'); postLoginRedirect() }
 }
 
 function handleSubmit() {
@@ -154,7 +160,7 @@ function goBack() {
 
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession()
-  if (session) { navigateTo('/app'); return }
+  if (session) { postLoginRedirect(); return }
   await nextTick()
   initDotGrid()
   window.addEventListener('resize', initDotGrid)
@@ -225,7 +231,8 @@ const testimonials = [
         </div>
 
         <!-- ── FORM ── -->
-        <form class="flex flex-col gap-5 w-full max-w-[420px]" @submit.prevent="handleSubmit">
+        <Transition name="step" mode="out-in">
+        <form :key="step" class="flex flex-col gap-5 w-full max-w-[420px]" @submit.prevent="handleSubmit">
 
           <!-- Heading -->
           <div>
@@ -349,6 +356,7 @@ const testimonials = [
           </button>
 
         </form>
+        </Transition>
 
         <!-- Bottom "Want a tour?" card -->
         <div class="mt-auto pt-10 w-full max-w-[420px]">
@@ -376,50 +384,183 @@ const testimonials = [
 
       </div>
 
-      <!-- ─── RIGHT COLUMN ─── -->
-      <div class="relative hidden lg:flex h-full items-center overflow-hidden border-l border-gray-100 bg-white">
-        <!-- Random on/off dot grid -->
-        <canvas ref="dotCanvas" class="absolute inset-0 w-full h-full" />
-        <!-- Horizontal auto-scroll testimonials, centered vertically -->
-        <div
-          class="absolute inset-0 flex items-center"
-          style="mask-image:linear-gradient(to right,transparent 0%,black 6%,black 94%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 6%,black 94%,transparent 100%)"
-        >
-          <div class="flex gap-5 animate-marquee shrink-0 pl-8">
-            <template v-for="(t, i) in [...testimonials, ...testimonials]" :key="i">
-              <div
-                class="shrink-0 flex flex-col rounded-2xl bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]"
-                style="width:420px; height:240px"
-              >
-                <!-- Quote -->
-                <p class="flex-1 text-[0.875rem] text-gray-800 leading-[1.6] font-normal tracking-[-0.01em]">
-                  "{{ t.quote }}"
-                </p>
-                <!-- Bottom row -->
-                <div class="flex items-center justify-between mt-4 shrink-0">
-                  <!-- Avatar portrait + name -->
+      <!-- ─── RIGHT COLUMN — changes per step ─── -->
+      <div class="relative hidden lg:flex h-full items-center justify-center overflow-hidden border-l border-gray-100 bg-[#f7f7f7]">
+        <canvas ref="dotCanvas" class="absolute inset-0 w-full h-full opacity-60" />
+
+        <!-- ── STEP: email — expense flow preview ── -->
+        <Transition name="panel" mode="out-in">
+          <div v-if="step === 'email'" key="email" class="relative z-10 flex flex-col gap-4 px-14 w-full max-w-[440px]">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">How it works</p>
+
+            <!-- Flow card 1: Submit -->
+            <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                <svg class="size-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">Employees submit receipts</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Snap a photo or upload — OCR extracts vendor, amount, date automatically.</p>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="flex justify-center">
+              <svg class="size-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+
+            <!-- Flow card 2: Approve -->
+            <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <svg class="size-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">Managers approve in one click</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Review, approve or reject with full audit trail. No email chains.</p>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="flex justify-center">
+              <svg class="size-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+
+            <!-- Flow card 3: Pay -->
+            <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                <svg class="size-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              </div>
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">Finance marks reimbursed</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Track UTR numbers, export reports, close the loop.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── STEP: signin — welcome back stats ── -->
+          <div v-else-if="step === 'signin'" key="signin" class="relative z-10 flex flex-col gap-4 px-14 w-full max-w-[440px]">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Your workspace</p>
+
+            <!-- Welcome card -->
+            <div class="rounded-xl bg-white border border-[#e8e8e8] overflow-hidden shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="px-5 py-4 border-b border-[#f0f0f0]">
+                <p class="text-[13px] font-semibold text-gray-900">Welcome back</p>
+                <p class="text-[12px] text-gray-500 mt-0.5 truncate">{{ email }}</p>
+              </div>
+              <div class="divide-y divide-[#f5f5f5]">
+                <div class="flex items-center justify-between px-5 py-3">
                   <div class="flex items-center gap-2.5">
-                    <img
-                      :src="t.avatar"
-                      :alt="t.name"
-                      class="size-9 rounded-full object-cover shrink-0"
-                      style="box-shadow: 0 0 0 2px white, 0 0 0 3px #e5e7eb"
-                    />
-                    <div>
-                      <p class="text-[12.5px] font-semibold text-gray-900 leading-snug">{{ t.name }}</p>
-                      <p class="text-[11px] text-gray-400 leading-snug">{{ t.title }}</p>
-                    </div>
+                    <div class="size-2 rounded-full bg-amber-400"/>
+                    <span class="text-[13px] text-gray-700">Expenses pending review</span>
                   </div>
-                  <!-- Brand wordmark -->
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    <span v-html="brandLogos[t.company]" class="flex-none leading-none" />
-                    <span class="text-[13px] font-bold tracking-tight" :style="{ color: t.color }">{{ t.company }}</span>
+                  <span class="text-[13px] font-semibold text-gray-900">3</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <div class="flex items-center gap-2.5">
+                    <div class="size-2 rounded-full bg-blue-400"/>
+                    <span class="text-[13px] text-gray-700">Awaiting reimbursement</span>
                   </div>
+                  <span class="text-[13px] font-semibold text-gray-900">$1,240</span>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3">
+                  <div class="flex items-center gap-2.5">
+                    <div class="size-2 rounded-full bg-emerald-400"/>
+                    <span class="text-[13px] text-gray-700">Approved this month</span>
+                  </div>
+                  <span class="text-[13px] font-semibold text-gray-900">12</span>
                 </div>
               </div>
-            </template>
+            </div>
           </div>
-        </div>
+
+          <!-- ── STEP: setup — onboarding steps ── -->
+          <div v-else-if="step === 'setup'" key="setup" class="relative z-10 flex flex-col gap-4 px-14 w-full max-w-[440px]">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Getting started</p>
+
+            <!-- Step 1: active -->
+            <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white border border-[#e8e8e8] shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-7 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+                <svg class="size-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <div class="flex-1">
+                <p class="text-[13px] font-semibold text-gray-900">Create your account</p>
+                <p class="text-[12px] text-gray-500">Tell us your name to personalise your workspace.</p>
+              </div>
+              <div class="size-1.5 rounded-full bg-gray-900 shrink-0"/>
+            </div>
+
+            <!-- Step 2: next -->
+            <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl opacity-55">
+              <div class="size-7 rounded-full border-2 border-gray-300 flex items-center justify-center shrink-0">
+                <span class="text-[11px] font-bold text-gray-400">2</span>
+              </div>
+              <div class="flex-1">
+                <p class="text-[13px] font-medium text-gray-500">Set up your organization</p>
+                <p class="text-[12px] text-gray-400">Name your workspace and invite your team.</p>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl opacity-30">
+              <div class="size-7 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0">
+                <span class="text-[11px] font-bold text-gray-300">3</span>
+              </div>
+              <div class="flex-1">
+                <p class="text-[13px] font-medium text-gray-400">Start tracking expenses</p>
+                <p class="text-[12px] text-gray-300">Submit, approve, and reimburse seamlessly.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── STEP: signup — security + next steps ── -->
+          <div v-else key="signup" class="relative z-10 flex flex-col gap-4 px-14 w-full max-w-[440px]">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Almost there</p>
+
+            <!-- Security card -->
+            <div class="rounded-xl bg-white border border-[#e8e8e8] shadow-[0_1px_6px_rgba(0,0,0,0.05)] overflow-hidden">
+              <div class="px-5 py-4 border-b border-[#f0f0f0]">
+                <p class="text-[13px] font-semibold text-gray-900">Your account is secure</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Enterprise-grade security from day one.</p>
+              </div>
+              <div class="divide-y divide-[#f5f5f5]">
+                <div v-for="item in [
+                  { label: '256-bit AES encryption', ok: true },
+                  { label: 'SOC 2 Type II compliant', ok: true },
+                  { label: 'GDPR ready', ok: true },
+                  { label: 'Two-factor auth support', ok: true },
+                ]" :key="item.label" class="flex items-center gap-3 px-5 py-2.5">
+                  <svg class="size-3.5 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                  <span class="text-[13px] text-gray-700">{{ item.label }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- What's next -->
+            <div class="rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <p class="text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3">After signup</p>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2.5">
+                  <div class="size-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                    <span class="text-[9px] font-bold text-gray-500">1</span>
+                  </div>
+                  <span class="text-[12.5px] text-gray-700">Create your organization</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <div class="size-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                    <span class="text-[9px] font-bold text-gray-500">2</span>
+                  </div>
+                  <span class="text-[12.5px] text-gray-700">Invite your team members</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <div class="size-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                    <span class="text-[9px] font-bold text-gray-500">3</span>
+                  </div>
+                  <span class="text-[12.5px] text-gray-700">Submit your first expense</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
 
     </div>
@@ -446,14 +587,29 @@ const testimonials = [
 </template>
 
 <style scoped>
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+.panel-enter-active,
+.panel-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
-.animate-marquee {
-  animation: marquee 36s linear infinite;
+.panel-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
 }
-.animate-marquee:hover {
-  animation-play-state: paused;
+.panel-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.step-enter-active,
+.step-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.step-enter-from {
+  opacity: 0;
+  transform: translateX(14px);
+}
+.step-leave-to {
+  opacity: 0;
+  transform: translateX(-14px);
 }
 </style>
