@@ -4,6 +4,7 @@ import {
   FileDown, Building2, LogOut, Settings, HelpCircle, Search, Layers, ChevronsUpDown,
 } from '@lucide/vue'
 import { useSupabase } from '~~/lib/supabase'
+import type { Team } from '~~/lib/supabase'
 
 const supabase = useSupabase()
 const { ctx, clear } = useOrgContext()
@@ -15,7 +16,19 @@ async function logout() {
   await navigateTo('/login')
 }
 
-const role = computed(() => ctx.value?.member?.role)
+const role  = computed(() => ctx.value?.member?.role)
+
+// Fetch teams list (owner only)
+const teams = ref<Team[]>([])
+
+watch(() => ctx.value?.org?.id, async (orgId) => {
+  if (!orgId || role.value !== 'owner') return
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+  teams.value = await $fetch<Team[]>('/api/teams', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  }).catch(() => [])
+}, { immediate: true })
 
 const workspaceItems = computed(() => {
   if (role.value === 'employee') return [
@@ -63,13 +76,13 @@ const orgColor = computed(() => {
     <SidebarHeader class="border-b border-sidebar-border px-3 h-11 flex-row items-center py-0">
       <div class="flex items-center gap-2.5 w-full">
         <div
-          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-black"
-          :style="{ background: orgColor }"
+          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+          :style="{ background: '#000000' }"
         >
           {{ orgInitials.charAt(0) }}
         </div>
         <div class="flex flex-col min-w-0 flex-1">
-          <span class="truncate text-[13px] font-semibold text-sidebar-foreground leading-tight">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
+          <span class="truncate text-[13px] font-semibold text-sidebar-foreground leading-tight" style="text-transform: capitalize;">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
           <span class="text-[10.5px] text-sidebar-foreground/50 capitalize leading-tight">{{ ctx?.member?.role ?? 'workspace' }}</span>
         </div>
         <ChevronsUpDown class="size-4 shrink-0 text-sidebar-foreground/40" />
@@ -80,7 +93,7 @@ const orgColor = computed(() => {
 
       <!-- ── Search ── -->
       <div class="px-3 pt-2.5 pb-1">
-        <div class="flex items-center gap-2 px-2.5 h-8 rounded-lg cursor-pointer transition-colors" style="background:#e3e3e3">
+        <div class="flex items-center gap-2 px-2.5 h-8 rounded-lg cursor-pointer transition-colors bg-sidebar-accent">
           <Search class="size-3.5 shrink-0 text-sidebar-foreground/40" />
           <span class="flex-1 text-[12px] text-sidebar-foreground/40 select-none">Search</span>
           <kbd class="text-[10px] text-sidebar-foreground/30 font-mono">⌘K</kbd>
@@ -138,17 +151,19 @@ const orgColor = computed(() => {
           <SidebarGroupLabel class="px-2 h-6">Teams</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <!-- Owner: Finance team -->
-              <SidebarMenuItem v-if="role === 'owner'">
-                <SidebarMenuButton tooltip="Finance">
-                  <Layers class="text-sidebar-foreground/60" />
-                  <span>Finance</span>
+              <!-- Owner: all teams fetched from API -->
+              <SidebarMenuItem v-for="team in teams" :key="team.id">
+                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${team.id}`)" :tooltip="team.name">
+                  <NuxtLink :to="`/app/teams/${team.id}`">
+                    <Layers class="text-sidebar-foreground/60" />
+                    <span>{{ team.name }}</span>
+                  </NuxtLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <!-- Manager: their assigned team -->
               <SidebarMenuItem v-if="role === 'manager' && ctx?.team">
-                <SidebarMenuButton as-child :is-active="isActive('/app/team')" tooltip="My Team">
-                  <NuxtLink to="/app/team">
+                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${ctx.team.id}`)" :tooltip="ctx.team.name">
+                  <NuxtLink :to="`/app/teams/${ctx.team.id}`">
                     <Layers class="text-sidebar-foreground/60" />
                     <span>{{ ctx.team.name }}</span>
                   </NuxtLink>
@@ -167,6 +182,24 @@ const orgColor = computed(() => {
       </template>
 
     </SidebarContent>
+
+    <!-- ── Upgrade banner ── -->
+    <div class="px-3 pb-3 group-data-[collapsible=icon]:hidden">
+      <div class="rounded-xl p-3 flex flex-col gap-2 bg-sidebar-accent">
+        <div class="flex items-center gap-2">
+          <div class="size-6 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
+            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--sidebar-primary-foreground))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <span class="text-[12px] font-semibold text-sidebar-foreground leading-tight">Upgrade to Premium</span>
+        </div>
+        <p class="text-[11px] text-sidebar-foreground/50 leading-relaxed">Unlock advanced reports, unlimited teams, and priority support.</p>
+        <button class="w-full py-1.5 rounded-lg text-[11.5px] font-medium bg-sidebar-primary text-sidebar-primary-foreground transition-colors hover:opacity-90">
+          Upgrade now
+        </button>
+      </div>
+    </div>
 
     <!-- ── Footer ── -->
     <SidebarFooter class="border-t border-sidebar-border">

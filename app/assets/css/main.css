@@ -62,7 +62,7 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 0 0% 91.8%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --border: 214.3 31.8% 91.4%;
@@ -101,8 +101,8 @@
     --accent: 0 0% 10.2%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
-    --border: 0 0% 17.3%;          /* #2c2c2c */
-    --input: 0 0% 17.3%;
+    --border: 0 0% 13.3%;          /* #222222 */
+    --input: 0 0% 13.3%;
     --ring: 0 0% 65%;
     --chart-1: 142 70% 45%;
     --chart-2: 220 70% 55%;
@@ -135,6 +135,12 @@
   }
 }
 
+/* ─── Separator ─────────────────────────────────────────────────────────── */
+
+.dark [role="separator"][data-orientation="horizontal"] {
+  background-color: #161616;
+}
+
 /* ─── App sidebar nav text ──────────────────────────────────────────────── */
 
 [data-sidebar="menu-button"] span,
@@ -150,29 +156,20 @@
 }
 
 [data-sidebar="menu-button"]:active {
-  background-color: #eaeaea !important;
+  background-color: hsl(var(--sidebar-accent)) !important;
 }
 
 [data-sidebar="menu-button"][data-active="true"] {
-  background-color: #eaeaea !important;
+  background-color: hsl(var(--sidebar-accent)) !important;
 }
 
 [data-sidebar="menu-button"][data-active="true"] span,
 [data-sidebar="menu-button"][data-active="true"] a span {
-  color: #111;
+  color: hsl(var(--sidebar-accent-foreground)) !important;
 }
 
 [data-sidebar="menu-button"][data-active="true"] svg {
-  color: #111;
-}
-
-.dark [data-sidebar="menu-button"][data-active="true"] {
-  background-color: #e5e7eb !important;
-}
-
-.dark [data-sidebar="menu-button"][data-active="true"] span,
-.dark [data-sidebar="menu-button"][data-active="true"] a span {
-  color: #1e1e1e;
+  color: hsl(var(--sidebar-accent-foreground)) !important;
 }
 
 /* ─── Landing page animations (Profound design system) ─────────────────── */
