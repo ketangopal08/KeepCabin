@@ -8,6 +8,7 @@ const supabase = useSupabase()
 const orgName = ref('')
 const orgSize = ref('1-10')
 const loading = ref(false)
+const { show: showLoader, hide: hideLoader } = usePageLoader()
 
 const sizes = ['1-10', '11-50', '51-200', '200+']
 
@@ -64,16 +65,22 @@ function initDotGrid() {
 async function handleCreate() {
   if (!orgName.value.trim()) { toast.error('Please enter your company name.'); return }
   loading.value = true
+  showLoader('We are setting up your account. Please wait.')
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    await $fetch('/api/orgs/create', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${session!.access_token}` },
-      body: { name: orgName.value.trim(), size: orgSize.value },
-    })
+    const minWait = new Promise(resolve => setTimeout(resolve, 10000))
+    await Promise.all([
+      $fetch('/api/orgs/create', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session!.access_token}` },
+        body: { name: orgName.value.trim(), size: orgSize.value },
+      }),
+      minWait,
+    ])
     toast.success('Organization created!')
     await navigateTo('/app')
   } catch (e: any) {
+    hideLoader()
     toast.error(e?.data?.message ?? 'Something went wrong.')
   } finally {
     loading.value = false
