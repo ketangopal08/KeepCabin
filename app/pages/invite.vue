@@ -322,6 +322,32 @@ async function handleSignIn() {
 
         </Transition>
 
+        <!-- Step indicators -->
+        <div class="mt-auto pt-10 w-full max-w-[420px] flex flex-col gap-2">
+          <!-- Step 1: current (active) -->
+          <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+            <div class="size-7 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+              <svg class="size-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[13px] font-semibold text-gray-900">Accept your invite</p>
+              <p class="text-[12px] text-gray-500 mt-0.5">Confirm your role and join your organization.</p>
+            </div>
+            <div class="size-1.5 rounded-full bg-gray-900 shrink-0" />
+          </div>
+
+          <!-- Step 2: upcoming -->
+          <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100 bg-gray-50 opacity-55">
+            <div class="size-7 rounded-full border-2 border-gray-300 flex items-center justify-center shrink-0">
+              <span class="text-[11px] font-bold text-gray-400">2</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[13px] font-medium text-gray-500">Get started with your team</p>
+              <p class="text-[12px] text-gray-400 mt-0.5">Submit expenses, track approvals, and collaborate.</p>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ─── RIGHT: dot grid + showcase ─── -->
@@ -329,16 +355,19 @@ async function handleSignIn() {
         <canvas ref="dotCanvas" class="absolute inset-0 w-full h-full opacity-60" />
 
         <div class="relative z-10 flex flex-col gap-4 px-14 w-full max-w-[440px]">
-          <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">How it works</p>
+          <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Your team roles</p>
 
-          <!-- Card 1 -->
+          <!-- Owner -->
           <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-            <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-              <svg class="size-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="size-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
+              <svg class="size-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
-            <div>
-              <p class="text-[13px] font-semibold text-gray-900">Employees submit receipts</p>
-              <p class="text-[12px] text-gray-500 mt-0.5">Snap a photo or upload — OCR extracts vendor, amount, and date automatically.</p>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <p class="text-[13px] font-semibold text-gray-900">Owner</p>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">Invited you</span>
+              </div>
+              <p class="text-[12px] text-gray-500">Full control — manages members, approves expenses, and exports reports.</p>
             </div>
           </div>
 
@@ -346,14 +375,25 @@ async function handleSignIn() {
             <svg class="size-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           </div>
 
-          <!-- Card 2 -->
-          <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-            <div class="size-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <svg class="size-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          <!-- Manager + Finance row -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-2 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <svg class="size-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+              </div>
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">Manager</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Reviews and approves team expenses.</p>
+              </div>
             </div>
-            <div>
-              <p class="text-[13px] font-semibold text-gray-900">Managers approve in one click</p>
-              <p class="text-[12px] text-gray-500 mt-0.5">Review, approve or reject with a full audit trail. No email chains.</p>
+            <div class="flex flex-col gap-2 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
+              <div class="size-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <svg class="size-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              </div>
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">Finance</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">Processes payments and exports reports.</p>
+              </div>
             </div>
           </div>
 
@@ -361,14 +401,14 @@ async function handleSignIn() {
             <svg class="size-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           </div>
 
-          <!-- Card 3 -->
+          <!-- Employee -->
           <div class="flex items-start gap-3 rounded-xl bg-white border border-[#e8e8e8] p-4 shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
             <div class="size-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-              <svg class="size-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              <svg class="size-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
             </div>
             <div>
-              <p class="text-[13px] font-semibold text-gray-900">Finance marks reimbursed</p>
-              <p class="text-[12px] text-gray-500 mt-0.5">Track UTR numbers, export reports, close the loop.</p>
+              <p class="text-[13px] font-semibold text-gray-900">Employee</p>
+              <p class="text-[12px] text-gray-500 mt-0.5">Submits expense claims and tracks reimbursement status.</p>
             </div>
           </div>
         </div>
