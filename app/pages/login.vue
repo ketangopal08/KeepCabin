@@ -63,7 +63,7 @@ function initDotGrid() {
         d.timer = d.interval + Math.random() * 600
       }
       if (d.on) {
-        ctx.fillStyle = 'rgba(150,150,160,0.70)'
+        ctx.fillStyle = '#a8a8a8'
         ctx.fillRect(d.x, d.y, DOT, DOT)
       }
     }
@@ -385,7 +385,7 @@ const testimonials = [
       </div>
 
       <!-- ─── RIGHT COLUMN — changes per step ─── -->
-      <div class="relative hidden lg:flex h-full items-center justify-center overflow-hidden border-l border-gray-100 bg-[#f7f7f7]">
+      <div class="relative hidden lg:flex h-full items-center justify-center overflow-hidden border-l border-gray-100 bg-white">
         <canvas ref="dotCanvas" class="absolute inset-0 w-full h-full opacity-60" />
 
         <!-- ── STEP: email — expense flow preview ── -->
