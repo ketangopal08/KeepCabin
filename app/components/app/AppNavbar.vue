@@ -5,6 +5,7 @@ import {
 } from '@lucide/vue'
 
 const route = useRoute()
+const { ctx } = useOrgContext()
 
 const pages: Record<string, { label: string; icon: any; action?: { label: string; href: string } }> = {
   '/app':              { label: 'Dashboard',      icon: LayoutDashboard },
@@ -27,11 +28,9 @@ const current = computed(() => pages[route.path] ?? { label: 'KeepCabin', icon: 
     <!-- shadcn SidebarTrigger handles collapse/expand -->
     <SidebarTrigger class="-ml-1" />
 
-    <Separator orientation="vertical" class="h-4" />
-
     <!-- Breadcrumb -->
     <div class="flex items-center gap-1.5 text-[12.5px] flex-1 min-w-0">
-      <span class="text-muted-foreground shrink-0">KeepCabin</span>
+      <span class="text-muted-foreground shrink-0">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
       <ChevronRight class="size-3 text-muted-foreground/50 shrink-0" />
       <component :is="current.icon" class="size-[13px] text-muted-foreground shrink-0" />
       <span class="font-medium text-foreground truncate">{{ current.label }}</span>
