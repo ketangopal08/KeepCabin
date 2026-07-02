@@ -18,10 +18,54 @@ const name        = ref('')
 const password    = ref('')
 const accepting   = ref(false)
 const formLoading = ref(false)
+const displayName = ref('')
 
-// ── Dot grid canvas ──
+// ── Dot grid canvas (right panel) ──
 const dotCanvas = ref<HTMLCanvasElement | null>(null)
 let raf: number | null = null
+
+// ── Full-screen welcome canvas ──
+const welcomeCanvas = ref<HTMLCanvasElement | null>(null)
+let welcomeRaf: number | null = null
+
+function initWelcomeCanvas() {
+  const canvas = welcomeCanvas.value
+  if (!canvas) return
+  canvas.width  = window.innerWidth
+  canvas.height = window.innerHeight
+  const SPACING = 20, DOT = 2
+  const cols = Math.ceil(canvas.width  / SPACING) + 1
+  const rows = Math.ceil(canvas.height / SPACING) + 1
+  const dots = Array.from({ length: cols * rows }, (_, i) => ({
+    x: (i % cols) * SPACING, y: Math.floor(i / cols) * SPACING,
+    on: Math.random() > 0.75, timer: Math.random() * 4000, interval: 800 + Math.random() * 3200,
+  }))
+  if (welcomeRaf !== null) cancelAnimationFrame(welcomeRaf)
+  let prev = performance.now()
+  function tick(now: number) {
+    const dt = now - prev; prev = now
+    const ctx = canvas.getContext('2d')!
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    for (const d of dots) {
+      d.timer -= dt
+      if (d.timer <= 0) { d.on = !d.on; d.timer = d.interval + Math.random() * 800 }
+      if (d.on) { ctx.fillStyle = 'rgba(140,140,150,0.45)'; ctx.fillRect(d.x, d.y, DOT, DOT) }
+    }
+    welcomeRaf = requestAnimationFrame(tick)
+  }
+  welcomeRaf = requestAnimationFrame(tick)
+}
+
+watch(step, async (val) => {
+  if (val === 'welcome') {
+    await nextTick()
+    initWelcomeCanvas()
+    window.addEventListener('resize', initWelcomeCanvas)
+  } else {
+    if (welcomeRaf !== null) { cancelAnimationFrame(welcomeRaf); welcomeRaf = null }
+    window.removeEventListener('resize', initWelcomeCanvas)
+  }
+})
 
 function initDotGrid() {
   const canvas = dotCanvas.value
@@ -83,7 +127,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (raf !== null) cancelAnimationFrame(raf)
+  if (welcomeRaf !== null) cancelAnimationFrame(welcomeRaf)
   window.removeEventListener('resize', initDotGrid)
+  window.removeEventListener('resize', initWelcomeCanvas)
 })
 
 async function handleAccept() {
@@ -124,6 +170,7 @@ async function handleCreate() {
     })
     if (err) throw err
     if (!data.session) throw new Error('Please confirm your email address first, then return to this link.')
+    displayName.value = name.value.trim().split(' ')[0] ?? ''
     await doAccept(data.session.access_token)
   } catch (e: any) { toast.error(e?.message ?? 'Something went wrong.') }
   finally { formLoading.value = false }
@@ -137,6 +184,7 @@ async function handleSignIn() {
       email: inviteInfo.value!.email, password: password.value,
     })
     if (err) throw err
+    displayName.value = (data.session!.user.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? ''
     await doAccept(data.session!.access_token)
   } catch (e: any) { toast.error(e?.message ?? 'Something went wrong.') }
   finally { formLoading.value = false }
@@ -160,6 +208,7 @@ async function handleSignIn() {
         </div>
 
         <!-- Steps with transition -->
+        <div :class="step === 'welcome' ? 'flex-1 flex flex-col justify-center w-full max-w-[420px]' : 'w-full max-w-[420px]'">
         <Transition name="step" mode="out-in">
 
           <!-- Loading -->
@@ -182,21 +231,7 @@ async function handleSignIn() {
           <!-- Step 1: Accept -->
           <div v-else-if="step === 'accept'" key="accept" class="flex flex-col gap-5 w-full max-w-[420px]">
             <!-- Org card -->
-            <div class="flex items-start gap-4 p-5 rounded-2xl border border-gray-200 bg-gray-50">
-              <div class="size-12 rounded-xl bg-gray-900 flex items-center justify-center text-white font-bold text-base shrink-0">
-                {{ (inviteInfo?.org_name ?? 'KC').slice(0, 2).toUpperCase() }}
-              </div>
-              <div class="flex flex-col gap-0.5 min-w-0">
-                <p class="text-[12.5px] text-gray-500 font-medium">You've been invited to</p>
-                <p class="text-[16px] font-semibold text-gray-900 truncate">{{ inviteInfo?.org_name }}</p>
-                <p class="text-[13px] text-gray-500 mt-0.5">
-                  Role: <span class="capitalize text-gray-700 font-medium">{{ inviteInfo?.role }}</span>
-                  <template v-if="inviteInfo?.team_name">
-                    &nbsp;&middot;&nbsp;Team: <span class="text-gray-700 font-medium">{{ inviteInfo.team_name }}</span>
-                  </template>
-                </p>
-              </div>
-            </div>
+           
 
             <div>
               <h1 style="font-size:1.6rem;font-weight:400;color:#333">Accept your invite</h1>
@@ -206,7 +241,36 @@ async function handleSignIn() {
                 <template v-else> You're already signed in.</template>
               </p>
             </div>
-
+ <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+             
+              <div class="flex items-center gap-4 px-3 py-3">
+                <div class="size-11 rounded-xl bg-black flex items-center justify-center shrink-0">
+                  <svg class="size-[18px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                    <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                    <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                    <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col gap-0.5 min-w-0">
+                  <p class="text-[10.5px] font-semibold text-gray-400 uppercase tracking-widest">Invitation</p>
+                  <p class="text-[15px] font-semibold text-gray-900 truncate leading-snug">{{ inviteInfo?.org_name }}</p>
+                  <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span class="inline-flex items-center gap-1 text-[12px] text-gray-500">
+                      <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <span class="capitalize">{{ inviteInfo?.role }}</span>
+                    </span>
+                    <template v-if="inviteInfo?.team_name">
+                      <span class="text-gray-300 text-[11px]">·</span>
+                      <span class="inline-flex items-center gap-1 text-[12px] text-gray-500">
+                        <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        {{ inviteInfo.team_name }}
+                      </span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
             <button
               :disabled="accepting"
               class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -296,34 +360,14 @@ async function handleSignIn() {
             </form>
           </div>
 
-          <!-- Step 3: Welcome -->
-          <div v-else-if="step === 'welcome'" key="welcome" class="flex flex-col items-center text-center gap-6 py-2 w-full max-w-[420px]">
-            <div class="relative size-20 flex items-center justify-center">
-              <div class="absolute inset-0 rounded-full bg-[#f0fce8] border-2 border-[#c5e8a0]" />
-              <svg class="relative size-9 text-[#3a7a0a] welcome-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
-            </div>
-            <div class="flex flex-col gap-2">
-              <h1 style="font-size:1.8rem;font-weight:400;color:#1a1a1a">Welcome aboard!</h1>
-              <p class="text-[14.5px] text-gray-500 leading-relaxed max-w-[300px] mx-auto">
-                You've joined <strong class="text-gray-800 font-semibold">{{ inviteInfo?.org_name }}</strong> as
-                a <strong class="text-gray-800 font-semibold capitalize">{{ inviteInfo?.role }}</strong><template v-if="inviteInfo?.team_name">&thinsp;in <strong class="text-gray-800 font-semibold">{{ inviteInfo.team_name }}</strong></template>.
-              </p>
-            </div>
-            <NuxtLink to="/app"
-              class="w-full max-w-[300px] py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all flex items-center justify-center gap-2">
-              Get Started
-              <svg class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M13 6l6 6-6 6"/>
-              </svg>
-            </NuxtLink>
-          </div>
+          <!-- Step 3: Welcome — rendered in full-screen overlay below -->
+          <div v-else-if="step === 'welcome'" key="welcome" />
 
         </Transition>
+        </div><!-- end flex-1 wrapper -->
 
-        <!-- Step indicators -->
-        <div class="mt-auto pt-10 w-full max-w-[420px] flex flex-col gap-2">
+        <!-- Step indicators (hidden on welcome) -->
+        <div v-if="step !== 'welcome'" class="mt-auto pt-10 w-full max-w-[420px] flex flex-col gap-2">
           <!-- Step 1: current (active) -->
           <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
             <div class="size-7 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
@@ -435,6 +479,68 @@ async function handleSignIn() {
     </footer>
 
   </div>
+
+  <!-- ══ FULL-SCREEN WELCOME OVERLAY ══ -->
+  <Teleport to="body">
+    <Transition name="welcome-screen">
+      <div v-if="step === 'welcome'" class="fixed inset-0 z-50 bg-white overflow-hidden select-none">
+
+        <!-- Dot grid canvas -->
+        <canvas ref="welcomeCanvas" class="absolute inset-0 w-full h-full" />
+
+        <!-- Logo top-left -->
+        <div class="absolute top-11 left-38 flex items-center gap-2 z-10">
+          <img src="/logo.svg" class="size-7 rounded-md" alt="KeepCabin" />
+          <span class="text-[15px] font-semibold text-gray-900 tracking-tight">KeepCabin</span>
+        </div>
+
+        <!-- Centered content -->
+        <div class="absolute inset-0 flex items-center justify-center z-10 px-10">
+          <div class="max-w-[520px] w-full">
+            <h1 class="welcome-blur" style="font-size:2.2rem;font-weight:300;color:#111;letter-spacing:-0.04em;line-height:1;animation-delay:0.1s">
+              Welcome<template v-if="displayName">, {{ displayName }}</template>
+            </h1>
+            <p class="text-[18px] text-gray-500 leading-relaxed mt-5">
+              <span class="welcome-blur" style="animation-delay:1.0s">We </span>
+              <span class="welcome-blur" style="animation-delay:1.18s">have </span>
+              <span class="welcome-blur" style="animation-delay:1.36s">successfully </span>
+              <span class="welcome-blur" style="animation-delay:1.54s">created </span>
+              <span class="welcome-blur" style="animation-delay:1.72s">your </span>
+              <span class="welcome-blur" style="animation-delay:1.90s">account. </span>
+              <span class="welcome-blur" style="animation-delay:2.08s">You're </span>
+              <span class="welcome-blur" style="animation-delay:2.26s">now </span>
+              <span class="welcome-blur" style="animation-delay:2.44s">part </span>
+              <span class="welcome-blur" style="animation-delay:2.62s">of </span>
+              <span class="welcome-blur font-medium text-gray-800" style="animation-delay:2.80s">{{ inviteInfo?.org_name }}<template v-if="inviteInfo?.team_name"> · {{ inviteInfo.team_name }}</template>.</span>
+            </p>
+            <NuxtLink to="/app"
+              class="welcome-blur mt-10 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-[14px] font-medium shadow-sm transition-colors"
+              style="animation-delay:3.4s">
+              Get started
+              <svg class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 border-t border-gray-100 z-10" style="height:49px">
+          <button class="text-xs text-gray-400 hover:text-gray-600 transition-colors">Contact us</button>
+          <div class="flex items-center gap-4">
+            <button class="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+              English
+            </button>
+            <div class="w-px h-3 bg-gray-200" />
+            <button class="text-xs text-gray-400 hover:text-gray-600 transition-colors">Privacy Policy</button>
+            <div class="w-px h-3 bg-gray-200" />
+            <span class="text-xs text-gray-300">© 2026 KeepCabin</span>
+          </div>
+        </footer>
+
+      </div>
+    </Transition>
+  </Teleport>
+
 </template>
 
 <style scoped>
@@ -451,12 +557,27 @@ async function handleSignIn() {
   transform: translateX(-14px);
 }
 
-.welcome-check {
-  stroke-dasharray: 28;
-  stroke-dashoffset: 28;
-  animation: draw-check 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+/* Welcome screen fade-in */
+.welcome-screen-enter-active { transition: opacity 0.4s ease; }
+.welcome-screen-leave-active { transition: opacity 0.3s ease; }
+.welcome-screen-enter-from,
+.welcome-screen-leave-to { opacity: 0; }
+
+/* Welcome blur-in animation */
+.welcome-blur {
+  opacity: 0;
+  animation: blur-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-@keyframes draw-check {
-  to { stroke-dashoffset: 0; }
+@keyframes blur-in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
 }
 </style>
