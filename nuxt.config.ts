@@ -37,9 +37,13 @@ export default defineNuxtConfig({
   runtimeConfig: {
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY,
     supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    resendApiKey: process.env.RESEND_API_KEY ?? '',
+    brevoApiKey: process.env.BREVO_API_KEY ?? '',
+    brevoSenderEmail: process.env.BREVO_SENDER_EMAIL ?? '',
+    appUrl: process.env.APP_URL ?? 'http://localhost:3000',
     public: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+      supabaseUrl: process.env.SUPABASE_URL ?? '',
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
     },
   },
   css: ['~/assets/css/main.css', 'vue-sonner/style.css'],
