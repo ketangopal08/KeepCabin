@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import {
   LayoutDashboard, Receipt, Plus, CheckCircle, Users, CreditCard,
-  FileDown, Building2, LogOut, Settings, HelpCircle, ChevronsUpDown,
+  FileDown, Building2, LogOut, Settings, HelpCircle, Search, Layers, ChevronsUpDown,
 } from '@lucide/vue'
 import { useSupabase } from '~~/lib/supabase'
+import type { Team } from '~~/lib/supabase'
 
 const supabase = useSupabase()
 const { ctx, clear } = useOrgContext()
@@ -15,66 +16,41 @@ async function logout() {
   await navigateTo('/login')
 }
 
-const navSections = computed(() => {
-  const role = ctx.value?.member?.role
+const role  = computed(() => ctx.value?.member?.role)
 
-  const primary = [
-    { label: 'Dashboard', icon: LayoutDashboard, href: '/app' },
+// Fetch teams list (owner only)
+const teams = ref<Team[]>([])
+
+watch(() => ctx.value?.org?.id, async (orgId) => {
+  if (!orgId || role.value !== 'owner') return
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+  teams.value = await $fetch<Team[]>('/api/teams', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  }).catch(() => [])
+}, { immediate: true })
+
+const workspaceItems = computed(() => {
+  if (role.value === 'employee') return [
+    { label: 'My Expenses', icon: Receipt, href: '/app/expenses' },
+    { label: 'Submit Expense', icon: Plus, href: '/app/expenses/new' },
   ]
-
-  if (role === 'employee') return [
-    { heading: null, items: primary },
-    {
-      heading: 'My Work',
-      items: [
-        { label: 'My Expenses', icon: Receipt, href: '/app/expenses' },
-        { label: 'Submit Expense', icon: Plus, href: '/app/expenses/new' },
-      ],
-    },
+  if (role.value === 'manager') return [
+    { label: 'Approvals', icon: CheckCircle, href: '/app/approvals' },
+    { label: 'Expenses', icon: Receipt, href: '/app/expenses' },
+    { label: 'My Team', icon: Users, href: '/app/team' },
   ]
-
-  if (role === 'manager') return [
-    { heading: null, items: primary },
-    {
-      heading: 'Workspace',
-      items: [
-        { label: 'Approvals', icon: CheckCircle, href: '/app/approvals' },
-        { label: 'Expenses', icon: Receipt, href: '/app/expenses' },
-        { label: 'My Team', icon: Users, href: '/app/team' },
-      ],
-    },
+  if (role.value === 'finance') return [
+    { label: 'Payments', icon: CreditCard, href: '/app/payments' },
+    { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
+    { label: 'Reports', icon: FileDown, href: '/app/reports' },
   ]
-
-  if (role === 'finance') return [
-    { heading: null, items: primary },
-    {
-      heading: 'Workspace',
-      items: [
-        { label: 'Payments', icon: CreditCard, href: '/app/payments' },
-        { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
-        { label: 'Reports', icon: FileDown, href: '/app/reports' },
-      ],
-    },
+  if (role.value === 'owner') return [
+    { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
+    { label: 'Reports', icon: FileDown, href: '/app/reports' },
+    { label: 'Organization', icon: Building2, href: '/app/org' },
   ]
-
-  if (role === 'owner') return [
-    { heading: null, items: primary },
-    {
-      heading: 'Workspace',
-      items: [
-        { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
-        { label: 'Reports', icon: FileDown, href: '/app/reports' },
-      ],
-    },
-    {
-      heading: 'Organization',
-      items: [
-        { label: 'Organization', icon: Building2, href: '/app/org' },
-      ],
-    },
-  ]
-
-  return [{ heading: null, items: primary }]
+  return []
 })
 
 function isActive(href: string) {
@@ -83,6 +59,10 @@ function isActive(href: string) {
 }
 
 const orgInitials = computed(() => (ctx.value?.org?.name ?? '').slice(0, 2).toUpperCase() || 'KC')
+
+// Set to null to use initials, or a URL string to show an image
+const orgImageUrl = ref<string | null>('/images/org-temp.jpg')
+const orgImageError = ref(false)
 
 const orgColor = computed(() => {
   const colors = ['#C8E63C']
@@ -96,52 +76,60 @@ const orgColor = computed(() => {
 <template>
   <Sidebar collapsible="icon">
 
-    <!-- ── Header: org branding ── -->
-    <SidebarHeader>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            size="lg"
-            class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          >
-            <!-- Org icon -->
-            <div
-              class="flex aspect-square size-8 items-center justify-center rounded-lg text-black text-[13px] font-bold shrink-0"
-              :style="{ background: orgColor }"
-            >
-              {{ orgInitials.charAt(0) }}
-            </div>
-
-            <!-- Org name + role -->
-            <div class="grid flex-1 text-left text-sm leading-tight min-w-0">
-              <span class="truncate font-semibold" style="text-transform: uppercase;">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
-              <span class="truncate text-xs text-muted-foreground capitalize">{{ ctx?.member?.role ?? 'workspace' }}</span>
-            </div>
-
-            <!-- Switcher chevron -->
-            <ChevronsUpDown class="ml-auto size-4 text-muted-foreground shrink-0" />
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
+    <!-- ── Header ── -->
+    <SidebarHeader class="border-b border-sidebar-border px-3 h-11 flex-row items-center py-0">
+      <div class="flex items-center gap-2.5 w-full">
+        <img
+          v-if="orgImageUrl && !orgImageError"
+          :src="orgImageUrl"
+          alt="org"
+          class="size-[28px] shrink-0 rounded-md object-cover"
+          @error="orgImageError = true"
+        />
+        <div
+          v-else
+          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-black"
+          :style="{ background: orgColor }"
+        >
+          {{ orgInitials.charAt(0) }}
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <span class="truncate text-[13px] font-semibold text-sidebar-foreground leading-tight" style="text-transform: capitalize;">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
+          <span class="text-[10.5px] text-sidebar-foreground/50 capitalize leading-tight">{{ ctx?.member?.role ?? 'workspace' }}</span>
+        </div>
+        <ChevronsUpDown class="size-4 shrink-0 text-sidebar-foreground/40" />
+      </div>
     </SidebarHeader>
 
-    <!-- ── Nav sections ── -->
-    <SidebarContent>
-      <SidebarGroup
-        v-for="section in navSections"
-        :key="section.heading ?? 'primary'"
-      >
-        <SidebarGroupLabel v-if="section.heading">
-          {{ section.heading }}
-        </SidebarGroupLabel>
+    <SidebarContent class="gap-0">
+
+      <!-- ── Search ── -->
+      <div class="px-3 pt-2.5 pb-1">
+        <div class="flex items-center gap-2 px-2.5 h-8 rounded-lg cursor-pointer transition-colors bg-sidebar-accent">
+          <Search class="size-3.5 shrink-0 text-sidebar-foreground/40" />
+          <span class="flex-1 text-[12px] text-sidebar-foreground/40 select-none">Search</span>
+          <kbd class="text-[10px] text-sidebar-foreground/30 font-mono">⌘K</kbd>
+        </div>
+      </div>
+
+      <!-- ── Dashboard ── -->
+      <SidebarGroup class="">
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem v-for="item in section.items" :key="item.href">
-              <SidebarMenuButton
-                as-child
-                :is-active="isActive(item.href)"
-                :tooltip="item.label"
-              >
+            <SidebarMenuItem>
+              <SidebarMenuButton as-child :is-active="isActive('/app')" tooltip="Dashboard">
+                <NuxtLink to="/app">
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem v-for="item in workspaceItems" :key="item.href">
+              <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.label">
                 <NuxtLink :to="item.href">
                   <component :is="item.icon" />
                   <span>{{ item.label }}</span>
@@ -151,10 +139,69 @@ const orgColor = computed(() => {
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
+
+      <!-- <Separator class="mx-2" /> -->
+     
+
+      <!-- ── Teams (owner + manager) ── -->
+      <template v-if="role === 'owner' || role === 'manager'">
+        <Separator class="mx-2" />
+        <SidebarGroup class="py-2">
+          <SidebarGroupLabel class="px-2 h-6">Teams</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <!-- Owner: all teams fetched from API -->
+              <SidebarMenuItem v-for="team in teams" :key="team.id">
+                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${team.id}`)" :tooltip="team.name">
+                  <NuxtLink :to="`/app/teams/${team.id}`">
+                    <Layers class="text-sidebar-foreground/60" />
+                    <span>{{ team.name }}</span>
+                  </NuxtLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <!-- Manager: their assigned team -->
+              <SidebarMenuItem v-if="role === 'manager' && ctx?.team">
+                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${ctx.team.id}`)" :tooltip="ctx.team.name">
+                  <NuxtLink :to="`/app/teams/${ctx.team.id}`">
+                    <Layers class="text-sidebar-foreground/60" />
+                    <span>{{ ctx.team.name }}</span>
+                  </NuxtLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <!-- Add new team -->
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Add new team" class="text-sidebar-foreground/50 hover:text-sidebar-foreground">
+                  <Plus />
+                  <span>Add new team</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </template>
+
     </SidebarContent>
 
-    <!-- ── Footer: settings, help, logout ── -->
-    <SidebarFooter>
+    <!-- ── Upgrade banner ── -->
+    <div class="px-3 pb-3 group-data-[collapsible=icon]:hidden">
+      <div class="rounded-xl p-3 flex flex-col gap-2 bg-sidebar-accent">
+        <div class="flex items-center gap-2">
+          <div class="size-6 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
+            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--sidebar-primary-foreground))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <span class="text-[12px] font-semibold text-sidebar-foreground leading-tight">Upgrade to Premium</span>
+        </div>
+        <p class="text-[11px] text-sidebar-foreground/50 leading-relaxed">Unlock advanced reports, unlimited teams, and priority support.</p>
+        <button class="w-full py-1.5 rounded-lg text-[11.5px] font-medium bg-sidebar-primary text-sidebar-primary-foreground transition-colors hover:opacity-90">
+          Upgrade now
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <SidebarFooter class="border-t border-sidebar-border">
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton as-child :is-active="isActive('/app/settings')" tooltip="Settings">
