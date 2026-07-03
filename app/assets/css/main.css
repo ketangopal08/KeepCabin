@@ -61,12 +61,12 @@
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 0 0% 53.7%;        /* #898989 */
     --accent: 0 0% 91.8%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 0 0% 94.1%;          /* #f0f0f0 */
+    --input: 0 0% 89.8%;           /* #e5e5e5 */
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
     --chart-1: 12 76% 61%;
@@ -85,12 +85,11 @@
 }
 
 .dark {
-    /* Near-black palette matching the landing page (#0e0e10 base) */
-    --background: 0 0% 5.5%;       /* #0e0e10 */
+    --background: 0 0% 4.3%;       /* #0b0b0b */
     --foreground: 0 0% 98%;
-    --card: 0 0% 7.8%;             /* #141414 */
+    --card: 0 0% 4.3%;             /* #0b0b0b */
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7.8%;
+    --popover: 0 0% 4.3%;          /* #0b0b0b */
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 0 0% 6%;
@@ -102,14 +101,14 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --border: 0 0% 13.3%;          /* #222222 */
-    --input: 0 0% 13.3%;
+    --input: 0 0% 22.4%;           /* #393939 */
     --ring: 0 0% 65%;
     --chart-1: 142 70% 45%;
     --chart-2: 220 70% 55%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar: 0 0% 5.5%;          /* same as background */
+    --sidebar: 0 0% 6.7%;          /* #111111 */
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 0 0% 98%;
     --sidebar-primary-foreground: 0 0% 6%;
@@ -145,14 +144,14 @@
 
 [data-sidebar="menu-button"] span,
 [data-sidebar="menu-button"] a span {
-  color: #505050;
+  color: #000000;
   font-weight: 400;
   font-size: 0.780rem;
 }
 
 .dark [data-sidebar="menu-button"] span,
 .dark [data-sidebar="menu-button"] a span {
-  color: #ccc;
+  color: #f0f0f0;
 }
 
 [data-sidebar="menu-button"]:active {

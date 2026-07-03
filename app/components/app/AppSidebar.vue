@@ -60,6 +60,10 @@ function isActive(href: string) {
 
 const orgInitials = computed(() => (ctx.value?.org?.name ?? '').slice(0, 2).toUpperCase() || 'KC')
 
+// Set to null to use initials, or a URL string to show an image
+const orgImageUrl = ref<string | null>('/images/org-temp.jpg')
+const orgImageError = ref(false)
+
 const orgColor = computed(() => {
   const colors = ['#C8E63C']
   const name = ctx.value?.org?.name ?? ''
@@ -75,9 +79,17 @@ const orgColor = computed(() => {
     <!-- ── Header ── -->
     <SidebarHeader class="border-b border-sidebar-border px-3 h-11 flex-row items-center py-0">
       <div class="flex items-center gap-2.5 w-full">
+        <img
+          v-if="orgImageUrl && !orgImageError"
+          :src="orgImageUrl"
+          alt="org"
+          class="size-[28px] shrink-0 rounded-md object-cover"
+          @error="orgImageError = true"
+        />
         <div
-          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
-          :style="{ background: '#000000' }"
+          v-else
+          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-black"
+          :style="{ background: orgColor }"
         >
           {{ orgInitials.charAt(0) }}
         </div>
@@ -101,7 +113,7 @@ const orgColor = computed(() => {
       </div>
 
       <!-- ── Dashboard ── -->
-      <SidebarGroup class="py-2 pb-1">
+      <SidebarGroup class="">
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -114,22 +126,6 @@ const orgColor = computed(() => {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
-      </SidebarGroup>
-
-      <Separator class="mx-2" />
-
-      <!-- ── Workspace ── -->
-      <SidebarGroup class="py-2">
-        <SidebarGroupLabel class="flex items-center gap-1 px-2 h-6">
-          <span class="flex-1 truncate">{{ ctx?.org?.name ?? 'Workspace' }}</span>
-          <button
-            v-if="role === 'owner' || role === 'manager'"
-            class="rounded p-0.5 hover:bg-sidebar-accent text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors"
-            title="Invite member"
-          >
-            <Plus class="size-3" />
-          </button>
-        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in workspaceItems" :key="item.href">
@@ -143,6 +139,9 @@ const orgColor = computed(() => {
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
+
+      <!-- <Separator class="mx-2" /> -->
+     
 
       <!-- ── Teams (owner + manager) ── -->
       <template v-if="role === 'owner' || role === 'manager'">

@@ -3,9 +3,11 @@ import { useOrgContext } from '~/composables/useOrgContext'
 
 const { load } = useOrgContext()
 const { init: initTheme } = useTheme()
+const { init: initAccentColor } = useAccentColor()
 onMounted(() => {
   load()
   initTheme()
+  initAccentColor()
 })
 </script>
 

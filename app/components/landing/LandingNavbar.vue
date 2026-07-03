@@ -4,7 +4,7 @@ const { isDark, toggle } = useLandingTheme()
 const { show: showLoader } = usePageLoader()
 
 function goToLogin() {
-  showLoader('Signing you in…')
+  showLoader('Checking your account…')
   navigateTo('/login')
 }
 
