@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
-import { Copy, Check, Eye, EyeOff, Trash2 } from '@lucide/vue'
+import { Copy, Check, Eye, EyeOff, Trash2, User, ShieldCheck, CreditCard, Bell, Palette, Building2 } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -16,12 +16,12 @@ function setSection(id: string) { activeSection.value = id as Section }
 const role = computed(() => ctx.value?.member?.role)
 
 const allSections = [
-  { id: 'general',       label: 'General' },
-  { id: 'security',      label: 'Security' },
-  { id: 'billing',       label: 'Billing' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'appearance',    label: 'Appearance' },
-  { id: 'organization',  label: 'Organization' },
+  { id: 'general',       label: 'General',       icon: User        },
+  { id: 'security',      label: 'Security',      icon: ShieldCheck },
+  { id: 'billing',       label: 'Billing',       icon: CreditCard  },
+  { id: 'notifications', label: 'Notifications', icon: Bell        },
+  { id: 'appearance',    label: 'Appearance',    icon: Palette     },
+  { id: 'organization',  label: 'Organization',  icon: Building2   },
 ]
 
 const sections = computed(() =>
@@ -98,32 +98,49 @@ function copyOrgId() {
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
 }
+
+const showDeleteOrgDialog = ref(false)
+const deleteOrgConfirmName  = ref('')
+const deletingOrg = ref(false)
+
+const deleteOrgConfirmMatch = computed(() =>
+  deleteOrgConfirmName.value.trim() === (ctx.value?.org?.name ?? '').trim()
+)
+
+async function deleteOrg() {
+  if (!deleteOrgConfirmMatch.value || deletingOrg.value) return
+  deletingOrg.value = true
+  // TODO: call your org-deletion API here
+  deletingOrg.value = false
+  showDeleteOrgDialog.value = false
+}
 </script>
 
 <template>
-  <div class="-m-6 flex h-full overflow-hidden">
+  <div class="-m-6 flex h-full overflow-hidden" style="justify-content: center;">
 
     <!-- ── Left nav ──────────────────────────────────────────────────────── -->
-    <aside class="w-52 shrink-0 flex flex-col py-8 px-10 overflow-y-auto bg-background">
+    <aside class="w-52 shrink-0 flex flex-col py-4 px-10 overflow-y-auto bg-background">
       <p class="text-[13px] font-semibold text-foreground mb-4 px-3">Settings</p>
       <nav class="flex flex-col gap-0.5">
         <button
           v-for="s in sections"
           :key="s.id"
-          class="flex items-center h-8 text-[13px] rounded-lg px-3 transition-colors text-left w-full"
+          class="flex items-center gap-2 h-8 text-[13px] rounded-lg px-3 transition-colors text-left w-full"
           :class="activeSection === s.id
             ? 'bg-accent text-foreground font-medium'
             : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'"
           @click="setSection(s.id)"
         >
+          <component :is="s.icon" class="size-[14px] shrink-0" />
           {{ s.label }}
         </button>
       </nav>
     </aside>
 
     <!-- ── Right content ─────────────────────────────────────────────────── -->
-    <div class="flex-1 overflow-y-auto bg-background">
-      <div class="max-w-4xl px-10 py-8">
+    <div class="flex-1 overflow-y-auto bg-background max-w-4xl">
+      <div class="max-w-4xl px-10 py-4">
 
         <!-- ════════════════════════════════════════════════════════════════
              GENERAL
@@ -499,14 +516,73 @@ function copyOrgId() {
             <div class="flex-1"><Input :model-value="ctx?.org?.name ?? ''" disabled class="h-8 text-[13px] opacity-60 cursor-not-allowed" /></div>
           </div>
 
-          <div class="flex items-start gap-20 py-4">
+          <div class="flex items-start gap-20 py-4 border-b border-dashed border-border">
             <div class="w-[300px] shrink-0">
               <p class="text-[13px] font-medium text-foreground">Your role</p>
               <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Your current permission level in this organization. Roles control what you can view, approve, and manage. Only an owner can change your role.</p>
             </div>
             <Badge variant="secondary" class="capitalize text-[11.5px] mt-0.5">{{ ctx?.member?.role }}</Badge>
           </div>
+
+          <!-- Danger zone -->
+          <div class="mt-8 rounded-xl border border-destructive/30 overflow-hidden">
+            <div class="bg-destructive/5 px-5 py-3 border-b border-destructive/20">
+              <p class="text-[12px] font-semibold text-destructive tracking-wide uppercase">Danger Zone</p>
+            </div>
+            <div class="flex items-start gap-20 px-5 py-5">
+              <div class="w-[300px] shrink-0">
+                <p class="text-[13px] font-medium text-foreground">Delete organization</p>
+                <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">
+                  Permanently delete <span class="font-medium text-foreground">{{ ctx?.org?.name }}</span> and all associated data — members, teams, expenses, and reports. This action cannot be undone and all members will immediately lose access.
+                </p>
+              </div>
+              <div class="flex-1 flex flex-col gap-2 pt-0.5">
+                <Button variant="destructive" size="sm" class="h-8 text-[12.5px] w-fit" @click="showDeleteOrgDialog = true">
+                  Delete organization
+                </Button>
+                <p class="text-[11px] text-muted-foreground">Only organization owners can perform this action.</p>
+              </div>
+            </div>
+          </div>
         </template>
+
+        <!-- Delete org confirmation dialog -->
+        <Dialog v-model:open="showDeleteOrgDialog">
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle class="text-[15px]">Delete organization</DialogTitle>
+              <DialogDescription class="text-[12.5px] leading-relaxed">
+                This will permanently delete <span class="font-semibold text-foreground">{{ ctx?.org?.name }}</span> and all of its data including members, teams, expense records, and reports. This action <span class="font-semibold text-foreground">cannot be undone</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div class="mt-1 flex flex-col gap-3">
+              <div class="rounded-lg bg-destructive/8 border border-destructive/20 px-4 py-3 text-[12px] text-destructive leading-relaxed">
+                <p class="font-semibold mb-1">What will be deleted:</p>
+                <ul class="list-disc list-inside space-y-0.5 text-destructive/80">
+                  <li>All members and their access</li>
+                  <li>All teams and team configurations</li>
+                  <li>All expense submissions and history</li>
+                  <li>All reports and approval records</li>
+                  <li>Billing subscription and invoices</li>
+                </ul>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-[12px] text-muted-foreground">
+                  Type <span class="font-semibold text-foreground">{{ ctx?.org?.name }}</span> to confirm:
+                </label>
+                <Input v-model="deleteOrgConfirmName" placeholder="Organization name" class="h-8 text-[13px]" />
+              </div>
+            </div>
+            <DialogFooter class="mt-1 gap-2">
+              <Button variant="outline" size="sm" class="h-8 text-[12.5px]" @click="showDeleteOrgDialog = false; deleteOrgConfirmName = ''">
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" class="h-8 text-[12.5px]" :disabled="!deleteOrgConfirmMatch || deletingOrg" @click="deleteOrg">
+                {{ deletingOrg ? 'Deleting…' : 'Delete organization' }}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>
