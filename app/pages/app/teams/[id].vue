@@ -103,12 +103,7 @@ onMounted(async () => {
 
       <!-- Team header -->
       <div class="flex items-center gap-4 px-5 py-4 border-b border-border bg-background shrink-0">
-        <div
-          class="size-11 rounded-xl flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-          :style="{ background: colorFromStr(team.name) }"
-        >
-          {{ teamInitials(team.name) }}
-        </div>
+        <TeamAvatar :name="team.name" size="lg" />
         <div class="flex-1 min-w-0">
           <h1 class="text-[16px] font-semibold text-foreground">{{ team.name }}</h1>
           <p class="text-[12px] text-muted-foreground mt-0.5">

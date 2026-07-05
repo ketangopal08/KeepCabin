@@ -18,7 +18,7 @@ onMounted(() => {
       <AppSidebar />
       <SidebarInset class="bg-background">
         <AppNavbar />
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-6">
           <slot />
         </main>
       </SidebarInset>

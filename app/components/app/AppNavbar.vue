@@ -2,6 +2,7 @@
 import {
   LayoutDashboard, Receipt, Plus, CheckCircle, CreditCard,
   FileDown, Building2, Users, ChevronRight, Settings, Check,
+  Bell, Search, HelpCircle,
 } from '@lucide/vue'
 
 const route = useRoute()
@@ -20,7 +21,7 @@ const pages: Record<string, PageDef> = {
   '/app/approvals':    { label: 'Approvals',       icon: CheckCircle },
   '/app/payments':     { label: 'Payments',        icon: CreditCard },
   '/app/teams':        { label: 'Teams',           icon: Users,     action: { label: 'New Team', href: '/app/teams/new', ownerOnly: true } },
-  '/app/org':          { label: 'Organization',    icon: Building2, action: { label: 'Invite Member', href: '/app/org' } },
+  '/app/org':          { label: 'Organization',    icon: Building2 },
   '/app/reports':      { label: 'Reports',         icon: FileDown },
   '/app/settings':     { label: 'Settings',        icon: Settings },
 }
@@ -59,15 +60,19 @@ const showAction = computed(() => {
       {{ saved ? 'Saved!' : saving ? 'Saving…' : 'Save changes' }}
     </Button>
 
-    <!-- Other pages: contextual action -->
-    <Button v-else-if="showAction" as-child size="sm">
-      <NuxtLink :to="current.action?.href ?? ''" class="flex items-center gap-1.5">
-        <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
-        {{ current.action?.label }}
-      </NuxtLink>
-    </Button>
+    <!-- Permanent right-side icons -->
+    <template v-else>
+      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-foreground shrink-0">
+        <Search class="size-[15px]" />
+      </Button>
+      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-foreground shrink-0">
+        <HelpCircle class="size-[15px]" />
+      </Button>
+      <Button variant="ghost" size="icon-sm" class="relative text-muted-foreground hover:text-foreground shrink-0">
+        <Bell class="size-[15px]" />
+        <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
+      </Button>
+    </template>
 
   </header>
 </template>

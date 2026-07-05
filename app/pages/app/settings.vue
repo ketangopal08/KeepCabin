@@ -117,10 +117,11 @@ async function deleteOrg() {
 </script>
 
 <template>
-  <div class="-m-6 flex h-full overflow-hidden" style="justify-content: center;">
+  <div class="-m-6 flex h-full overflow-hidden">
+    <div class="w-full max-w-5xl mx-auto flex h-full overflow-hidden">
 
     <!-- ── Left nav ──────────────────────────────────────────────────────── -->
-    <aside class="w-52 shrink-0 flex flex-col py-4 px-10 overflow-y-auto bg-background">
+    <aside class="w-52 shrink-0 flex flex-col py-4 pr-10 overflow-y-auto bg-background">
       <p class="text-[13px] font-semibold text-foreground mb-4 px-3">Settings</p>
       <nav class="flex flex-col gap-0.5">
         <button
@@ -587,5 +588,6 @@ async function deleteOrg() {
       </div>
     </div>
 
+    </div><!-- end container -->
   </div>
 </template>
