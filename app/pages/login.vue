@@ -17,6 +17,8 @@ function postLoginRedirect() {
 // 'signin' → existing user: password + Sign in
 // 'setup'  → new user: name + Continue
 // 'signup' → new user: create password + Create account
+const checking = ref(true)
+
 const step     = ref<'email' | 'signin' | 'setup' | 'signup'>('email')
 const email    = ref('')
 const name     = ref('')
@@ -161,6 +163,7 @@ function goBack() {
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession()
   if (session) { postLoginRedirect(); return }
+  checking.value = false
   await nextTick()
   initDotGrid()
   window.addEventListener('resize', initDotGrid)
@@ -218,6 +221,19 @@ const testimonials = [
 <template>
   <div class="fixed inset-0 flex flex-col bg-white select-none" style="--fh:49px">
     <Sonner position="bottom-right" theme="light" rich-colors />
+
+    <!-- ══ SESSION CHECK LOADER ══ -->
+    <Transition name="fade-out">
+      <div v-if="checking" class="absolute inset-0 z-50 flex items-center justify-center bg-white">
+        <div class="flex flex-col items-center gap-4">
+          <img src="/logo.svg" class="size-9 rounded-xl opacity-90" alt="KeepCabin" />
+          <svg class="animate-spin size-5 text-gray-300" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+            <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </Transition>
 
     <!-- ══ BODY ══ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden" style="height:calc(100vh - var(--fh))">
@@ -599,6 +615,13 @@ const testimonials = [
 .panel-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+.fade-out-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-out-leave-to {
+  opacity: 0;
 }
 
 .step-enter-active,

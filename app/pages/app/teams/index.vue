@@ -129,12 +129,7 @@ onMounted(async () => {
           >
             <td class="px-5 py-3.5">
               <div class="flex items-center gap-3">
-                <div
-                  class="size-9 rounded-xl flex items-center justify-center text-[12px] font-bold text-white shrink-0"
-                  :style="{ background: teamColor(team.name) }"
-                >
-                  {{ initials(team.name) }}
-                </div>
+                <TeamAvatar :name="team.name" />
                 <div>
                   <p class="font-medium text-foreground">{{ team.name }}</p>
                 </div>
