@@ -3,7 +3,8 @@ import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
 import {
   TrendingUp, TrendingDown, Plus, Receipt, CheckCircle,
-  UserPlus, FileDown, Users, Eye, ArrowUpRight, MoreHorizontal, Activity, UserCircle2,
+  UserPlus, FileDown, Users, Eye, ArrowUpRight, MoreHorizontal,
+  Activity, UserCircle2, ChevronLeft, ChevronRight, Zap,
 } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
@@ -38,8 +39,38 @@ const pendingFinanceCount = computed(() => expenses.value.filter(e => e.status =
 const paidCount           = computed(() => expenses.value.filter(e => e.status === 'paid').length)
 const rejectedCount       = computed(() => expenses.value.filter(e => e.status === 'rejected').length)
 
-// ── Recent expenses ───────────────────────────────────────────────────────
+// ── Recent / top pending ──────────────────────────────────────────────────
 const recentExpenses = computed(() => expenses.value.slice(0, 6))
+const topPending     = computed(() => expenses.value.filter(e => e.status.includes('pending')).slice(0, 2))
+
+// ── Progress ──────────────────────────────────────────────────────────────
+const resolvedCount  = computed(() => expenses.value.filter(e => e.status === 'paid').length)
+const resolutionRate = computed(() => {
+  if (!expenses.value.length) return 0
+  return Math.round((resolvedCount.value / expenses.value.length) * 100)
+})
+
+// ── Tip carousel ──────────────────────────────────────────────────────────
+const tipIndex = ref(0)
+const tips = computed(() => {
+  const t: string[] = []
+  if (pendingCount.value > 0)
+    t.push(`There ${pendingCount.value === 1 ? 'is' : 'are'} ${pendingCount.value} expense${pendingCount.value > 1 ? 's' : ''} pending review.`)
+  if (totalThisMonth.value > 0)
+    t.push(`You've tracked ₹${totalThisMonth.value.toLocaleString('en-IN')} in expenses this month.`)
+  if (members.value.length > 0)
+    t.push(`Your org has ${members.value.length} member${members.value.length > 1 ? 's' : ''} across ${teams.value.length} team${teams.value.length > 1 ? 's' : ''}.`)
+  if (t.length === 0) t.push('Submit your first expense to start tracking.')
+  return t
+})
+const currentTip = computed(() => tips.value[tipIndex.value % Math.max(tips.value.length, 1)])
+function nextTip() { tipIndex.value = (tipIndex.value + 1) % Math.max(tips.value.length, 1) }
+function prevTip() { tipIndex.value = (tipIndex.value - 1 + Math.max(tips.value.length, 1)) % Math.max(tips.value.length, 1) }
+
+// ── Formatted date ────────────────────────────────────────────────────────
+const formattedDate = computed(() =>
+  new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+)
 
 // ── Activity feed from expenses ───────────────────────────────────────────
 const activityFeed = computed(() =>
@@ -48,7 +79,6 @@ const activityFeed = computed(() =>
     title:  e.vendor ?? 'Expense',
     desc:   activityDesc(e.status),
     time:   formatTime(e.updated_at ?? e.created_at),
-    dot:    statusColor(e.status),
     amount: Number(e.amount),
     status: e.status,
   }))
@@ -66,17 +96,17 @@ function formatTime(iso: string) {
   const d = new Date(iso)
   const now = new Date()
   const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-  if (diff < 60)   return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 60)    return 'just now'
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return d.toLocaleDateString('en', { month: 'short', day: 'numeric' })
 }
 
 function statusColor(s: string) {
-  if (s === 'paid')            return 'bg-emerald-500'
-  if (s === 'rejected')        return 'bg-red-500'
-  if (s.includes('pending'))   return 'bg-amber-500'
-  return 'bg-muted-foreground'
+  if (s === 'paid')          return '#10b981'
+  if (s === 'rejected')      return '#ef4444'
+  if (s.includes('pending')) return '#f59e0b'
+  return '#9ca3af'
 }
 
 function statusLabel(s: string) {
@@ -103,11 +133,11 @@ function memberName(m: any): string {
 
 // ── Quick actions ─────────────────────────────────────────────────────────
 const quickActions = computed(() => [
-  { label: 'Submit Expense',    desc: 'Add a new expense for reimbursement',  icon: Receipt,      color: '#10b981', bg: '#d1fae5', href: '/app/expenses/new',   show: true },
-  { label: 'Review Approvals',  desc: 'Approve or reject pending expenses',   icon: CheckCircle,  color: '#0ea5e9', bg: '#e0f2fe', href: '/app/approvals',      show: role.value === 'manager' || role.value === 'owner' },
-  { label: 'Invite Member',     desc: 'Add someone to your organization',     icon: UserPlus,     color: '#8b5cf6', bg: '#ede9fe', href: '/app/org',             show: role.value === 'owner' },
-  { label: 'View Reports',      desc: 'Download and export expense reports',  icon: FileDown,     color: '#f59e0b', bg: '#fef3c7', href: '/app/reports',         show: role.value === 'owner' || role.value === 'finance' },
-  { label: 'Manage Teams',      desc: 'Organise members into teams',          icon: Users,        color: '#6366f1', bg: '#e0e7ff', href: '/app/teams',           show: role.value === 'owner' || role.value === 'manager' },
+  { label: 'Submit Expense',   icon: Receipt,     color: '#ffffff', bg: 'linear-gradient(135deg, #f43f5e, #fb923c)', href: '/app/expenses/new',  show: true },
+  { label: 'Review Approvals', icon: CheckCircle, color: '#ffffff', bg: 'linear-gradient(135deg, #06b6d4, #3b82f6)', href: '/app/approvals',     show: role.value === 'manager' || role.value === 'owner' },
+  { label: 'Invite Member',    icon: UserPlus,    color: '#ffffff', bg: 'linear-gradient(135deg, #a855f7, #6366f1)', href: '/app/org',            show: role.value === 'owner' },
+  { label: 'View Reports',     icon: FileDown,    color: '#ffffff', bg: 'linear-gradient(135deg, #f97316, #eab308)', href: '/app/reports',        show: role.value === 'owner' || role.value === 'finance' },
+  { label: 'Manage Teams',     icon: Users,       color: '#ffffff', bg: 'linear-gradient(135deg, #14b8a6, #10b981)', href: '/app/teams',          show: role.value === 'owner' || role.value === 'manager' },
 ].filter(a => a.show))
 
 // ── Team expense count helper ─────────────────────────────────────────────
@@ -132,341 +162,268 @@ onMounted(async () => { await load(); await fetchAll() })
 </script>
 
 <template>
-  <div class="flex flex-col gap-5 w-full min-w-0">
+  <div class="flex flex-col w-full min-w-0 px-28">
+    <div class="w-full max-w-5xl mx-auto flex flex-col gap-5">
 
-    <!-- ── Header ─────────────────────────────────────────────────────── -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-[17px] font-semibold text-foreground">Dashboard</h1>
-        <p class="text-[12.5px] text-muted-foreground mt-0.5">
-          Welcome back, <span class="text-foreground font-medium">{{ user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'there' }}</span>
-        </p>
-      </div>
-      <Button v-if="role === 'employee'" as-child size="sm">
-        <NuxtLink to="/app/expenses/new"><Plus class="size-3.5 mr-1.5" />New Expense</NuxtLink>
-      </Button>
-    </div>
+      <!-- ── Date heading ──────────────────────────────────────────────── -->
+      <h1 class="text-[22px] font-bold text-foreground tracking-tight">{{ formattedDate }}</h1>
 
-    <!-- ── Highlight banner ─────────────────────────────────────────── -->
-    <div class="relative flex items-center justify-between rounded-2xl overflow-hidden px-6 py-4 min-h-[64px]"
-      style="background: linear-gradient(120deg, #fce7f3 0%, #ede9fe 45%, #dbeafe 100%);">
-      <!-- soft left glow blob -->
-      <div class="absolute left-0 top-0 h-full w-40 rounded-full blur-3xl opacity-60 pointer-events-none"
-        style="background: radial-gradient(ellipse at left, #f9a8d4 0%, transparent 70%)" />
-      <!-- text -->
-      <p class="relative text-[13.5px] text-foreground/80 max-w-xl leading-relaxed">
-        <span class="font-semibold text-foreground">KeepCabin</span>
-        is your all-in-one platform for expense tracking, team budgets, and approval workflows — built for modern teams.
-      </p>
-      <!-- icon group -->
-      <div class="relative flex items-center gap-2 shrink-0 ml-4">
-        <div class="size-10 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 flex items-center justify-center shadow-sm">
-          <svg class="size-5 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-        </div>
-        <div class="size-10 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 flex items-center justify-center shadow-sm">
-          <svg class="size-5 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <rect x="3" y="3" width="18" height="18" rx="3"/>
-            <path d="M3 9h18M9 21V9"/>
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Loading ────────────────────────────────────────────────────── -->
-    <template v-if="loading">
-      <div class="flex gap-3">
-        <Skeleton v-for="n in 4" :key="n" class="h-20 flex-1 rounded-xl" />
-      </div>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Skeleton v-for="n in 4" :key="n" class="h-24 rounded-xl" />
-      </div>
-      <div class="grid grid-cols-[1fr_380px] gap-4">
-        <Skeleton class="h-72 rounded-xl" />
-        <Skeleton class="h-72 rounded-xl" />
-      </div>
-      <div class="grid grid-cols-[1fr_380px] gap-4">
-        <Skeleton class="h-64 rounded-xl" />
-        <Skeleton class="h-64 rounded-xl" />
-      </div>
-    </template>
-
-    <template v-else>
-
-      <!-- ── Quick actions ───────────────────────────────────────────── -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <NuxtLink
-          v-for="a in quickActions"
-          :key="a.label"
-          :to="a.href"
-          class="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 transition-colors group cursor-pointer"
-        >
-          <div class="size-9 rounded-lg flex items-center justify-center shrink-0" :style="{ background: a.bg }">
-            <component :is="a.icon" class="size-[18px]" :style="{ color: a.color }" />
+      <!-- ── Loading ──────────────────────────────────────────────────── -->
+      <template v-if="loading">
+        <div class="grid grid-cols-[1fr_280px] gap-5 items-start">
+          <div class="flex flex-col gap-4">
+            <Skeleton class="h-36 rounded-2xl" />
+            <Skeleton class="h-11 rounded-xl" />
+            <Skeleton class="h-36 rounded-xl" />
+            <Skeleton class="h-48 rounded-xl" />
+            <Skeleton class="h-48 rounded-xl" />
           </div>
-          <div class="min-w-0">
-            <p class="text-[13px] font-semibold text-foreground leading-tight">{{ a.label }}</p>
-            <p class="text-[11px] text-muted-foreground mt-0.5 leading-tight truncate">{{ a.desc }}</p>
+          <div class="flex flex-col gap-4">
+            <Skeleton class="h-6 w-36 rounded" />
+            <Skeleton class="h-24 rounded-xl" />
+            <Skeleton class="h-24 rounded-xl" />
+            <Skeleton class="h-24 rounded-xl" />
           </div>
-        </NuxtLink>
-      </div>
-
-      <!-- ── KPI stats ───────────────────────────────────────────────── -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-
-        <div class="flex flex-col gap-1.5 px-5 py-4 rounded-xl bg-card border border-border">
-          <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Spent this month</p>
-          <p class="text-[24px] font-bold text-foreground leading-none tracking-tight">
-            ₹{{ totalThisMonth.toLocaleString('en-IN') }}
-          </p>
-          <div v-if="spendTrend !== null" class="flex items-center gap-1">
-            <TrendingUp v-if="spendTrend >= 0" class="size-3.5 text-emerald-500 shrink-0" />
-            <TrendingDown v-else class="size-3.5 text-red-400 shrink-0" />
-            <span class="text-[11.5px] font-semibold" :class="spendTrend >= 0 ? 'text-emerald-600' : 'text-red-500'">
-              {{ spendTrend >= 0 ? '+' : '' }}{{ spendTrend }}%
-            </span>
-            <span class="text-[11px] text-muted-foreground">vs last month</span>
-          </div>
-          <p v-else class="text-[11.5px] text-muted-foreground">No prior data</p>
         </div>
+      </template>
 
-        <div class="flex flex-col gap-1.5 px-5 py-4 rounded-xl bg-card border border-border">
-          <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pending review</p>
-          <p class="text-[24px] font-bold leading-none tracking-tight"
-            :class="pendingCount > 0 ? 'text-amber-500' : 'text-foreground'">{{ pendingCount }}</p>
-          <p class="text-[11.5px] text-muted-foreground">{{ pendingCount === 0 ? 'All clear' : `${pendingCount} waiting` }}</p>
-        </div>
+      <template v-else>
+        <div class="grid grid-cols-[1fr_272px] gap-5 items-start">
 
-        <div class="flex flex-col gap-1.5 px-5 py-4 rounded-xl bg-card border border-border">
-          <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Paid out</p>
-          <p class="text-[24px] font-bold text-emerald-500 leading-none tracking-tight">{{ paidCount }}</p>
-          <p class="text-[11.5px] text-muted-foreground">Fully reimbursed</p>
-        </div>
+          <!-- ════════════════ LEFT COLUMN ════════════════ -->
+          <div class="flex flex-col gap-4">
 
-        <div class="flex flex-col gap-1.5 px-5 py-4 rounded-xl bg-card border border-border">
-          <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Rejected</p>
-          <p class="text-[24px] font-bold leading-none tracking-tight"
-            :class="rejectedCount > 0 ? 'text-red-500' : 'text-foreground'">{{ rejectedCount }}</p>
-          <p class="text-[11.5px] text-muted-foreground">{{ rejectedCount === 0 ? 'None declined' : 'Declined' }}</p>
-        </div>
-      </div>
-
-      <!-- ── Row 1: Recent expenses + Teams ─────────────────────────── -->
-      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] gap-4">
-
-        <!-- Recent expenses -->
-        <div class="flex flex-col rounded-xl bg-card border border-border overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border">
-            <p class="text-[13px] font-semibold text-foreground">Recent Expenses</p>
-            <div class="flex items-center gap-2">
-              <NuxtLink to="/app/expenses"
-                class="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-                View all <ArrowUpRight class="size-3" />
-              </NuxtLink>
-              <button class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <MoreHorizontal class="size-4" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="recentExpenses.length === 0" class="flex flex-col items-center justify-center gap-2.5 py-12">
-            <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
-              <Receipt class="size-5 text-muted-foreground" />
-            </div>
-            <p class="text-[13px] font-medium text-foreground">No expenses yet</p>
-            <p class="text-[12px] text-muted-foreground">Submit your first expense to get started.</p>
-          </div>
-
-          <NuxtLink
-            v-for="e in recentExpenses"
-            :key="e.id"
-            :to="`/app/expenses/${e.id}`"
-            class="flex items-center gap-4 px-5 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors group"
-          >
-            <div class="flex-1 min-w-0">
-              <p class="text-[13px] font-medium text-foreground truncate">{{ e.vendor ?? 'Expense' }}</p>
-              <div class="flex items-center gap-1.5 mt-0.5">
-                <span class="text-[11px] text-muted-foreground capitalize">{{ e.category }}</span>
-                <span class="text-muted-foreground/40">•</span>
-                <div :class="['size-1.5 rounded-full', statusColor(e.status)]" />
-                <span class="text-[11px] text-muted-foreground">{{ statusLabel(e.status) }}</span>
+            <!-- Quick actions card -->
+            <div class="rounded-2xl p-4 bg-muted">
+              <p class="text-[12.5px] font-semibold mb-3 text-muted-foreground">Quick actions:</p>
+              <div :class="['grid gap-2', quickActions.length <= 3 ? 'grid-cols-3' : quickActions.length === 4 ? 'grid-cols-4' : 'grid-cols-5']">
+                <NuxtLink
+                  v-for="a in quickActions"
+                  :key="a.label"
+                  :to="a.href"
+                  class="flex flex-col items-center gap-2.5 px-2 py-3.5 rounded-xl bg-card hover:shadow-md hover:-translate-y-0.5 transition-all text-center"
+                  style="border: 1px solid rgba(0,0,0,0.06);"
+                >
+                  <div class="size-8 rounded-lg flex items-center justify-center shrink-0" :style="{ background: a.bg }">
+                    <component :is="a.icon" class="size-4" :style="{ color: a.color }" />
+                  </div>
+                  <span class="text-[12px] font-medium text-foreground leading-tight">{{ a.label }}</span>
+                </NuxtLink>
               </div>
             </div>
-            <span class="text-[12.5px] font-semibold text-foreground tabular-nums shrink-0">
-              ₹{{ Number(e.amount).toLocaleString('en-IN') }}
-            </span>
-            <button class="p-1.5 rounded-md border border-border text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-              <Eye class="size-3.5" />
-            </button>
-          </NuxtLink>
-        </div>
 
-        <!-- Teams -->
-        <div class="flex flex-col rounded-xl bg-card border border-border overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border">
-            <p class="text-[13px] font-semibold text-foreground">Teams</p>
-            <button class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <MoreHorizontal class="size-4" />
-            </button>
-          </div>
-
-          <div v-if="teams.length === 0" class="flex flex-col items-center justify-center gap-2.5 py-12">
-            <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
-              <Users class="size-5 text-muted-foreground" />
+            <!-- Tip bar -->
+            <div class="flex items-center justify-between px-4 py-3 rounded-xl bg-muted">
+              <p class="text-[13px] flex-1 leading-snug text-foreground/80">
+                <span class="font-semibold">Tip:</span> {{ currentTip }}
+              </p>
+              <div class="flex items-center gap-1.5 ml-4 shrink-0">
+                <span class="text-[12px] tabular-nums text-muted-foreground">
+                  {{ (tipIndex % Math.max(tips.length, 1)) + 1 }}/{{ tips.length }}
+                </span>
+                <button
+                  class="size-6 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
+                  @click="prevTip"
+                >
+                  <ChevronLeft class="size-3.5 text-muted-foreground" />
+                </button>
+                <button
+                  class="size-6 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
+                  @click="nextTip"
+                >
+                  <ChevronRight class="size-3.5 text-muted-foreground" />
+                </button>
+              </div>
             </div>
-            <p class="text-[13px] font-medium text-foreground">No teams yet</p>
-            <p class="text-[12px] text-muted-foreground">Create a team to organise your members.</p>
-          </div>
 
-          <div class="grid grid-cols-2 gap-px bg-border">
-            <NuxtLink
-              v-for="t in teams.slice(0, 6)"
-              :key="t.id"
-              :to="`/app/teams/${t.id}`"
-              class="flex flex-col gap-2 p-4 bg-card hover:bg-muted/40 transition-colors"
-            >
-              <TeamAvatar :name="t.name" />
-              <div>
-                <p class="text-[12.5px] font-semibold text-foreground leading-tight truncate">{{ t.name }}</p>
-                <p class="text-[11px] text-muted-foreground mt-0.5">
-                  {{ teamExpenseCount(t.id) }} expense{{ teamExpenseCount(t.id) === 1 ? '' : 's' }}
+            <!-- Featured expense + progress -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3 bg-muted">
+
+              <!-- Top recent expense action card -->
+              <NuxtLink
+                v-if="recentExpenses.length > 0"
+                :to="`/app/expenses/${recentExpenses[0].id}`"
+                class="flex items-center gap-4 p-4 rounded-xl bg-card hover:shadow-sm transition-all"
+                style="border: 1px solid rgba(0,0,0,0.06);"
+              >
+                <div class="size-10 rounded-xl flex items-center justify-center shrink-0" style="background: #e0e7ff;">
+                  <Receipt class="size-5" style="color: #6366f1;" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[13.5px] font-semibold text-foreground truncate">{{ recentExpenses[0].vendor ?? 'Expense' }}</p>
+                  <p class="text-[12px] text-muted-foreground mt-0.5">
+                    ₹{{ Number(recentExpenses[0].amount).toLocaleString('en-IN') }} · {{ recentExpenses[0].category }}
+                  </p>
+                </div>
+                <Button size="sm" class="shrink-0 text-[12px]">View</Button>
+              </NuxtLink>
+
+              <div v-else class="flex items-center gap-4 p-4 rounded-xl bg-card/70">
+                <p class="text-[13px] text-muted-foreground">No expenses yet — submit your first one.</p>
+              </div>
+
+              <!-- Expense overview progress -->
+              <div class="px-1">
+                <div class="flex items-center justify-between mb-1">
+                  <div class="flex items-center gap-2">
+                    <p class="text-[13.5px] font-semibold text-foreground">Expense Overview</p>
+                    <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full" style="background: #d1fae5; color: #065f46;">
+                      <Activity class="size-3" />
+                      {{ resolvedCount }}/{{ expenses.length }}
+                    </span>
+                  </div>
+                  <NuxtLink to="/app/expenses" class="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+                    <ArrowUpRight class="size-3.5" /> Show more
+                  </NuxtLink>
+                </div>
+                <p class="text-[12px] text-muted-foreground mb-2.5">Track your expense reimbursement progress</p>
+                <div class="relative h-2 rounded-full overflow-hidden bg-foreground/10">
+                  <div
+                    class="h-full rounded-full transition-all duration-500"
+                    style="background: #10b981;"
+                    :style="{ width: resolutionRate + '%' }"
+                  />
+                </div>
+                <p class="text-[12px] text-muted-foreground mt-1.5 text-right">{{ resolutionRate }}% complete</p>
+              </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div>
+              <div class="flex items-center gap-2.5 mb-1.5">
+                <p class="text-[17px] font-semibold text-foreground">Recommendations</p>
+                <span class="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background: #ede9fe; color: #6d28d9;">
+                  <Zap class="size-3" /> AI Assistant
+                </span>
+              </div>
+              <p class="text-[12.5px] text-muted-foreground mb-3">Your highest priority expenses needing attention.</p>
+
+              <div v-if="topPending.length === 0" class="rounded-xl bg-muted/30 py-10 flex items-center justify-center">
+                <p class="text-[13px] text-muted-foreground">No pending expenses — you're all caught up!</p>
+              </div>
+
+              <div v-else class="grid grid-cols-2 gap-3">
+                <NuxtLink
+                  v-for="(e, i) in topPending"
+                  :key="e.id"
+                  :to="`/app/expenses/${e.id}`"
+                  class="relative flex flex-col gap-3 p-4 rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all"
+                  :style="i === 0
+                    ? 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 60%)'
+                    : 'background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 60%)'"
+                >
+                  <ArrowUpRight class="absolute top-3 right-3 size-4" style="color: rgba(0,0,0,0.2);" />
+                  <div
+                    class="size-9 rounded-xl flex items-center justify-center"
+                    :style="i === 0 ? 'background: rgba(245,158,11,0.2)' : 'background: rgba(139,92,246,0.2)'"
+                  >
+                    <Receipt class="size-4" :style="i === 0 ? 'color:#d97706' : 'color:#7c3aed'" />
+                  </div>
+                  <div>
+                    <p class="text-[13.5px] font-semibold text-foreground leading-tight truncate pr-5">{{ e.vendor ?? 'Expense' }}</p>
+                    <p class="text-[12px] mt-0.5" :style="i === 0 ? 'color:#92400e' : 'color:#5b21b6'">
+                      ₹{{ Number(e.amount).toLocaleString('en-IN') }} · {{ e.category }}
+                    </p>
+                  </div>
+                  <span
+                    class="inline-flex items-center gap-1 self-start text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                    :style="i === 0
+                      ? 'background: rgba(245,158,11,0.25); color: #92400e;'
+                      : 'background: rgba(139,92,246,0.2); color: #5b21b6;'"
+                  >
+                    <span>{{ i === 0 ? '↑' : '=' }}</span>
+                    {{ i === 0 ? 'High' : 'Medium' }}
+                  </span>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <!-- Role alert banners -->
+            <div v-if="role === 'manager' && pendingCount > 0"
+              class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-amber-500/30">
+              <div class="flex items-center gap-3">
+                <div class="size-2 rounded-full bg-amber-500 shrink-0" />
+                <p class="text-[13px] text-foreground">
+                  <span class="font-semibold">{{ pendingCount }} expense{{ pendingCount > 1 ? 's' : '' }}</span>
+                  waiting for your approval
                 </p>
               </div>
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Row 2: Activity + Members ──────────────────────────────── -->
-      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] gap-4">
-
-        <!-- Recent activity -->
-        <div class="flex flex-col rounded-xl bg-card border border-border overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border">
-            <p class="text-[13px] font-semibold text-foreground">Recent Activity</p>
-            <NuxtLink to="/app/expenses"
-              class="text-[12px] text-primary font-medium hover:underline">
-              View All
-            </NuxtLink>
-          </div>
-
-          <div v-if="activityFeed.length === 0" class="flex flex-col items-center justify-center gap-2.5 py-12">
-            <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
-              <Activity class="size-5 text-muted-foreground" />
+              <NuxtLink to="/app/approvals">
+                <Button variant="outline" size="xs" class="border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
+                  Review now
+                </Button>
+              </NuxtLink>
             </div>
-            <p class="text-[13px] font-medium text-foreground">No activity yet</p>
-            <p class="text-[12px] text-muted-foreground">Activity will appear here as expenses are submitted.</p>
-          </div>
 
-          <div class="flex flex-col">
-            <div
-              v-for="(item, idx) in activityFeed"
-              :key="item.id"
-              class="flex gap-3 px-5 py-3.5 border-b border-border last:border-0"
-            >
-              <!-- timeline dot + line -->
-              <div class="flex flex-col items-center shrink-0 pt-1">
-                <div :class="['size-2 rounded-full shrink-0', item.dot]" />
-                <div v-if="idx < activityFeed.length - 1" class="w-px flex-1 bg-border mt-1.5" />
+            <div v-if="role === 'finance' && pendingFinanceCount > 0"
+              class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-blue-500/30">
+              <div class="flex items-center gap-3">
+                <div class="size-2 rounded-full bg-blue-500 shrink-0" />
+                <p class="text-[13px] text-foreground">
+                  <span class="font-semibold">{{ pendingFinanceCount }} expense{{ pendingFinanceCount > 1 ? 's' : '' }}</span>
+                  pending payment
+                </p>
               </div>
-              <div class="flex-1 min-w-0 pb-1">
-                <div class="flex items-start justify-between gap-2">
-                  <div>
-                    <p class="text-[13px] font-medium text-foreground truncate">{{ item.title }}</p>
-                    <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{{ item.desc }}</p>
+              <NuxtLink to="/app/payments">
+                <Button variant="outline" size="xs" class="border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30">
+                  Pay now
+                </Button>
+              </NuxtLink>
+            </div>
+
+          </div><!-- end left column -->
+
+          <!-- ════════════════ RIGHT COLUMN ════════════════ -->
+          <div class="flex flex-col gap-4 sticky top-0">
+            <!-- <p class="text-[17px] font-semibold text-foreground">Recent Activity</p> -->
+
+            <div v-if="activityFeed.length === 0" class="rounded-xl bg-card border border-border py-12 flex flex-col items-center justify-center gap-2">
+              <Activity class="size-8 text-muted-foreground/40" />
+              <p class="text-[12.5px] text-muted-foreground">No activity yet</p>
+            </div>
+
+            <div v-else class="flex flex-col gap-4">
+              <div
+                v-for="item in activityFeed.slice(0, 6)"
+                :key="item.id"
+                class="flex flex-col gap-1"
+              >
+                <!-- name row -->
+                <div class="flex items-center gap-2.5">
+                  <div
+                    class="size-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                    :style="{ background: statusColor(item.status) }"
+                  >
+                    {{ (item.title[0] ?? '?').toUpperCase() }}
                   </div>
-                  <span class="text-[11px] text-muted-foreground shrink-0 mt-0.5">{{ item.time }}</span>
+                  <p class="text-[13px] font-semibold text-foreground flex-1 truncate">{{ item.title }}</p>
+                  <span
+                    class="text-[10.5px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                    :style="item.status === 'paid'
+                      ? 'background:#d1fae5;color:#065f46'
+                      : item.status === 'rejected'
+                        ? 'background:#fee2e2;color:#991b1b'
+                        : 'background:#fef3c7;color:#92400e'"
+                  >
+                    {{ statusLabel(item.status) }}
+                  </span>
                 </div>
-                <div class="flex items-center gap-2 mt-1.5">
-                  <Badge variant="outline" class="text-[10.5px] h-5 px-1.5">{{ statusLabel(item.status) }}</Badge>
+                <!-- description -->
+                <p class="text-[12px] text-muted-foreground pl-[42px] leading-snug">{{ item.desc }}</p>
+                <!-- amount + time -->
+                <div class="flex items-center justify-between pl-[42px]">
+                  <span class="text-[11px] text-muted-foreground">{{ item.time }}</span>
                   <span class="text-[12px] font-semibold text-foreground tabular-nums">₹{{ item.amount.toLocaleString('en-IN') }}</span>
                 </div>
+                <Separator class="mt-1" />
               </div>
             </div>
-          </div>
+
+          </div><!-- end right column -->
+
         </div>
+      </template>
 
-        <!-- Members -->
-        <div class="flex flex-col rounded-xl bg-card border border-border overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border">
-            <p class="text-[13px] font-semibold text-foreground">
-              Members <span class="text-muted-foreground font-normal">({{ members.length }})</span>
-            </p>
-            <div class="flex items-center gap-2">
-              <NuxtLink v-if="role === 'owner'" to="/app/org"
-                class="size-6 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
-                <Plus class="size-3.5" />
-              </NuxtLink>
-              <button class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <MoreHorizontal class="size-4" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="members.length === 0" class="flex flex-col items-center justify-center gap-2.5 py-12">
-            <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
-              <UserCircle2 class="size-5 text-muted-foreground" />
-            </div>
-            <p class="text-[13px] font-medium text-foreground">No members yet</p>
-            <p class="text-[12px] text-muted-foreground">Invite people to join your organization.</p>
-          </div>
-
-          <div class="grid grid-cols-3 gap-px bg-border">
-            <div
-              v-for="m in members.slice(0, 9)"
-              :key="m.id"
-              class="flex flex-col items-center gap-2 py-4 px-2 bg-card hover:bg-muted/40 transition-colors"
-            >
-              <div
-                class="size-12 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                :style="{ background: memberColor(memberName(m)) }"
-              >
-                {{ memberInitials(memberName(m)) }}
-              </div>
-              <div class="text-center min-w-0 w-full">
-                <p class="text-[12px] font-medium text-foreground truncate px-1">{{ memberName(m) }}</p>
-                <p class="text-[10.5px] text-muted-foreground truncate px-1">{{ m.email }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Role banners ────────────────────────────────────────────── -->
-      <div v-if="role === 'manager' && pendingCount > 0"
-        class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-amber-500/30">
-        <div class="flex items-center gap-3">
-          <div class="size-2 rounded-full bg-amber-500 shrink-0" />
-          <p class="text-[13px] text-foreground">
-            <span class="font-semibold">{{ pendingCount }} expense{{ pendingCount > 1 ? 's' : '' }}</span>
-            waiting for your approval
-          </p>
-        </div>
-        <NuxtLink to="/app/approvals">
-          <Button variant="outline" size="xs" class="border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
-            Review now
-          </Button>
-        </NuxtLink>
-      </div>
-
-      <div v-if="role === 'finance' && pendingFinanceCount > 0"
-        class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-blue-500/30">
-        <div class="flex items-center gap-3">
-          <div class="size-2 rounded-full bg-blue-500 shrink-0" />
-          <p class="text-[13px] text-foreground">
-            <span class="font-semibold">{{ pendingFinanceCount }} expense{{ pendingFinanceCount > 1 ? 's' : '' }}</span>
-            pending payment
-          </p>
-        </div>
-        <NuxtLink to="/app/payments">
-          <Button variant="outline" size="xs" class="border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30">
-            Pay now
-          </Button>
-        </NuxtLink>
-      </div>
-
-    </template>
+    </div>
   </div>
 </template>
