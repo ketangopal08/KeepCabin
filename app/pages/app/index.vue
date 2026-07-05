@@ -375,7 +375,7 @@ onMounted(async () => { await load(); await fetchAll() })
 
           <!-- ════════════════ RIGHT COLUMN ════════════════ -->
           <div class="flex flex-col gap-4 sticky top-0">
-            <p class="text-[17px] font-semibold text-foreground">Recent Activity</p>
+            <!-- <p class="text-[17px] font-semibold text-foreground">Recent Activity</p> -->
 
             <div v-if="activityFeed.length === 0" class="rounded-xl bg-card border border-border py-12 flex flex-col items-center justify-center gap-2">
               <Activity class="size-8 text-muted-foreground/40" />
