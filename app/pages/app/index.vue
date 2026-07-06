@@ -276,7 +276,7 @@ onMounted(async () => { await load(); await fetchAll() })
 
         <!-- ── Overview Header ───────────────────────────────────────── -->
         <div class="flex items-center justify-between kc-fadein" style="animation-delay:60ms">
-          <h1 class="text-[30px] font-semibold text-foreground tracking-tight leading-none">Overview</h1>
+          <h1 class="text-[22px] font-semibold text-foreground tracking-tight leading-none" style="    font-weight: 400;">Overview</h1>
           <div class="flex items-center gap-2">
             <div class="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
               <button
@@ -303,7 +303,7 @@ onMounted(async () => { await load(); await fetchAll() })
           <!-- Metric header -->
           <div class="px-6 py-5">
             <p class="text-[13px] text-muted-foreground">Total Expenses</p>
-            <p class="text-[44px] font-bold text-foreground leading-none mt-2 tabular-nums">
+            <p class="text-[44px] font-bold text-foreground leading-none mt-2 tabular-nums" style="font-weight: 200;">
               ₹{{ totalInRange.toLocaleString('en-IN') }}
             </p>
             <div class="flex items-center gap-2 mt-2.5">
@@ -363,7 +363,7 @@ onMounted(async () => { await load(); await fetchAll() })
               <p class="text-[13px] text-muted-foreground">{{ card.label }}</p>
               <span v-if="card.urgent" class="size-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
             </div>
-            <p class="text-[38px] font-bold text-foreground leading-none mb-1.5 tabular-nums">
+            <p class="text-[38px] font-bold text-foreground leading-none mb-1.5 tabular-nums" style="font-weight: 200;">
               {{ card.value }}
             </p>
             <p class="text-[12px] text-muted-foreground">{{ card.sub }}</p>
