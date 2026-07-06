@@ -217,13 +217,11 @@ onMounted(async () => { await load(); await fetchExpenses() })
           </tr>
         </thead>
         <tbody>
-          <NuxtLink
+          <tr
             v-for="e in filtered"
             :key="e.id"
-            as="tr"
-            :to="`/app/expenses/${e.id}`"
             class="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer group"
-            @click.stop
+            @click="navigateTo(`/app/expenses/${e.id}`)"
           >
             <td class="px-5 py-3.5" @click.stop>
               <input
@@ -273,7 +271,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
                 </svg>
               </button>
             </td>
-          </NuxtLink>
+          </tr>
         </tbody>
       </table>
     </div>
