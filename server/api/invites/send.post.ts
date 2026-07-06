@@ -8,9 +8,12 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody<{ email: string; role: OrgRole; team_id?: string }>(event)
 
-  // Owner can invite manager/finance; manager can invite employee to their team
-  if (ctx.member.role === 'owner' && !['manager', 'finance'].includes(body.role)) {
-    throw createError({ statusCode: 403, message: 'Owner can only invite manager or finance' })
+  // Owner can invite manager/finance to org, or also employee when assigning to a team
+  if (ctx.member.role === 'owner') {
+    const allowed = body.team_id ? ['manager', 'finance', 'employee'] : ['manager', 'finance']
+    if (!allowed.includes(body.role)) {
+      throw createError({ statusCode: 403, message: 'Invalid role for this invite' })
+    }
   }
   if (ctx.member.role === 'manager') {
     if (body.role !== 'employee') throw createError({ statusCode: 403, message: 'Manager can only invite employees' })

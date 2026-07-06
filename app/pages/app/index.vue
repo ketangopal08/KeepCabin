@@ -1,159 +1,217 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
-import {
-  TrendingUp, TrendingDown, Plus, Receipt, CheckCircle,
-  UserPlus, FileDown, Users, Eye, ArrowUpRight, MoreHorizontal,
-  Activity, UserCircle2, ChevronLeft, ChevronRight, Zap,
-} from '@lucide/vue'
+import { Rocket, Settings } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
-const supabase  = useSupabase()
-const { ctx, user, load } = useOrgContext()
+const supabase       = useSupabase()
+const { ctx, load } = useOrgContext()
 const expenses  = ref<Expense[]>([])
-const teams     = ref<{ id: string; name: string; created_at?: string }[]>([])
+const teams     = ref<{ id: string; name: string }[]>([])
 const members   = ref<any[]>([])
 const loading   = ref(true)
 
+const activeFilter = ref<'30d' | '3m' | '12m' | 'all'>('30d')
+
+function setFilter(id: string) {
+  activeFilter.value = id as '30d' | '3m' | '12m' | 'all'
+}
+
 const currentMonth = new Date().toISOString().slice(0, 7)
-const lastMonth    = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7)
+const role         = computed(() => ctx.value?.member?.role)
 
-const role = computed(() => ctx.value?.member?.role)
-
-// ── KPI ───────────────────────────────────────────────────────────────────
+// ── KPIs ─────────────────────────────────────────────────────────────────────
 const totalThisMonth = computed(() =>
   expenses.value.filter(e => e.created_at.startsWith(currentMonth) && e.status !== 'rejected')
     .reduce((s, e) => s + Number(e.amount), 0)
 )
-const totalLastMonth = computed(() =>
-  expenses.value.filter(e => e.created_at.startsWith(lastMonth) && e.status !== 'rejected')
+const paidThisMonth = computed(() =>
+  expenses.value.filter(e => e.created_at.startsWith(currentMonth) && e.status === 'paid')
     .reduce((s, e) => s + Number(e.amount), 0)
 )
-const spendTrend = computed(() => {
-  if (!totalLastMonth.value) return null
-  return Math.round(((totalThisMonth.value - totalLastMonth.value) / totalLastMonth.value) * 100)
-})
 const pendingCount        = computed(() => expenses.value.filter(e => e.status.includes('pending')).length)
 const pendingFinanceCount = computed(() => expenses.value.filter(e => e.status === 'pending_finance').length)
 const paidCount           = computed(() => expenses.value.filter(e => e.status === 'paid').length)
-const rejectedCount       = computed(() => expenses.value.filter(e => e.status === 'rejected').length)
 
-// ── Recent / top pending ──────────────────────────────────────────────────
-const recentExpenses = computed(() => expenses.value.slice(0, 6))
-const topPending     = computed(() => expenses.value.filter(e => e.status.includes('pending')).slice(0, 2))
+// ── Setup steps ───────────────────────────────────────────────────────────────
+const setupSteps = computed(() => [
+  { label: 'Create your organization',    done: !!ctx.value?.org,          href: null },
+  { label: 'Create a team',               done: teams.value.length > 0,    href: '/app/org' },
+  { label: 'Invite team members',         done: members.value.length > 1,  href: '/app/org' },
+  { label: 'Submit your first expense',   done: expenses.value.length > 0, href: '/app/expenses/new' },
+  { label: 'Get an expense approved',
+    done: expenses.value.some(e => ['pending_finance', 'paid'].includes(e.status)),
+    href: '/app/approvals' },
+])
 
-// ── Progress ──────────────────────────────────────────────────────────────
-const resolvedCount  = computed(() => expenses.value.filter(e => e.status === 'paid').length)
-const resolutionRate = computed(() => {
-  if (!expenses.value.length) return 0
-  return Math.round((resolvedCount.value / expenses.value.length) * 100)
+const completedSetupCount = computed(() => setupSteps.value.filter(s => s.done).length)
+const nextSetupStep       = computed(() => setupSteps.value.find(s => !s.done))
+const setupComplete       = computed(() => completedSetupCount.value === setupSteps.value.length)
+const setupProgress       = computed(() => (completedSetupCount.value / setupSteps.value.length) * 100)
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+const chartBuckets = computed((): { label: string; value: number; key: string }[] => {
+  const now     = new Date()
+  const buckets: { label: string; value: number; key: string }[] = []
+
+  if (activeFilter.value === '30d') {
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const key  = d.toISOString().slice(0, 10)
+      const pos  = 29 - i
+      const label = (pos % 7 === 0 || i === 0)
+        ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : ''
+      const value = expenses.value
+        .filter(e => e.created_at.slice(0, 10) === key && e.status !== 'rejected')
+        .reduce((s, e) => s + Number(e.amount), 0)
+      buckets.push({ label, value, key })
+    }
+  } else if (activeFilter.value === '3m') {
+    for (let i = 12; i >= 0; i--) {
+      const end   = new Date(now); end.setDate(end.getDate() - i * 7)
+      const start = new Date(end); start.setDate(start.getDate() - 6)
+      const label = (i % 4 === 0)
+        ? start.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : ''
+      const value = expenses.value
+        .filter(e => { const d = new Date(e.created_at); return d >= start && d <= end && e.status !== 'rejected' })
+        .reduce((s, e) => s + Number(e.amount), 0)
+      buckets.push({ label, value, key: end.toISOString().slice(0, 10) })
+    }
+  } else if (activeFilter.value === '12m') {
+    for (let i = 11; i >= 0; i--) {
+      const d     = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key   = d.toISOString().slice(0, 7)
+      const label = d.toLocaleDateString('en', { month: 'short' })
+      const value = expenses.value
+        .filter(e => e.created_at.startsWith(key) && e.status !== 'rejected')
+        .reduce((s, e) => s + Number(e.amount), 0)
+      buckets.push({ label, value, key })
+    }
+  } else {
+    const months = [...new Set(expenses.value.map(e => e.created_at.slice(0, 7)))].sort()
+    const keys   = months.length > 0 ? months : (() => {
+      const r = []
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        r.push(d.toISOString().slice(0, 7))
+      }
+      return r
+    })()
+    keys.forEach(key => {
+      const d     = new Date(key + '-01')
+      const label = d.toLocaleDateString('en', { month: 'short', year: '2-digit' })
+      const value = expenses.value
+        .filter(e => e.created_at.startsWith(key) && e.status !== 'rejected')
+        .reduce((s, e) => s + Number(e.amount), 0)
+      buckets.push({ label, value, key })
+    })
+  }
+
+  return buckets
 })
 
-// ── Tip carousel ──────────────────────────────────────────────────────────
-const tipIndex = ref(0)
-const tips = computed(() => {
-  const t: string[] = []
-  if (pendingCount.value > 0)
-    t.push(`There ${pendingCount.value === 1 ? 'is' : 'are'} ${pendingCount.value} expense${pendingCount.value > 1 ? 's' : ''} pending review.`)
-  if (totalThisMonth.value > 0)
-    t.push(`You've tracked ₹${totalThisMonth.value.toLocaleString('en-IN')} in expenses this month.`)
-  if (members.value.length > 0)
-    t.push(`Your org has ${members.value.length} member${members.value.length > 1 ? 's' : ''} across ${teams.value.length} team${teams.value.length > 1 ? 's' : ''}.`)
-  if (t.length === 0) t.push('Submit your first expense to start tracking.')
-  return t
+const chartMax    = computed(() => Math.max(...chartBuckets.value.map(b => b.value), 1))
+const totalInRange = computed(() => chartBuckets.value.reduce((s, b) => s + b.value, 0))
+
+const svgBars = computed(() =>
+  chartBuckets.value.map((b, i) => {
+    const n     = chartBuckets.value.length
+    const slotW = 1000 / n
+    const pad   = Math.max(slotW * 0.12, 1.5)
+    return {
+      x: i * slotW + pad,
+      w: slotW - pad * 2,
+      y: b.value > 0 ? 160 - (b.value / chartMax.value) * 150 : 159.5,
+      h: b.value > 0 ? (b.value / chartMax.value) * 150 : 0.5,
+      key: b.key,
+    }
+  })
+)
+
+const dateRangeLabel = computed(() => {
+  const now   = new Date()
+  let start   = new Date()
+  if (activeFilter.value === '30d') start.setDate(start.getDate() - 30)
+  else if (activeFilter.value === '3m') start.setMonth(start.getMonth() - 3)
+  else if (activeFilter.value === '12m') start.setMonth(start.getMonth() - 12)
+  else start = new Date('2020-01-01')
+  const fmt = (d: Date) => d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${fmt(start)} – ${fmt(now)}`
 })
-const currentTip = computed(() => tips.value[tipIndex.value % Math.max(tips.value.length, 1)])
-function nextTip() { tipIndex.value = (tipIndex.value + 1) % Math.max(tips.value.length, 1) }
-function prevTip() { tipIndex.value = (tipIndex.value - 1 + Math.max(tips.value.length, 1)) % Math.max(tips.value.length, 1) }
 
-// ── Formatted date ────────────────────────────────────────────────────────
-const formattedDate = computed(() =>
-  new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-)
+// ── Stats cards (role-aware) ──────────────────────────────────────────────────
+const statsCards = computed(() => {
+  if (role.value === 'employee') return [
+    { label: 'Expenses This Month', value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'Total tracked',     href: '/app/expenses', urgent: false },
+    { label: 'Pending Review',      value: pendingCount.value.toString(),                       sub: 'Awaiting approval', href: '/app/expenses', urgent: pendingCount.value > 0 },
+    { label: 'Reimbursed',          value: paidCount.value.toString(),                          sub: 'Paid expenses',     href: '/app/expenses', urgent: false },
+  ]
+  if (role.value === 'manager') return [
+    { label: 'Team Expenses',    value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',        href: '/app/expenses',  urgent: false },
+    { label: 'Pending Approval', value: pendingCount.value.toString(),                      sub: 'Needs your action', href: '/app/approvals', urgent: pendingCount.value > 0 },
+    { label: 'Team Members',     value: members.value.length.toString(),                    sub: 'In your team',      href: '/app/teams',     urgent: false },
+  ]
+  if (role.value === 'finance') return [
+    { label: 'Total Expenses',   value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',       href: '/app/expenses', urgent: false },
+    { label: 'Pending Payment',  value: pendingFinanceCount.value.toString(),                sub: 'Awaiting payment', href: '/app/payments', urgent: pendingFinanceCount.value > 0 },
+    { label: 'Paid Out',         value: `₹${paidThisMonth.value.toLocaleString('en-IN')}`,  sub: 'Reimbursed',       href: '/app/expenses', urgent: false },
+  ]
+  return [
+    { label: 'Total Expenses', value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',     href: '/app/expenses',  urgent: false },
+    { label: 'Pending',        value: pendingCount.value.toString(),                       sub: 'Awaiting action', href: '/app/approvals', urgent: pendingCount.value > 0 },
+    { label: 'Team Members',   value: members.value.length.toString(),                     sub: 'In organization', href: '/app/org',       urgent: false },
+  ]
+})
 
-// ── Activity feed from expenses ───────────────────────────────────────────
-const activityFeed = computed(() =>
-  expenses.value.slice(0, 8).map(e => ({
-    id:     e.id,
-    title:  e.vendor ?? 'Expense',
-    desc:   activityDesc(e.status),
-    time:   formatTime(e.updated_at ?? e.created_at),
-    amount: Number(e.amount),
-    status: e.status,
-  }))
-)
-
-function activityDesc(s: string) {
-  if (s === 'paid')            return 'Reimbursement processed and marked paid.'
-  if (s === 'rejected')        return 'Expense was declined by a reviewer.'
-  if (s === 'pending_finance') return 'Approved by manager, awaiting payment.'
-  if (s === 'pending_manager') return 'Submitted and waiting for manager approval.'
-  return 'Expense updated.'
-}
-
-function formatTime(iso: string) {
-  const d = new Date(iso)
+// ── Widget: last 3 months bar chart ──────────────────────────────────────────
+const lastThreeMonths = computed(() => {
   const now = new Date()
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-  if (diff < 60)    return 'just now'
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' })
-}
+  return [2, 1, 0].map(i => {
+    const d     = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key   = d.toISOString().slice(0, 7)
+    const label = d.toLocaleDateString('en', { month: 'long' })
+    const value = expenses.value
+      .filter(e => e.created_at.startsWith(key) && e.status !== 'rejected')
+      .reduce((s, e) => s + Number(e.amount), 0)
+    return { key, label, value }
+  })
+})
 
-function statusColor(s: string) {
-  if (s === 'paid')          return '#10b981'
-  if (s === 'rejected')      return '#ef4444'
-  if (s.includes('pending')) return '#f59e0b'
-  return '#9ca3af'
-}
+const monthlyMax = computed(() => Math.max(...lastThreeMonths.value.map(m => m.value), 1))
 
-function statusLabel(s: string) {
-  return s.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-}
+// ── Widget: recent expenses ───────────────────────────────────────────────────
+const recentExpenses = computed(() =>
+  [...expenses.value]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+)
 
-// ── Member helpers ────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#ef4444','#14b8a6']
-
-function memberColor(name: string) {
+function catColor(cat: string) {
+  const p = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
   let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % AVATAR_COLORS.length
-  return AVATAR_COLORS[h] ?? AVATAR_COLORS[0]
+  for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) % p.length
+  return p[h]
 }
 
-function memberInitials(name: string) {
-  if (!name) return '?'
-  return name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+function expInitials(e: Expense) {
+  return (e.vendor ?? e.category ?? '?').slice(0, 2).toUpperCase()
 }
 
-function memberName(m: any): string {
-  return m.user_metadata?.full_name ?? m.email?.split('@')[0] ?? 'Member'
+function fmtShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
-// ── Quick actions ─────────────────────────────────────────────────────────
-const quickActions = computed(() => [
-  { label: 'Submit Expense',   icon: Receipt,     color: '#ffffff', bg: 'linear-gradient(135deg, #f43f5e, #fb923c)', href: '/app/expenses/new',  show: true },
-  { label: 'Review Approvals', icon: CheckCircle, color: '#ffffff', bg: 'linear-gradient(135deg, #06b6d4, #3b82f6)', href: '/app/approvals',     show: role.value === 'manager' || role.value === 'owner' },
-  { label: 'Invite Member',    icon: UserPlus,    color: '#ffffff', bg: 'linear-gradient(135deg, #a855f7, #6366f1)', href: '/app/org',            show: role.value === 'owner' },
-  { label: 'View Reports',     icon: FileDown,    color: '#ffffff', bg: 'linear-gradient(135deg, #f97316, #eab308)', href: '/app/reports',        show: role.value === 'owner' || role.value === 'finance' },
-  { label: 'Manage Teams',     icon: Users,       color: '#ffffff', bg: 'linear-gradient(135deg, #14b8a6, #10b981)', href: '/app/teams',          show: role.value === 'owner' || role.value === 'manager' },
-].filter(a => a.show))
-
-// ── Team expense count helper ─────────────────────────────────────────────
-function teamExpenseCount(teamId: string) {
-  return expenses.value.filter(e => (e as any).team_id === teamId).length
-}
-
-// ── Data fetching ─────────────────────────────────────────────────────────
+// ── Data fetch ────────────────────────────────────────────────────────────────
 async function fetchAll() {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) { await navigateTo('/login'); return }
   const h = { Authorization: `Bearer ${session.access_token}` }
   await Promise.all([
     $fetch<Expense[]>('/api/expenses', { headers: h }).then(d => { expenses.value = d }).catch(() => {}),
-    $fetch<any[]>('/api/teams',   { headers: h }).then(d => { teams.value = d }).catch(() => {}),
-    $fetch<any[]>('/api/members', { headers: h }).then(d => { members.value = d }).catch(() => {}),
+    $fetch<any[]>('/api/teams',        { headers: h }).then(d => { teams.value = d   }).catch(() => {}),
+    $fetch<any[]>('/api/members',      { headers: h }).then(d => { members.value = d }).catch(() => {}),
   ])
   loading.value = false
 }
@@ -162,268 +220,282 @@ onMounted(async () => { await load(); await fetchAll() })
 </script>
 
 <template>
-  <div class="flex flex-col w-full min-w-0 px-28">
-    <div class="w-full max-w-5xl mx-auto flex flex-col gap-5">
+  <div class="-m-6 flex flex-col overflow-auto">
+    <div class="flex flex-col gap-6 px-6 py-6">
 
-      <!-- ── Date heading ──────────────────────────────────────────────── -->
-      <h1 class="text-[22px] font-bold text-foreground tracking-tight">{{ formattedDate }}</h1>
-
-      <!-- ── Loading ──────────────────────────────────────────────────── -->
+      <!-- ── Loading ─────────────────────────────────────────────────── -->
       <template v-if="loading">
-        <div class="grid grid-cols-[1fr_280px] gap-5 items-start">
-          <div class="flex flex-col gap-4">
-            <Skeleton class="h-36 rounded-2xl" />
-            <Skeleton class="h-11 rounded-xl" />
-            <Skeleton class="h-36 rounded-xl" />
-            <Skeleton class="h-48 rounded-xl" />
-            <Skeleton class="h-48 rounded-xl" />
-          </div>
-          <div class="flex flex-col gap-4">
-            <Skeleton class="h-6 w-36 rounded" />
-            <Skeleton class="h-24 rounded-xl" />
-            <Skeleton class="h-24 rounded-xl" />
-            <Skeleton class="h-24 rounded-xl" />
-          </div>
+        <Skeleton class="h-[116px] rounded-2xl" />
+        <div class="flex items-center justify-between">
+          <Skeleton class="h-9 w-40 rounded-lg" />
+          <Skeleton class="h-8 w-72 rounded-full" />
         </div>
+        <Skeleton class="h-[300px] rounded-2xl" />
+        <div class="grid grid-cols-3 gap-3">
+          <Skeleton v-for="n in 3" :key="n" class="h-[120px] rounded-2xl" />
+        </div>
+        <Skeleton class="h-[72px] rounded-2xl" />
       </template>
 
       <template v-else>
-        <div class="grid grid-cols-[1fr_272px] gap-5 items-start">
 
-          <!-- ════════════════ LEFT COLUMN ════════════════ -->
-          <div class="flex flex-col gap-4">
-
-            <!-- Quick actions card -->
-            <div class="rounded-2xl p-4 bg-muted">
-              <p class="text-[12.5px] font-semibold mb-3 text-muted-foreground">Quick actions:</p>
-              <div :class="['grid gap-2', quickActions.length <= 3 ? 'grid-cols-3' : quickActions.length === 4 ? 'grid-cols-4' : 'grid-cols-5']">
-                <NuxtLink
-                  v-for="a in quickActions"
-                  :key="a.label"
-                  :to="a.href"
-                  class="flex flex-col items-center gap-2.5 px-2 py-3.5 rounded-xl bg-card hover:shadow-md hover:-translate-y-0.5 transition-all text-center"
-                  style="border: 1px solid rgba(0,0,0,0.06);"
-                >
-                  <div class="size-8 rounded-lg flex items-center justify-center shrink-0" :style="{ background: a.bg }">
-                    <component :is="a.icon" class="size-4" :style="{ color: a.color }" />
-                  </div>
-                  <span class="text-[12px] font-medium text-foreground leading-tight">{{ a.label }}</span>
-                </NuxtLink>
+        <!-- ── Setup Banner ──────────────────────────────────────────── -->
+        <div v-if="!setupComplete" class="border border-border rounded-2xl overflow-hidden kc-fadein">
+          <div class="grid grid-cols-[1fr_auto]">
+            <div class="px-6 py-5">
+              <div class="flex items-center gap-2 mb-1.5">
+                <Rocket class="size-[15px] text-foreground" />
+                <p class="text-[14px] font-semibold text-foreground">Finish setting up your account</p>
               </div>
-            </div>
-
-            <!-- Tip bar -->
-            <div class="flex items-center justify-between px-4 py-3 rounded-xl bg-muted">
-              <p class="text-[13px] flex-1 leading-snug text-foreground/80">
-                <span class="font-semibold">Tip:</span> {{ currentTip }}
+              <p class="text-[12.5px] text-muted-foreground mb-4 max-w-sm leading-relaxed">
+                Set up your team and start tracking expenses. Complete these steps to unlock the full workflow.
               </p>
-              <div class="flex items-center gap-1.5 ml-4 shrink-0">
-                <span class="text-[12px] tabular-nums text-muted-foreground">
-                  {{ (tipIndex % Math.max(tips.length, 1)) + 1 }}/{{ tips.length }}
-                </span>
-                <button
-                  class="size-6 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
-                  @click="prevTip"
-                >
-                  <ChevronLeft class="size-3.5 text-muted-foreground" />
-                </button>
-                <button
-                  class="size-6 flex items-center justify-center rounded-full hover:bg-foreground/10 transition-colors"
-                  @click="nextTip"
-                >
-                  <ChevronRight class="size-3.5 text-muted-foreground" />
-                </button>
+              <p class="text-[12px] text-muted-foreground mb-2">{{ completedSetupCount }} of {{ setupSteps.length }} complete</p>
+              <div class="w-44 h-[3px] rounded-full bg-border overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-foreground transition-all duration-700"
+                  :style="{ width: setupProgress + '%' }"
+                />
               </div>
             </div>
-
-            <!-- Featured expense + progress -->
-            <div class="rounded-2xl p-4 flex flex-col gap-3 bg-muted">
-
-              <!-- Top recent expense action card -->
-              <NuxtLink
-                v-if="recentExpenses.length > 0"
-                :to="`/app/expenses/${recentExpenses[0].id}`"
-                class="flex items-center gap-4 p-4 rounded-xl bg-card hover:shadow-sm transition-all"
-                style="border: 1px solid rgba(0,0,0,0.06);"
+            <div class="px-7 py-5 border-l border-border flex flex-col justify-center gap-2 min-w-[260px]">
+              <p class="text-[11.5px] text-muted-foreground">Up next</p>
+              <p class="text-[14.5px] font-semibold text-foreground leading-tight">{{ nextSetupStep?.label }}</p>
+              <p class="text-[12px] text-muted-foreground">Complete this step to keep moving forward.</p>
+              <Button
+                v-if="nextSetupStep?.href"
+                size="sm"
+                class="mt-1.5 self-start"
+                as-child
               >
-                <div class="size-10 rounded-xl flex items-center justify-center shrink-0" style="background: #e0e7ff;">
-                  <Receipt class="size-5" style="color: #6366f1;" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-[13.5px] font-semibold text-foreground truncate">{{ recentExpenses[0].vendor ?? 'Expense' }}</p>
-                  <p class="text-[12px] text-muted-foreground mt-0.5">
-                    ₹{{ Number(recentExpenses[0].amount).toLocaleString('en-IN') }} · {{ recentExpenses[0].category }}
-                  </p>
-                </div>
-                <Button size="sm" class="shrink-0 text-[12px]">View</Button>
+                <NuxtLink :to="nextSetupStep.href">Continue setup</NuxtLink>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Overview Header ───────────────────────────────────────── -->
+        <div class="flex items-center justify-between kc-fadein" style="animation-delay:60ms">
+          <h1 class="text-[30px] font-semibold text-foreground tracking-tight leading-none">Overview</h1>
+          <div class="flex items-center gap-2">
+            <div class="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+              <button
+                v-for="f in [{ id: 'all', label: 'All Time' }, { id: '12m', label: '12m' }, { id: '3m', label: '3m' }, { id: '30d', label: '30d' }]"
+                :key="f.id"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-[12.5px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :class="activeFilter === f.id
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'hover:text-foreground'"
+                @click="setFilter(f.id)"
+              >{{ f.label }}</button>
+            </div>
+            <Button variant="outline" size="sm" class="h-8 gap-1.5 text-[12.5px]" as-child>
+              <NuxtLink to="/app/settings">
+                <Settings class="size-3.5" /> Customize
               </NuxtLink>
+            </Button>
+          </div>
+        </div>
 
-              <div v-else class="flex items-center gap-4 p-4 rounded-xl bg-card/70">
-                <p class="text-[13px] text-muted-foreground">No expenses yet — submit your first one.</p>
-              </div>
+        <!-- ── Main Chart Card ───────────────────────────────────────── -->
+        <div class="border border-border rounded-2xl overflow-hidden kc-fadein" style="animation-delay:120ms">
 
-              <!-- Expense overview progress -->
-              <div class="px-1">
-                <div class="flex items-center justify-between mb-1">
-                  <div class="flex items-center gap-2">
-                    <p class="text-[13.5px] font-semibold text-foreground">Expense Overview</p>
-                    <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full" style="background: #d1fae5; color: #065f46;">
-                      <Activity class="size-3" />
-                      {{ resolvedCount }}/{{ expenses.length }}
-                    </span>
-                  </div>
-                  <NuxtLink to="/app/expenses" class="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-                    <ArrowUpRight class="size-3.5" /> Show more
-                  </NuxtLink>
-                </div>
-                <p class="text-[12px] text-muted-foreground mb-2.5">Track your expense reimbursement progress</p>
-                <div class="relative h-2 rounded-full overflow-hidden bg-foreground/10">
+          <!-- Metric header -->
+          <div class="px-6 py-5">
+            <p class="text-[13px] text-muted-foreground">Total Expenses</p>
+            <p class="text-[44px] font-bold text-foreground leading-none mt-2 tabular-nums">
+              ₹{{ totalInRange.toLocaleString('en-IN') }}
+            </p>
+            <div class="flex items-center gap-2 mt-2.5">
+              <span class="size-[7px] rounded-full bg-blue-500 shrink-0" />
+              <span class="text-[12.5px] text-muted-foreground">{{ dateRangeLabel }}</span>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="border-t border-border">
+            <svg
+              viewBox="0 0 1000 160"
+              class="w-full kc-chart"
+              style="height:190px;display:block"
+              preserveAspectRatio="none"
+            >
+              <!-- Grid lines -->
+              <line v-for="n in 4" :key="n"
+                x1="0" x2="1000" :y1="n * 36" :y2="n * 36"
+                class="chart-grid" />
+              <!-- Bars -->
+              <rect
+                v-for="bar in svgBars"
+                :key="bar.key"
+                :x="bar.x" :width="bar.w"
+                :y="bar.y" :height="bar.h"
+                class="chart-bar" rx="2"
+              />
+              <!-- Baseline -->
+              <line x1="0" x2="1000" y1="160" y2="160" class="chart-baseline" />
+            </svg>
+
+            <!-- Date axis labels -->
+            <div
+              class="grid border-t border-border/60"
+              :style="{ gridTemplateColumns: `repeat(${chartBuckets.length}, 1fr)` }"
+            >
+              <span
+                v-for="b in chartBuckets"
+                :key="b.key"
+                class="text-center text-[10px] text-muted-foreground/50 py-2 px-px overflow-hidden leading-none"
+              >{{ b.label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Stats Grid ─────────────────────────────────────────────── -->
+        <div class="grid grid-cols-3 gap-3 kc-fadein" style="animation-delay:180ms">
+          <NuxtLink
+            v-for="card in statsCards"
+            :key="card.label"
+            :to="card.href"
+            class="border rounded-2xl px-6 py-5 transition-colors hover:bg-muted/20 group"
+            :class="card.urgent ? 'border-amber-500/40 dark:border-amber-500/25' : 'border-border'"
+          >
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <p class="text-[13px] text-muted-foreground">{{ card.label }}</p>
+              <span v-if="card.urgent" class="size-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+            </div>
+            <p class="text-[38px] font-bold text-foreground leading-none mb-1.5 tabular-nums">
+              {{ card.value }}
+            </p>
+            <p class="text-[12px] text-muted-foreground">{{ card.sub }}</p>
+          </NuxtLink>
+        </div>
+
+        <!-- ── 3-column Widget Row ───────────────────────────────────── -->
+        <div class="border border-border rounded-2xl overflow-hidden grid grid-cols-3 divide-x divide-border kc-fadein" style="animation-delay:240ms">
+
+          <!-- Monthly Expenses -->
+          <div class="p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <p class="text-[14px] font-medium text-foreground">Expenses</p>
+              <p class="text-[12.5px] text-muted-foreground">Last 3 Months</p>
+            </div>
+            <div class="flex gap-3 flex-1" style="min-height:200px">
+              <div v-for="m in lastThreeMonths" :key="m.key" class="flex-1 flex flex-col h-full">
+                <!-- Bar -->
+                <div class="flex-1 relative rounded-xl overflow-hidden"
+                  :class="m.value === 0 ? 'month-bar-empty' : 'bg-muted/40'">
                   <div
-                    class="h-full rounded-full transition-all duration-500"
-                    style="background: #10b981;"
-                    :style="{ width: resolutionRate + '%' }"
+                    v-if="m.value > 0"
+                    class="absolute bottom-0 left-0 right-0 bg-foreground rounded-xl transition-all duration-700"
+                    :style="{ height: `${Math.max((m.value / monthlyMax) * 100, 6)}%` }"
                   />
                 </div>
-                <p class="text-[12px] text-muted-foreground mt-1.5 text-right">{{ resolutionRate }}% complete</p>
+                <!-- Label -->
+                <div class="mt-3 shrink-0">
+                  <p class="text-[13px] font-medium text-foreground">{{ m.label }}</p>
+                  <p class="text-[12px] text-muted-foreground tabular-nums">₹{{ m.value.toLocaleString('en-IN') }}</p>
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- Recommendations -->
-            <div>
-              <div class="flex items-center gap-2.5 mb-1.5">
-                <p class="text-[17px] font-semibold text-foreground">Recommendations</p>
-                <span class="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background: #ede9fe; color: #6d28d9;">
-                  <Zap class="size-3" /> AI Assistant
-                </span>
+          <!-- Recent Expenses -->
+          <div class="p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <p class="text-[14px] font-medium text-foreground">Recent Expenses</p>
+              <Button variant="secondary" size="sm" class="h-7 text-[12px]" as-child>
+                <NuxtLink to="/app/expenses">View All</NuxtLink>
+              </Button>
+            </div>
+            <div class="flex-1 bg-muted/40 rounded-xl overflow-hidden" style="min-height:200px">
+              <div v-if="recentExpenses.length === 0" class="h-full flex flex-col items-center justify-center p-6 text-center">
+                <p class="text-[14px] font-semibold text-foreground mb-1">No expenses yet</p>
+                <p class="text-[12.5px] text-muted-foreground leading-relaxed">Your most recent expenses will appear here.</p>
               </div>
-              <p class="text-[12.5px] text-muted-foreground mb-3">Your highest priority expenses needing attention.</p>
-
-              <div v-if="topPending.length === 0" class="rounded-xl bg-muted/30 py-10 flex items-center justify-center">
-                <p class="text-[13px] text-muted-foreground">No pending expenses — you're all caught up!</p>
-              </div>
-
-              <div v-else class="grid grid-cols-2 gap-3">
+              <div v-else class="flex flex-col divide-y divide-border/40">
                 <NuxtLink
-                  v-for="(e, i) in topPending"
+                  v-for="e in recentExpenses"
                   :key="e.id"
                   :to="`/app/expenses/${e.id}`"
-                  class="relative flex flex-col gap-3 p-4 rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all"
-                  :style="i === 0
-                    ? 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 60%)'
-                    : 'background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 60%)'"
+                  class="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
                 >
-                  <ArrowUpRight class="absolute top-3 right-3 size-4" style="color: rgba(0,0,0,0.2);" />
                   <div
-                    class="size-9 rounded-xl flex items-center justify-center"
-                    :style="i === 0 ? 'background: rgba(245,158,11,0.2)' : 'background: rgba(139,92,246,0.2)'"
-                  >
-                    <Receipt class="size-4" :style="i === 0 ? 'color:#d97706' : 'color:#7c3aed'" />
+                    class="size-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                    :style="{ background: catColor(e.category) }"
+                  >{{ expInitials(e) }}</div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[12.5px] font-medium text-foreground truncate">{{ e.vendor ?? e.category }}</p>
+                    <p class="text-[11.5px] text-muted-foreground">{{ fmtShortDate(e.expense_date ?? e.created_at) }}</p>
                   </div>
-                  <div>
-                    <p class="text-[13.5px] font-semibold text-foreground leading-tight truncate pr-5">{{ e.vendor ?? 'Expense' }}</p>
-                    <p class="text-[12px] mt-0.5" :style="i === 0 ? 'color:#92400e' : 'color:#5b21b6'">
-                      ₹{{ Number(e.amount).toLocaleString('en-IN') }} · {{ e.category }}
-                    </p>
-                  </div>
-                  <span
-                    class="inline-flex items-center gap-1 self-start text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                    :style="i === 0
-                      ? 'background: rgba(245,158,11,0.25); color: #92400e;'
-                      : 'background: rgba(139,92,246,0.2); color: #5b21b6;'"
-                  >
-                    <span>{{ i === 0 ? '↑' : '=' }}</span>
-                    {{ i === 0 ? 'High' : 'Medium' }}
-                  </span>
+                  <p class="text-[12.5px] font-semibold text-foreground tabular-nums shrink-0">₹{{ Number(e.amount).toLocaleString('en-IN') }}</p>
                 </NuxtLink>
               </div>
             </div>
+          </div>
 
-            <!-- Role alert banners -->
-            <div v-if="role === 'manager' && pendingCount > 0"
-              class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-amber-500/30">
-              <div class="flex items-center gap-3">
-                <div class="size-2 rounded-full bg-amber-500 shrink-0" />
-                <p class="text-[13px] text-foreground">
-                  <span class="font-semibold">{{ pendingCount }} expense{{ pendingCount > 1 ? 's' : '' }}</span>
-                  waiting for your approval
-                </p>
-              </div>
-              <NuxtLink to="/app/approvals">
-                <Button variant="outline" size="xs" class="border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
-                  Review now
+          <!-- Pending Approvals -->
+          <div class="p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <p class="text-[14px] font-medium text-foreground">Pending Approvals</p>
+              <p class="text-[22px] font-bold text-foreground tabular-nums leading-none">{{ pendingCount }}</p>
+            </div>
+            <div class="flex-1 bg-muted/40 rounded-xl flex flex-col items-center justify-center p-6 text-center" style="min-height:200px">
+              <template v-if="pendingCount === 0">
+                <p class="text-[14px] font-semibold text-foreground mb-1">All caught up</p>
+                <p class="text-[12.5px] text-muted-foreground leading-relaxed">No expenses are waiting for approval.</p>
+              </template>
+              <template v-else>
+                <p class="text-[14px] font-semibold text-foreground mb-1">{{ pendingCount }} expense{{ pendingCount !== 1 ? 's' : '' }} pending</p>
+                <p class="text-[12.5px] text-muted-foreground mb-4 leading-relaxed">Review and approve to keep things moving.</p>
+                <Button size="sm" as-child>
+                  <NuxtLink to="/app/approvals">Review now</NuxtLink>
                 </Button>
-              </NuxtLink>
+              </template>
             </div>
-
-            <div v-if="role === 'finance' && pendingFinanceCount > 0"
-              class="flex items-center justify-between px-5 py-3.5 rounded-xl bg-card border border-blue-500/30">
-              <div class="flex items-center gap-3">
-                <div class="size-2 rounded-full bg-blue-500 shrink-0" />
-                <p class="text-[13px] text-foreground">
-                  <span class="font-semibold">{{ pendingFinanceCount }} expense{{ pendingFinanceCount > 1 ? 's' : '' }}</span>
-                  pending payment
-                </p>
-              </div>
-              <NuxtLink to="/app/payments">
-                <Button variant="outline" size="xs" class="border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30">
-                  Pay now
-                </Button>
-              </NuxtLink>
-            </div>
-
-          </div><!-- end left column -->
-
-          <!-- ════════════════ RIGHT COLUMN ════════════════ -->
-          <div class="flex flex-col gap-4 sticky top-0">
-            <!-- <p class="text-[17px] font-semibold text-foreground">Recent Activity</p> -->
-
-            <div v-if="activityFeed.length === 0" class="rounded-xl bg-card border border-border py-12 flex flex-col items-center justify-center gap-2">
-              <Activity class="size-8 text-muted-foreground/40" />
-              <p class="text-[12.5px] text-muted-foreground">No activity yet</p>
-            </div>
-
-            <div v-else class="flex flex-col gap-4">
-              <div
-                v-for="item in activityFeed.slice(0, 6)"
-                :key="item.id"
-                class="flex flex-col gap-1"
-              >
-                <!-- name row -->
-                <div class="flex items-center gap-2.5">
-                  <div
-                    class="size-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                    :style="{ background: statusColor(item.status) }"
-                  >
-                    {{ (item.title[0] ?? '?').toUpperCase() }}
-                  </div>
-                  <p class="text-[13px] font-semibold text-foreground flex-1 truncate">{{ item.title }}</p>
-                  <span
-                    class="text-[10.5px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    :style="item.status === 'paid'
-                      ? 'background:#d1fae5;color:#065f46'
-                      : item.status === 'rejected'
-                        ? 'background:#fee2e2;color:#991b1b'
-                        : 'background:#fef3c7;color:#92400e'"
-                  >
-                    {{ statusLabel(item.status) }}
-                  </span>
-                </div>
-                <!-- description -->
-                <p class="text-[12px] text-muted-foreground pl-[42px] leading-snug">{{ item.desc }}</p>
-                <!-- amount + time -->
-                <div class="flex items-center justify-between pl-[42px]">
-                  <span class="text-[11px] text-muted-foreground">{{ item.time }}</span>
-                  <span class="text-[12px] font-semibold text-foreground tabular-nums">₹{{ item.amount.toLocaleString('en-IN') }}</span>
-                </div>
-                <Separator class="mt-1" />
-              </div>
-            </div>
-
-          </div><!-- end right column -->
+          </div>
 
         </div>
-      </template>
 
+      </template>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes kcFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kc-fadein {
+  animation: kcFadeIn 0.35s ease-out both;
+}
+
+/* Monthly bar empty state — diagonal hatch */
+.month-bar-empty {
+  background-color: hsl(var(--muted));
+  background-image: repeating-linear-gradient(
+    -45deg,
+    hsl(var(--border)) 0,
+    hsl(var(--border)) 1px,
+    transparent 0,
+    transparent 50%
+  );
+  background-size: 8px 8px;
+}
+
+/* SVG chart styles */
+.chart-bar {
+  fill: #3b82f6;
+  fill-opacity: 0.75;
+}
+.chart-grid {
+  stroke: currentColor;
+  stroke-opacity: 0.06;
+  stroke-width: 1;
+}
+.chart-baseline {
+  stroke: currentColor;
+  stroke-opacity: 0.10;
+  stroke-width: 1;
+}
+</style>
