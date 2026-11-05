@@ -4,6 +4,19 @@
 
 Do not commit changes directly. Always leave committing to the user.
 
+## Scope of Changes (STRICT)
+
+Only change exactly what the user asked for. Unwanted changes are not accepted.
+
+- Do not refactor, rename, reformat, or "clean up" code you were not asked to touch.
+- Do not change existing behavior, UI, or logic beyond the requested change — even if it looks like an improvement.
+- Do not revert or overwrite the user's uncommitted changes unless explicitly told to.
+- If a request is ambiguous, ask before editing instead of guessing.
+- Only edit the files directly related to the request. Before touching any other file — especially working core pages like `app/pages/login.vue` — stop and ask the user, naming the file and the exact change.
+- Never remove or replace an existing component/feature (e.g. a page's own loader) as a side effect of another request. Removing something requires explicit confirmation of what will be removed and from which file.
+- If you notice something else worth fixing, mention it — do not change it.
+- Temporary/debug code added to help the user (e.g. preview flags) must be removed once the user is done with it.
+
 ## UI Components — shadcn-vue (REQUIRED)
 
 Always use shadcn-vue components. Never write raw HTML equivalents when a shadcn component exists.

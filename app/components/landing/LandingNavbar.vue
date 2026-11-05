@@ -2,16 +2,6 @@
 import { Sun, Moon } from '@lucide/vue'
 const { isDark, toggle } = useLandingTheme()
 const { show: showLoader } = usePageLoader()
-
-function goToLogin() {
-  showLoader('Checking your account…')
-  navigateTo('/login')
-}
-
-function goToApp(msg = 'Taking you in…') {
-  showLoader(msg)
-  navigateTo('/app')
-}
 </script>
 
 <template>
@@ -36,12 +26,13 @@ function goToApp(msg = 'Taking you in…') {
       </div>
 
       <div class="flex items-center gap-3">
-        <button
+        <NuxtLink
+          to="/login"
           class="text-sm text-[var(--lp-muted)] hover:text-[var(--lp-text)] transition-colors duration-150"
-          @click="goToLogin"
+          @click="showLoader('Checking your account…')"
         >
           Log in
-        </button>
+        </NuxtLink>
 
         <button
           @click="toggle"
@@ -52,12 +43,13 @@ function goToApp(msg = 'Taking you in…') {
           <Moon v-else class="size-4 " />
         </button>
 
-        <button
+        <NuxtLink
+          to="/login"
           class="px-4 py-1.5 text-sm bg-[var(--lp-btn-bg)] text-[var(--lp-btn-text)] font-medium rounded-[10px] hover:opacity-90 transition-opacity duration-150"
-          @click="goToApp('Taking you in…')"
+          @click="showLoader('Taking you in…')"
         >
           Get Started
-        </button>
+        </NuxtLink>
       </div>
 
     </div>
