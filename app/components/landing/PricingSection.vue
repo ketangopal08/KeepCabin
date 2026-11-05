@@ -19,7 +19,7 @@ const { stop } = useIntersectionObserver(
 const tiers = [
   {
     name: 'Free',
-    price: '$0',
+    price: '₹0',
     features: ['50 receipts/month', 'Google Drive sync', 'OCR extraction'],
     cta: 'Get started',
     href: '/app',
@@ -27,7 +27,7 @@ const tiers = [
   },
   {
     name: 'Pro',
-    price: '$9',
+    price: '₹499',
     features: ['Unlimited receipts', 'Google Drive sync', 'Priority support', 'CSV export'],
     cta: 'Get started',
     href: '/app',
@@ -35,7 +35,7 @@ const tiers = [
   },
   {
     name: 'Business',
-    price: '$29',
+    price: '₹999',
     features: ['Unlimited receipts', 'Team access', 'API access', 'Custom branding'],
     cta: 'Contact us',
     href: 'mailto:hello@keepcabin.com',

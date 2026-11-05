@@ -12,6 +12,7 @@ onMounted(init)
     <LandingHeroSection />
     <LandingRevealSection />
     <LandingHowItWorksSection />
+    <LandingWorkflowSection />
     <LandingFeaturesSection />
     <LandingTestimonialsSection />
     <LandingPricingSection />

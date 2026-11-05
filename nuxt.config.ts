@@ -19,6 +19,12 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
   modules: [],
+  // Supabase session lives in the browser only, so the server can't run the auth check.
+  // Render /app client-side so logged-out users are redirected before any dashboard UI shows.
+  routeRules: {
+    '/app': { ssr: false },
+    '/app/**': { ssr: false },
+  },
   // UI components registered without path prefix so <Button>, <Card>, <Sidebar> etc. work directly.
   // The full ~/components scan still runs (for landing/ and app/ prefixed components),
   // registering UI components a second time as <UiButton> etc. — different names, no conflict.

@@ -19,20 +19,13 @@ function setFilter(id: string) {
 }
 
 const currentMonth = new Date().toISOString().slice(0, 7)
-const role         = computed(() => ctx.value?.member?.role)
 
 // ── KPIs ─────────────────────────────────────────────────────────────────────
 const totalThisMonth = computed(() =>
   expenses.value.filter(e => e.created_at.startsWith(currentMonth) && e.status !== 'rejected')
     .reduce((s, e) => s + Number(e.amount), 0)
 )
-const paidThisMonth = computed(() =>
-  expenses.value.filter(e => e.created_at.startsWith(currentMonth) && e.status === 'paid')
-    .reduce((s, e) => s + Number(e.amount), 0)
-)
-const pendingCount        = computed(() => expenses.value.filter(e => e.status.includes('pending')).length)
-const pendingFinanceCount = computed(() => expenses.value.filter(e => e.status === 'pending_finance').length)
-const paidCount           = computed(() => expenses.value.filter(e => e.status === 'paid').length)
+const pendingCount = computed(() => expenses.value.filter(e => e.status.includes('pending')).length)
 
 // ── Setup steps ───────────────────────────────────────────────────────────────
 const setupSteps = computed(() => [
@@ -141,29 +134,12 @@ const dateRangeLabel = computed(() => {
   return `${fmt(start)} – ${fmt(now)}`
 })
 
-// ── Stats cards (role-aware) ──────────────────────────────────────────────────
-const statsCards = computed(() => {
-  if (role.value === 'employee') return [
-    { label: 'Expenses This Month', value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'Total tracked',     href: '/app/expenses', urgent: false },
-    { label: 'Pending Review',      value: pendingCount.value.toString(),                       sub: 'Awaiting approval', href: '/app/expenses', urgent: pendingCount.value > 0 },
-    { label: 'Reimbursed',          value: paidCount.value.toString(),                          sub: 'Paid expenses',     href: '/app/expenses', urgent: false },
-  ]
-  if (role.value === 'manager') return [
-    { label: 'Team Expenses',    value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',        href: '/app/expenses',  urgent: false },
-    { label: 'Pending Approval', value: pendingCount.value.toString(),                      sub: 'Needs your action', href: '/app/approvals', urgent: pendingCount.value > 0 },
-    { label: 'Team Members',     value: members.value.length.toString(),                    sub: 'In your team',      href: '/app/teams',     urgent: false },
-  ]
-  if (role.value === 'finance') return [
-    { label: 'Total Expenses',   value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',       href: '/app/expenses', urgent: false },
-    { label: 'Pending Payment',  value: pendingFinanceCount.value.toString(),                sub: 'Awaiting payment', href: '/app/payments', urgent: pendingFinanceCount.value > 0 },
-    { label: 'Paid Out',         value: `₹${paidThisMonth.value.toLocaleString('en-IN')}`,  sub: 'Reimbursed',       href: '/app/expenses', urgent: false },
-  ]
-  return [
-    { label: 'Total Expenses', value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',     href: '/app/expenses',  urgent: false },
-    { label: 'Pending',        value: pendingCount.value.toString(),                       sub: 'Awaiting action', href: '/app/approvals', urgent: pendingCount.value > 0 },
-    { label: 'Team Members',   value: members.value.length.toString(),                     sub: 'In organization', href: '/app/org',       urgent: false },
-  ]
-})
+// ── Stats cards (same for all roles) ─────────────────────────────────────────
+const statsCards = computed(() => [
+  { label: 'Total Expenses', value: `₹${totalThisMonth.value.toLocaleString('en-IN')}`, sub: 'This month',      href: '/app/expenses',  urgent: false },
+  { label: 'Pending',        value: pendingCount.value.toString(),                       sub: 'Awaiting action', href: '/app/approvals', urgent: pendingCount.value > 0 },
+  { label: 'Team Members',   value: members.value.length.toString(),                     sub: 'In organization', href: '/app/org',        urgent: false },
+])
 
 // ── Widget: last 3 months bar chart ──────────────────────────────────────────
 const lastThreeMonths = computed(() => {
@@ -303,7 +279,7 @@ onMounted(async () => { await load(); await fetchAll() })
           <!-- Metric header -->
           <div class="px-6 py-5">
             <p class="text-[13px] text-muted-foreground">Total Expenses</p>
-            <p class="text-[44px] font-bold text-foreground leading-none mt-2 tabular-nums" style="font-weight: 200;">
+            <p class="text-[44px] font-bold text-foreground leading-none mt-2 tabular-nums" style="font-weight: 400;">
               ₹{{ totalInRange.toLocaleString('en-IN') }}
             </p>
             <div class="flex items-center gap-2 mt-2.5">
@@ -363,7 +339,7 @@ onMounted(async () => { await load(); await fetchAll() })
               <p class="text-[13px] text-muted-foreground">{{ card.label }}</p>
               <span v-if="card.urgent" class="size-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
             </div>
-            <p class="text-[38px] font-bold text-foreground leading-none mb-1.5 tabular-nums" style="font-weight: 200;">
+            <p class="text-[38px] font-bold text-foreground leading-none mb-1.5 tabular-nums" style="font-weight: 400;">
               {{ card.value }}
             </p>
             <p class="text-[12px] text-muted-foreground">{{ card.sub }}</p>
