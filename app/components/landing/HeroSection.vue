@@ -1,10 +1,10 @@
 <script setup lang="ts">
 const receipts = [
-  { initials: 'SB', name: 'Starbucks Coffee', category: 'Food & dining', date: 'Jun 25, 2026', amount: '-$9.94', status: 'Processed' },
-  { initials: 'UB', name: 'Uber Eats', category: 'Food & dining', date: 'Jun 24, 2026', amount: '-$34.50', status: 'Processed' },
-  { initials: 'AM', name: 'Amazon Business', category: 'Office', date: 'Jun 23, 2026', amount: '-$127.00', status: 'Processing' },
-  { initials: 'WG', name: 'Wegmans', category: 'Groceries', date: 'Jun 22, 2026', amount: '-$52.33', status: 'Processed' },
-  { initials: 'ZM', name: 'Zoom Pro', category: 'Software', date: 'Jun 21, 2026', amount: '-$14.99', status: 'Processed' },
+  { initials: 'SB', name: 'Starbucks Coffee', category: 'Food & dining', date: 'Jun 25, 2026', amount: '-₹9.94', status: 'Processed' },
+  { initials: 'UB', name: 'Uber Eats', category: 'Food & dining', date: 'Jun 24, 2026', amount: '-₹34.50', status: 'Processed' },
+  { initials: 'AM', name: 'Amazon Business', category: 'Office', date: 'Jun 23, 2026', amount: '-₹127.00', status: 'Processing' },
+  { initials: 'WG', name: 'Wegmans', category: 'Groceries', date: 'Jun 22, 2026', amount: '-₹52.33', status: 'Processed' },
+  { initials: 'ZM', name: 'Zoom Pro', category: 'Software', date: 'Jun 21, 2026', amount: '-₹14.99', status: 'Processed' },
 ]
 </script>
 
@@ -100,7 +100,7 @@ const receipts = [
               <p class="text-[10px] text-[var(--lp-faint)] uppercase tracking-widest mt-5 mb-3 font-medium">This month</p>
               <div class="bg-[var(--lp-card-inner)] border border-[var(--lp-border)] rounded-[6px] p-3">
                 <p class="text-[10px] text-[var(--lp-muted)]">Total spent</p>
-                <p class="text-xl font-bold text-[var(--lp-text)] mt-0.5">$1,284</p>
+                <p class="text-xl font-bold text-[var(--lp-text)] mt-0.5">₹1,284</p>
                 <p class="text-[10px] text-[#05df72] mt-1">↑ 12 receipts</p>
               </div>
             </div>

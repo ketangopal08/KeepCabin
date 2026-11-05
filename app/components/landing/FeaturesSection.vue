@@ -44,27 +44,27 @@ useIntersectionObserver(
         <div class="bg-[var(--lp-card)] border border-[var(--lp-border)] rounded-[10px] p-5 ">
           <p class="text-xs text-[var(--lp-faint)] mb-3">Google Drive — /receipts-2026</p>
           <div class="flex items-center gap-3 py-2 border-b border-[var(--lp-card-inner)]">
-            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#0c8ce9]">📄</div>
+            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#05df72]">📄</div>
             <span class="text-xs text-[var(--lp-text)] flex-1">starbucks_jun25.jpg</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#002c22] text-[#05df72]">Synced</span>
           </div>
           <div class="flex items-center gap-3 py-2 border-b border-[var(--lp-card-inner)]">
-            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#0c8ce9]">📄</div>
+            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#05df72]">📄</div>
             <span class="text-xs text-[var(--lp-text)] flex-1">uber_eats_jun24.jpg</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#002c22] text-[#05df72]">Synced</span>
           </div>
           <div class="flex items-center gap-3 py-2 border-b border-[var(--lp-card-inner)]">
-            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#0c8ce9]">📄</div>
+            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#05df72]">📄</div>
             <span class="text-xs text-[var(--lp-text)] flex-1">amazon_jun23.jpg</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#002c22] text-[#05df72]">Synced</span>
           </div>
           <div class="flex items-center gap-3 py-2 border-b border-[var(--lp-card-inner)]">
-            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#0c8ce9]">📄</div>
+            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#05df72]">📄</div>
             <span class="text-xs text-[var(--lp-text)] flex-1">wegmans_jun22.jpg</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#002c22] text-[#05df72]">Synced</span>
           </div>
           <div class="flex items-center gap-3 py-2">
-            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#0c8ce9]">📄</div>
+            <div class="size-6 rounded bg-[var(--lp-card-inner)] border border-[var(--lp-border)] flex items-center justify-center text-[10px] text-[#05df72]">📄</div>
             <span class="text-xs text-[var(--lp-text)] flex-1">zoom_jun21.jpg</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#002c22] text-[#05df72]">Synced</span>
           </div>
@@ -90,19 +90,19 @@ useIntersectionObserver(
           </div>
           <div class="flex justify-between py-1.5 border-b border-[var(--lp-card-inner)]">
             <span class="text-xs text-[var(--lp-muted)]">Caramel Macchiato</span>
-            <span class="text-xs text-[var(--lp-text)] font-medium">$5.95</span>
+            <span class="text-xs text-[var(--lp-text)] font-medium">₹5.95</span>
           </div>
           <div class="flex justify-between py-1.5 border-b border-[var(--lp-card-inner)]">
             <span class="text-xs text-[var(--lp-muted)]">Butter Croissant</span>
-            <span class="text-xs text-[var(--lp-text)] font-medium">$3.25</span>
+            <span class="text-xs text-[var(--lp-text)] font-medium">₹3.25</span>
           </div>
           <div class="flex justify-between py-1.5">
             <span class="text-xs text-[var(--lp-muted)]">Tax</span>
-            <span class="text-xs text-[var(--lp-text)] font-medium">$0.74</span>
+            <span class="text-xs text-[var(--lp-text)] font-medium">₹0.74</span>
           </div>
           <div class="flex justify-between pt-2 mt-1">
             <span class="text-sm font-bold text-[var(--lp-text)]">Total</span>
-            <span class="text-sm font-bold text-[#05df72]">$9.94</span>
+            <span class="text-sm font-bold text-[#05df72]">₹9.94</span>
           </div>
           <div class="mt-3 inline-flex items-center gap-1 px-2 py-1 rounded bg-[#002c22] text-[#05df72] text-[11px]">
             ● 98% confidence
@@ -153,7 +153,7 @@ useIntersectionObserver(
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-[var(--lp-card-inner)] border border-[var(--lp-border)] rounded-[8px] p-3">
               <p class="text-[10px] text-[var(--lp-muted)] uppercase tracking-wider">This month</p>
-              <p class="text-2xl font-bold text-[var(--lp-text)] mt-1">$1,284</p>
+              <p class="text-2xl font-bold text-[var(--lp-text)] mt-1">₹1,284</p>
               <p class="text-[11px] text-[#05df72] mt-0.5">↑ 12 receipts</p>
             </div>
             <div class="bg-[var(--lp-card-inner)] border border-[var(--lp-border)] rounded-[8px] p-3">
@@ -166,17 +166,17 @@ useIntersectionObserver(
             <div class="flex items-center gap-2 px-3 py-2 rounded-[6px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)]">
               <div class="size-6 rounded bg-[var(--lp-bg)] border border-[var(--lp-border)] text-[var(--lp-muted)] text-[9px] font-bold flex items-center justify-center">SB</div>
               <span class="text-xs text-[var(--lp-text)] flex-1">Starbucks</span>
-              <span class="text-xs text-[var(--lp-text)] font-medium">$9.94</span>
+              <span class="text-xs text-[var(--lp-text)] font-medium">₹9.94</span>
             </div>
             <div class="flex items-center gap-2 px-3 py-2 rounded-[6px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)]">
               <div class="size-6 rounded bg-[var(--lp-bg)] border border-[var(--lp-border)] text-[var(--lp-muted)] text-[9px] font-bold flex items-center justify-center">UB</div>
               <span class="text-xs text-[var(--lp-text)] flex-1">Uber Eats</span>
-              <span class="text-xs text-[var(--lp-text)] font-medium">$34.50</span>
+              <span class="text-xs text-[var(--lp-text)] font-medium">₹34.50</span>
             </div>
             <div class="flex items-center gap-2 px-3 py-2 rounded-[6px] bg-[var(--lp-card-inner)] border border-[var(--lp-border)]">
               <div class="size-6 rounded bg-[var(--lp-bg)] border border-[var(--lp-border)] text-[var(--lp-muted)] text-[9px] font-bold flex items-center justify-center">AM</div>
               <span class="text-xs text-[var(--lp-text)] flex-1">Amazon</span>
-              <span class="text-xs text-[var(--lp-text)] font-medium">$127.00</span>
+              <span class="text-xs text-[var(--lp-text)] font-medium">₹127.00</span>
             </div>
           </div>
         </div>

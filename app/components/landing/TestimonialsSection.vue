@@ -59,7 +59,7 @@ const testimonials = [
         >
           <p class="text-sm text-[var(--lp-muted)] leading-relaxed flex-1 italic">"{{ t.quote }}"</p>
           <div class="flex items-center gap-3">
-            <div class="size-8 rounded-full bg-[var(--lp-card-inner)] border border-[var(--lp-border)] text-[#0c8ce9] font-bold text-xs flex items-center justify-center shrink-0">
+            <div class="size-8 rounded-full bg-[var(--lp-card-inner)] border border-[var(--lp-border)] text-[#05df72] font-bold text-xs flex items-center justify-center shrink-0">
               {{ t.initials }}
             </div>
             <div>
@@ -79,7 +79,7 @@ const testimonials = [
           >
             <p class="text-sm text-[var(--lp-muted)] leading-relaxed flex-1 italic">"{{ t.quote }}"</p>
             <div class="flex items-center gap-3">
-              <div class="size-8 rounded-full bg-[var(--lp-card-inner)] border border-[var(--lp-border)] text-[#0c8ce9] font-bold text-xs flex items-center justify-center shrink-0">
+              <div class="size-8 rounded-full bg-[var(--lp-card-inner)] border border-[var(--lp-border)] text-[#05df72] font-bold text-xs flex items-center justify-center shrink-0">
                 {{ t.initials }}
               </div>
               <div>
