@@ -10,7 +10,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@iconify-json/material-symbols-light": "^1.2.102",
+    "@iconify-json/solar": "^1.2.16",
     "@lucide/vue": "^1.23.0",
+    "@nuxt/icon": "^2.6.2",
     "@supabase/supabase-js": "^2.108.2",
     "@tanstack/vue-table": "^8.21.3",
     "@vueuse/core": "^14.3.0",

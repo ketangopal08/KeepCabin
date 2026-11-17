@@ -2,7 +2,6 @@
 import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
-import { Check, X, Eye, ClipboardList } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -13,6 +12,15 @@ const rejectingId  = ref<string | null>(null)
 const rejectReason = ref('')
 const approving    = ref<Set<string>>(new Set())
 const rejecting    = ref<Set<string>>(new Set())
+const search       = ref('')
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return expenses.value
+  return expenses.value.filter(e =>
+    (e.vendor ?? '').toLowerCase().includes(q) || e.category.toLowerCase().includes(q)
+  )
+})
 
 function catColor(cat: string) {
   const p = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
@@ -88,22 +96,22 @@ onMounted(fetchPending)
 </script>
 
 <template>
-  <div class="-m-6 flex flex-col h-full">
+  <AppPage>
 
-    <!-- Sub-toolbar -->
-    <div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-background shrink-0">
-      <ClipboardList class="size-4 text-muted-foreground" />
-      <span class="text-[13px] font-medium text-foreground flex-1">Pending Approvals</span>
-      <Badge v-if="!loading && expenses.length > 0" variant="secondary" class="text-[11.5px]">
-        {{ expenses.length }}
-      </Badge>
-    </div>
+    <!-- Header -->
+    <AppPageHeader title="Approvals" description="Review and approve expenses submitted by your team." />
+
+    <!-- Tabs -->
+    <AppPageTabs model-value="pending" :tabs="[{ id: 'pending', label: 'Pending', count: loading ? undefined : expenses.length }]" />
+
+    <!-- Search -->
+    <AppSearchInput v-model="search" placeholder="Search by vendor or category" class="mb-4" />
 
     <!-- Loading -->
     <div v-if="loading" class="flex flex-col">
-      <div v-for="n in 5" :key="n" class="flex items-center gap-4 px-5 py-4 border-b border-border">
-        <Skeleton class="size-10 rounded-xl shrink-0" />
-        <div class="flex flex-col gap-1.5 flex-1">
+      <div v-for="n in 5" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-4">
+        <Skeleton class="size-9 shrink-0 rounded-lg" />
+        <div class="flex flex-1 flex-col gap-1.5">
           <Skeleton class="h-4 w-36 rounded" />
           <Skeleton class="h-3 w-48 rounded" />
         </div>
@@ -114,115 +122,115 @@ onMounted(fetchPending)
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="expenses.length === 0" class="flex flex-col items-center justify-center flex-1 gap-5">
-      <div class="size-[72px] rounded-2xl border-2 border-dashed border-border flex items-center justify-center">
-        <ClipboardList class="size-8 text-muted-foreground/40" />
-      </div>
-      <div class="text-center">
-        <p class="text-[15px] font-semibold text-foreground">No pending approvals</p>
-        <p class="text-[13px] text-muted-foreground mt-1">Expenses submitted by your team will appear here.</p>
-      </div>
+    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+      <Icon name="solar:clipboard-list-linear" class="size-7 text-muted-foreground" />
+      <p class="text-[15px] text-foreground">{{ search ? 'No matching expenses' : 'No pending approvals' }}</p>
+      <p class="-mt-1.5 text-sm text-muted-foreground">
+        {{ search ? 'Try a different search term.' : 'Expenses submitted by your team will appear here.' }}
+      </p>
     </div>
 
-    <!-- Expense list -->
-    <div v-else class="flex-1 overflow-auto">
-      <div
-        v-for="e in expenses"
-        :key="e.id"
-        class="flex flex-col border-b border-border hover:bg-muted/20 transition-colors"
-      >
-        <!-- Main row -->
-        <div class="flex items-center gap-4 px-5 py-4">
-          <!-- Category avatar -->
-          <div
-            class="size-10 rounded-xl flex items-center justify-center text-[12px] font-bold text-white shrink-0"
-            :style="{ background: catColor(e.category) }"
-          >
-            {{ initials(e.vendor ?? e.category) }}
-          </div>
-
-          <!-- Details -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="text-[13.5px] font-medium text-foreground truncate">{{ e.vendor ?? 'Expense' }}</p>
-              <Badge variant="outline" class="text-[11px] shrink-0 capitalize">{{ e.category }}</Badge>
-            </div>
-            <p class="text-[12px] text-muted-foreground mt-0.5">
+    <!-- Expense table -->
+    <Table v-else>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Date</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Amount</TableHead>
+          <TableHead class="h-11 w-px" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <template v-for="e in filtered" :key="e.id">
+          <TableRow class="border-border" :class="rejectingId === e.id ? 'border-b-0' : ''">
+            <TableCell class="px-2 py-3">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+                  :style="{ background: catColor(e.category) }"
+                >
+                  {{ initials(e.vendor ?? e.category) }}
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-foreground">{{ e.vendor ?? 'Expense' }}</p>
+                  <p v-if="e.description" class="mt-0.5 max-w-[320px] truncate text-[12.5px] text-muted-foreground">{{ e.description }}</p>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell class="py-3">
+              <Badge variant="outline" class="font-normal capitalize">{{ e.category }}</Badge>
+            </TableCell>
+            <TableCell class="py-3 text-muted-foreground">
               {{ e.expense_date ? fmtDate(e.expense_date) : fmtDate(e.created_at) }}
-              <template v-if="e.description"> · {{ e.description }}</template>
-            </p>
-          </div>
+            </TableCell>
+            <TableCell class="py-3 font-medium tabular-nums text-foreground">
+              ₹{{ Number(e.amount).toLocaleString('en-IN') }}
+            </TableCell>
+            <TableCell class="py-3">
+              <div class="flex items-center justify-end gap-2">
+                <Button
+                  class="h-8 gap-1.5 rounded-lg border-0 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
+                  :disabled="approving.has(e.id)"
+                  @click="approve(e.id)"
+                >
+                  <svg v-if="approving.has(e.id)" class="size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                    <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                  </svg>
+                  <Icon name="solar:check-linear" v-else class="size-3.5" />
+                  {{ approving.has(e.id) ? 'Approving…' : 'Approve' }}
+                </Button>
+                <Button
+                  variant="outline"
+                  class="h-8 gap-1.5 rounded-lg border-red-200 px-3 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20"
+                  @click="rejectingId = rejectingId === e.id ? null : e.id; rejectReason = ''"
+                >
+                  <Icon name="solar:close-linear" class="size-3.5" /> Reject
+                </Button>
+                <Button variant="outline" size="icon" class="rounded-lg text-muted-foreground" as-child>
+                  <NuxtLink :to="`/app/expenses/${e.id}`">
+                    <Icon name="solar:eye-linear" class="size-4" />
+                  </NuxtLink>
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
 
-          <!-- Amount -->
-          <p class="text-[15px] font-bold text-foreground shrink-0 tabular-nums">
-            ₹{{ Number(e.amount).toLocaleString('en-IN') }}
-          </p>
+          <!-- Reject reason input (inline expand) -->
+          <TableRow v-if="rejectingId === e.id" class="border-border hover:bg-transparent">
+            <TableCell colspan="5" class="px-2 pt-0 pb-4">
+              <div class="flex gap-2">
+                <Input
+                  v-model="rejectReason"
+                  placeholder="Reason for rejection…"
+                  class="h-9 text-sm"
+                  @keydown.enter="reject(e.id)"
+                  @keydown.escape="rejectingId = null; rejectReason = ''"
+                />
+                <Button
+                  variant="destructive"
+                  class="h-9 shrink-0 rounded-lg px-4"
+                  :disabled="rejecting.has(e.id) || !rejectReason.trim()"
+                  @click="reject(e.id)"
+                >
+                  <svg v-if="rejecting.has(e.id)" class="mr-1 size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                    <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                  </svg>
+                  {{ rejecting.has(e.id) ? 'Rejecting…' : 'Confirm' }}
+                </Button>
+                <Button
+                  variant="outline"
+                  class="h-9 shrink-0 rounded-lg px-4"
+                  @click="rejectingId = null; rejectReason = ''"
+                >Cancel</Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        </template>
+      </TableBody>
+    </Table>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              class="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-[12.5px]"
-              :disabled="approving.has(e.id)"
-              @click="approve(e.id)"
-            >
-              <svg v-if="approving.has(e.id)" class="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              </svg>
-              <Check v-else class="size-3.5" />
-              {{ approving.has(e.id) ? 'Approving…' : 'Approve' }}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20 text-[12.5px]"
-              @click="rejectingId = rejectingId === e.id ? null : e.id; rejectReason = ''"
-            >
-              <X class="size-3.5" /> Reject
-            </Button>
-            <Button variant="ghost" size="icon-sm" class="h-8 w-8 text-muted-foreground" as-child>
-              <NuxtLink :to="`/app/expenses/${e.id}`">
-                <Eye class="size-3.5" />
-              </NuxtLink>
-            </Button>
-          </div>
-        </div>
-
-        <!-- Reject reason input (inline expand) -->
-        <div
-          v-if="rejectingId === e.id"
-          class="px-5 pb-4 flex gap-2"
-        >
-          <Input
-            v-model="rejectReason"
-            placeholder="Reason for rejection…"
-            class="text-[13px]"
-            @keydown.enter="reject(e.id)"
-            @keydown.escape="rejectingId = null; rejectReason = ''"
-          />
-          <Button
-            variant="destructive"
-            size="sm"
-            class="h-9 shrink-0"
-            :disabled="rejecting.has(e.id) || !rejectReason.trim()"
-            @click="reject(e.id)"
-          >
-            <svg v-if="rejecting.has(e.id)" class="animate-spin size-3.5 mr-1 shrink-0" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            {{ rejecting.has(e.id) ? 'Rejecting…' : 'Confirm' }}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-9 shrink-0"
-            @click="rejectingId = null; rejectReason = ''"
-          >Cancel</Button>
-        </div>
-      </div>
-    </div>
-
-  </div>
+  </AppPage>
 </template>

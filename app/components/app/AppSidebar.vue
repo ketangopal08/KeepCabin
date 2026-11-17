@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import {
-  LayoutDashboard, Receipt, Plus, CheckCircle, Users, CreditCard,
-  FileDown, Building2, LogOut, Settings, HelpCircle, Search, Layers, ChevronsUpDown,
-} from '@lucide/vue'
 import { useSupabase } from '~~/lib/supabase'
 import type { Team } from '~~/lib/supabase'
 
@@ -17,6 +13,7 @@ async function logout() {
 }
 
 const role  = computed(() => ctx.value?.member?.role)
+const orgSwitcherOpen = ref(false)
 
 // Fetch teams list (owner only)
 const teams = ref<Team[]>([])
@@ -32,23 +29,23 @@ watch(() => ctx.value?.org?.id, async (orgId) => {
 
 const workspaceItems = computed(() => {
   if (role.value === 'employee') return [
-    { label: 'My Expenses', icon: Receipt, href: '/app/expenses' },
-    { label: 'Submit Expense', icon: Plus, href: '/app/expenses/new' },
+    { label: 'My Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
+    { label: 'Submit Expense', icon: 'solar:add-linear', href: '/app/expenses/new' },
   ]
   if (role.value === 'manager') return [
-    { label: 'Approvals', icon: CheckCircle, href: '/app/approvals' },
-    { label: 'Expenses', icon: Receipt, href: '/app/expenses' },
-    { label: 'My Team', icon: Users, href: '/app/team' },
+    { label: 'Approvals', icon: 'solar:check-circle-linear', href: '/app/approvals' },
+    { label: 'Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
+    { label: 'My Team', icon: 'solar:users-group-rounded-linear', href: '/app/team' },
   ]
   if (role.value === 'finance') return [
-    { label: 'Payments', icon: CreditCard, href: '/app/payments' },
-    { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
-    { label: 'Reports', icon: FileDown, href: '/app/reports' },
+    { label: 'Payments', icon: 'solar:card-linear', href: '/app/payments' },
+    { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports' },
   ]
   if (role.value === 'owner') return [
-    { label: 'All Expenses', icon: Receipt, href: '/app/expenses' },
-    { label: 'Reports', icon: FileDown, href: '/app/reports' },
-    { label: 'Organization', icon: Building2, href: '/app/org' },
+    { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports' },
+    { label: 'Organization', icon: 'solar:buildings-2-linear', href: '/app/org' },
   ]
   return []
 })
@@ -74,64 +71,55 @@ const orgColor = computed(() => {
 </script>
 
 <template>
-  <Sidebar collapsible="icon">
+  <Sidebar collapsible="icon" class="[--text-sm:0.8rem]">
 
-    <!-- ── Header ── -->
-    <SidebarHeader class="border-b border-sidebar-border px-3 h-11 flex-row items-center py-0">
-      <div class="flex items-center gap-2.5 w-full">
+    <!-- ── Header: logo / organization switcher ── -->
+    <SidebarHeader class="h-12 flex-row items-center px-3 py-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+      <Button
+        variant="ghost"
+        class="h-9 min-w-0 flex-1 cursor-pointer justify-start gap-2.5 rounded-lg px-2 hover:bg-sidebar-accent group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:px-0"
+        @click="orgSwitcherOpen = true"
+      >
         <img
           v-if="orgImageUrl && !orgImageError"
           :src="orgImageUrl"
           alt="org"
-          class="size-[28px] shrink-0 rounded-md object-cover"
+          class="size-6 shrink-0 rounded-full object-cover"
           @error="orgImageError = true"
         />
         <div
           v-else
-          class="flex size-[28px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-black"
+          class="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-black"
           :style="{ background: orgColor }"
         >
           {{ orgInitials.charAt(0) }}
         </div>
-        <div class="flex flex-col min-w-0 flex-1">
-          <span class="truncate text-[13px] font-semibold text-sidebar-foreground leading-tight" style="text-transform: capitalize;">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
-          <span class="text-[10.5px] text-sidebar-foreground/50 capitalize leading-tight">{{ ctx?.member?.role ?? 'workspace' }}</span>
-        </div>
-        <ChevronsUpDown class="size-4 shrink-0 text-sidebar-foreground/40" />
-      </div>
+        <span class="min-w-0 flex-1 truncate text-left text-sm font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
+        <Badge variant="secondary" class="h-6 shrink-0 rounded-full bg-sidebar-accent px-2.5 text-xs font-medium capitalize text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+          {{ ctx?.member?.role ?? 'Member' }}
+        </Badge>
+        <Icon name="solar:chevrons-up-down-linear" class="size-4 shrink-0 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
+      </Button>
     </SidebarHeader>
 
     <SidebarContent class="gap-0">
 
-      <!-- ── Search ── -->
-      <div class="px-3 pt-2.5 pb-1">
-        <div class="flex items-center gap-2 px-2.5 h-8 rounded-lg cursor-pointer transition-colors bg-sidebar-accent">
-          <Search class="size-3.5 shrink-0 text-sidebar-foreground/40" />
-          <span class="flex-1 text-[12px] text-sidebar-foreground/40 select-none">Search</span>
-          <kbd class="text-[10px] text-sidebar-foreground/30 font-mono">⌘K</kbd>
-        </div>
-      </div>
-
-      <!-- ── Dashboard ── -->
-      <SidebarGroup class="">
+      <!-- ── Main nav ── -->
+      <SidebarGroup class="px-3 pt-2 group-data-[collapsible=icon]:px-2">
         <SidebarGroupContent>
-          <SidebarMenu>
+          <SidebarMenu class="gap-0.5">
             <SidebarMenuItem>
-              <SidebarMenuButton as-child :is-active="isActive('/app')" tooltip="Dashboard">
+              <SidebarMenuButton as-child :is-active="isActive('/app')" tooltip="Dashboard" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
                 <NuxtLink to="/app">
-                  <LayoutDashboard />
+                  <Icon name="solar:widget-2-linear" />
                   <span>Dashboard</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-        <SidebarGroupContent>
-          <SidebarMenu>
             <SidebarMenuItem v-for="item in workspaceItems" :key="item.href">
-              <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.label">
+              <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.label" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
                 <NuxtLink :to="item.href">
-                  <component :is="item.icon" />
+                  <Icon :name="item.icon" />
                   <span>{{ item.label }}</span>
                 </NuxtLink>
               </SidebarMenuButton>
@@ -140,90 +128,80 @@ const orgColor = computed(() => {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <!-- <Separator class="mx-2" /> -->
-     
-
       <!-- ── Teams (owner + manager) ── -->
-      <template v-if="role === 'owner' || role === 'manager'">
-        <Separator class="mx-2" />
-        <SidebarGroup class="py-2">
-          <SidebarGroupLabel class="px-2 h-6">Teams</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <!-- Owner: all teams fetched from API -->
-              <SidebarMenuItem v-for="team in teams" :key="team.id">
-                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${team.id}`)" :tooltip="team.name">
-                  <NuxtLink :to="`/app/teams/${team.id}`">
-                    <Layers class="text-sidebar-foreground/60" />
-                    <span>{{ team.name }}</span>
-                  </NuxtLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <!-- Manager: their assigned team -->
-              <SidebarMenuItem v-if="role === 'manager' && ctx?.team">
-                <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${ctx.team.id}`)" :tooltip="ctx.team.name">
-                  <NuxtLink :to="`/app/teams/${ctx.team.id}`">
-                    <Layers class="text-sidebar-foreground/60" />
-                    <span>{{ ctx.team.name }}</span>
-                  </NuxtLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <!-- Add new team -->
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Add new team" class="text-sidebar-foreground/50 hover:text-sidebar-foreground">
-                  <Plus />
-                  <span>Add new team</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </template>
+      <SidebarGroup v-if="role === 'owner' || role === 'manager'" class="px-3 pt-4 group-data-[collapsible=icon]:px-2">
+        <SidebarGroupLabel class="h-8 px-2.5 text-sm font-normal text-sidebar-foreground/55">Teams</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu class="gap-0.5">
+            <!-- Owner: all teams fetched from API -->
+            <SidebarMenuItem v-for="team in teams" :key="team.id">
+              <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${team.id}`)" :tooltip="team.name" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
+                <NuxtLink :to="`/app/teams/${team.id}`">
+                  <Icon name="material-symbols-light:view-object-track-outline" />
+                  <span>{{ team.name }}</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <!-- Manager: their assigned team -->
+            <SidebarMenuItem v-if="role === 'manager' && ctx?.team">
+              <SidebarMenuButton as-child :is-active="isActive(`/app/teams/${ctx.team.id}`)" :tooltip="ctx.team.name" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
+                <NuxtLink :to="`/app/teams/${ctx.team.id}`">
+                  <Icon name="material-symbols-light:view-object-track-outline" />
+                  <span>{{ ctx.team.name }}</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <!-- Add new team -->
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Add new team" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
+                <Icon name="solar:add-linear" />
+                <span>Add new team</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
 
     </SidebarContent>
 
-    <!-- ── Upgrade banner ── -->
-    <div class="px-3 pb-3 group-data-[collapsible=icon]:hidden">
-      <div class="rounded-xl p-3 flex flex-col gap-2 bg-sidebar-accent">
-        <div class="flex items-center gap-2">
-          <div class="size-6 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
-            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--sidebar-primary-foreground))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </div>
-          <span class="text-[12px] font-semibold text-sidebar-foreground leading-tight">Upgrade to Premium</span>
+    <!-- ── Upgrade card ── -->
+    <div class="px-3 pb-2 group-data-[collapsible=icon]:hidden">
+      <Card class="gap-0 rounded-xl bg-sidebar-accent/70 px-4 py-4 ring-0">
+        <div class="mb-3 flex size-9 items-center justify-center rounded-full bg-sidebar">
+          <Icon name="solar:magic-stick-3-linear" class="size-4 text-sidebar-foreground/70" />
         </div>
-        <p class="text-[11px] text-sidebar-foreground/50 leading-relaxed">Unlock advanced reports, unlimited teams, and priority support.</p>
-        <button class="w-full py-1.5 rounded-lg text-[11.5px] font-medium bg-sidebar-primary text-sidebar-primary-foreground transition-colors hover:opacity-90">
-          Upgrade now
-        </button>
-      </div>
+        <p class="text-sm font-medium text-sidebar-foreground">Upgrade to Premium</p>
+        <p class="mt-0.5 text-[13px] leading-snug text-sidebar-foreground/50">Unlock advanced reports, unlimited teams, and priority support.</p>
+        <Button size="sm" class="mt-3 w-full" as-child>
+          <NuxtLink to="/app/upgrade">Upgrade now</NuxtLink>
+        </Button>
+      </Card>
     </div>
 
     <!-- ── Footer ── -->
-    <SidebarFooter class="border-t border-sidebar-border">
-      <SidebarMenu>
+    <SidebarFooter class="gap-1 px-3 pt-1 pb-3 group-data-[collapsible=icon]:px-2">
+      <SidebarMenu class="gap-0.5">
         <SidebarMenuItem>
-          <SidebarMenuButton as-child :is-active="isActive('/app/settings')" tooltip="Settings">
+          <SidebarMenuButton as-child :is-active="isActive('/app/settings')" tooltip="Settings" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
             <NuxtLink to="/app/settings">
-              <Settings />
+              <Icon name="solar:settings-linear" />
               <span>Settings</span>
             </NuxtLink>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton tooltip="Help center">
-            <HelpCircle />
+          <SidebarMenuButton tooltip="Help center" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
+            <Icon name="solar:question-circle-linear" />
             <span>Help center</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
             tooltip="Log out"
-            class="hover:text-destructive hover:bg-destructive/10"
+            class="h-9 gap-3 px-2.5 [&_svg]:size-[18px] hover:text-destructive hover:bg-destructive/10"
             @click="logout"
           >
-            <LogOut />
+            <Icon name="solar:logout-2-linear" />
             <span>Log out</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -231,5 +209,50 @@ const orgColor = computed(() => {
     </SidebarFooter>
 
     <SidebarRail />
+
+    <!-- ── Organization switcher popup (template) ── -->
+    <Dialog v-model:open="orgSwitcherOpen">
+      <DialogContent class="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Switch organization</DialogTitle>
+          <DialogDescription>Choose the organization you want to work in.</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-4 py-1">
+          <!-- Current organization -->
+          <div class="flex items-center gap-3 rounded-lg bg-muted px-3 py-2.5">
+            <img
+              v-if="orgImageUrl && !orgImageError"
+              :src="orgImageUrl"
+              alt="org"
+              class="size-7 shrink-0 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
+              :style="{ background: orgColor }"
+            >
+              {{ orgInitials.charAt(0) }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-foreground capitalize">{{ ctx?.org?.name ?? 'KeepCabin' }}</p>
+              <p class="text-xs text-muted-foreground capitalize">{{ ctx?.member?.role ?? 'workspace' }}</p>
+            </div>
+            <Icon name="solar:check-linear" class="size-4 shrink-0 text-foreground" />
+          </div>
+
+          <!-- Empty state -->
+          <div class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+            <Icon name="solar:buildings-2-linear" class="size-6 text-muted-foreground" />
+            <p class="text-sm text-foreground">No other organizations</p>
+            <p class="text-xs text-muted-foreground">Organizations you join will appear here.</p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="orgSwitcherOpen = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </Sidebar>
 </template>

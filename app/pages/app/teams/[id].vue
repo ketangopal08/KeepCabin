@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import type { Team } from '~~/lib/supabase'
-import { Users, UserPlus, ArrowLeft, Crown, Mail } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -148,21 +147,23 @@ async function setAsManager(member: any) {
 </script>
 
 <template>
-  <div class="-m-6 flex flex-col h-full">
+  <AppPage>
 
     <!-- ── Loading state ──────────────────────────────────────────── -->
     <template v-if="loadingTeam">
-      <div class="flex items-center gap-4 px-5 py-4 border-b border-border bg-background shrink-0">
-        <Skeleton class="size-11 rounded-xl" />
-        <div class="flex flex-col gap-2 flex-1">
-          <Skeleton class="h-5 w-40 rounded" />
-          <Skeleton class="h-3 w-24 rounded" />
+      <Skeleton class="mb-4 h-4 w-24 rounded" />
+      <div class="mb-7 flex items-center gap-3">
+        <Skeleton class="size-10 rounded-xl" />
+        <div class="flex flex-1 flex-col gap-2">
+          <Skeleton class="h-7 w-48 rounded" />
+          <Skeleton class="h-4 w-32 rounded" />
         </div>
       </div>
-      <div class="flex flex-col mt-2">
-        <div v-for="n in 4" :key="n" class="flex items-center gap-4 px-5 py-3.5 border-b border-border">
+      <Skeleton class="mb-5 h-10 w-full rounded" />
+      <div class="flex flex-col">
+        <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
           <Skeleton class="size-8 rounded-full" />
-          <div class="flex flex-col gap-1.5 flex-1">
+          <div class="flex flex-1 flex-col gap-1.5">
             <Skeleton class="h-4 w-36 rounded" />
             <Skeleton class="h-3 w-48 rounded" />
           </div>
@@ -173,10 +174,11 @@ async function setAsManager(member: any) {
 
     <!-- ── Not found ──────────────────────────────────────────────── -->
     <template v-else-if="!team">
-      <div class="flex flex-col items-center justify-center h-full gap-4">
-        <p class="text-[15px] font-semibold text-foreground">Team not found</p>
-        <Button variant="outline" size="sm" as-child>
-          <NuxtLink to="/app/org"><ArrowLeft class="size-3.5 mr-1.5" />Back to Organization</NuxtLink>
+      <div class="flex flex-col items-center justify-center gap-4 py-28">
+        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">Team not found</p>
+        <Button variant="outline" class="h-9 gap-1.5 rounded-lg px-4" as-child>
+          <NuxtLink to="/app/org"><Icon name="solar:arrow-left-linear" class="size-4" />Back to Organization</NuxtLink>
         </Button>
       </div>
     </template>
@@ -184,141 +186,113 @@ async function setAsManager(member: any) {
     <!-- ── Team found ─────────────────────────────────────────────── -->
     <template v-else>
 
-      <!-- Team header -->
-      <div class="flex items-center gap-4 px-5 py-4 border-b border-border bg-background shrink-0">
-        <TeamAvatar :name="team.name" size="lg" />
-        <div class="flex-1 min-w-0">
-          <h1 class="text-[16px] font-semibold text-foreground">{{ team.name }}</h1>
-          <p class="text-[12px] text-muted-foreground mt-0.5">
-            {{ members.length > 0 ? `${members.length} member${members.length !== 1 ? 's' : ''}` : 'Team workspace' }}
-            <template v-if="currentManager">
-              · Manager: <span class="text-foreground font-medium">{{ currentManager.full_name ?? currentManager.email }}</span>
-            </template>
-          </p>
+      <!-- Header -->
+      <AppPageHeader :title="team.name" :back="{ label: 'All teams', to: '/app/org?tab=teams' }">
+        <template #leading>
+          <TeamAvatar :name="team.name" size="lg" />
+        </template>
+        <template #description>
+          {{ members.length > 0 ? `${members.length} member${members.length !== 1 ? 's' : ''}` : 'Team workspace' }}
+          <template v-if="currentManager">
+            · Manager: <span class="font-medium text-foreground">{{ currentManager.full_name ?? currentManager.email }}</span>
+          </template>
+        </template>
+        <template #actions>
+          <Button v-if="canInvite" class="h-9 gap-1.5 rounded-lg px-4" @click="openInvite">
+            <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+          </Button>
+        </template>
+      </AppPageHeader>
+
+      <!-- Tabs -->
+      <AppPageTabs model-value="members" :tabs="[{ id: 'members', label: 'Members', count: members.length }]" />
+
+      <!-- Loading members -->
+      <div v-if="loadingMembers" class="flex flex-col">
+        <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+          <Skeleton class="size-8 shrink-0 rounded-full" />
+          <div class="flex flex-1 flex-col gap-1.5">
+            <Skeleton class="h-4 w-36 rounded" />
+            <Skeleton class="h-3 w-48 rounded" />
+          </div>
+          <Skeleton class="h-5 w-16 rounded-full" />
         </div>
-        <Button variant="outline" size="sm" class="h-8 text-[12.5px] gap-1.5" as-child>
-          <NuxtLink to="/app/org?tab=teams"><ArrowLeft class="size-3.5" />All Teams</NuxtLink>
-        </Button>
       </div>
 
-      <!-- Sub-toolbar -->
-      <div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-background shrink-0">
-        <div class="flex-1">
-          <span class="text-[12.5px] font-medium text-foreground">
-            Members
-            <span class="ml-1 text-muted-foreground/60 text-[12px]">({{ members.length }})</span>
-          </span>
-        </div>
-        <Button v-if="canInvite" size="sm" class="h-8 text-[12.5px] gap-1.5" @click="openInvite">
-          <UserPlus class="size-3.5" /> Invite Member
-        </Button>
+      <!-- Empty state -->
+      <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">No members in this team</p>
+        <p class="-mt-1.5 text-sm text-muted-foreground">
+          <template v-if="canInvite">
+            Use the <Button variant="link" class="h-auto p-0 text-sm text-foreground underline" @click="openInvite">Invite member</Button> button to add someone.
+          </template>
+          <template v-else>
+            Ask your organization owner to add members.
+          </template>
+        </p>
       </div>
 
-      <!-- Members content -->
-      <div class="flex-1 overflow-auto">
-
-        <!-- Loading members -->
-        <div v-if="loadingMembers" class="flex flex-col">
-          <div v-for="n in 4" :key="n" class="flex items-center gap-4 px-5 py-3.5 border-b border-border">
-            <Skeleton class="size-8 rounded-full shrink-0" />
-            <div class="flex flex-col gap-1.5 flex-1">
-              <Skeleton class="h-4 w-36 rounded" />
-              <Skeleton class="h-3 w-48 rounded" />
-            </div>
-            <Skeleton class="h-5 w-16 rounded-full" />
-          </div>
-        </div>
-
-        <!-- Empty state -->
-        <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center py-28 gap-5">
-          <div class="size-[72px] rounded-2xl border-2 border-dashed border-border flex items-center justify-center">
-            <Users class="size-8 text-muted-foreground/40" />
-          </div>
-          <div class="text-center">
-            <p class="text-[15px] font-semibold text-foreground">No members in this team</p>
-            <p class="text-[13px] text-muted-foreground mt-1">
-              <template v-if="canInvite">
-                Use the <button class="text-foreground underline underline-offset-2 hover:no-underline" @click="openInvite">Invite Member</button> button to add someone.
-              </template>
-              <template v-else>
-                Ask your organization owner to add members.
-              </template>
-            </p>
-          </div>
-        </div>
-
-        <!-- Members table -->
-        <table v-else class="w-full text-[13px]">
-          <thead class="sticky top-0 bg-background border-b border-border z-10">
-            <tr>
-              <th class="px-5 py-3 text-left font-medium text-muted-foreground">Member</th>
-              <th class="px-3 py-3 text-left font-medium text-muted-foreground">Role</th>
-              <th class="px-3 py-3 text-left font-medium text-muted-foreground">Joined</th>
-              <th class="w-32 px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="m in members"
-              :key="m.id"
-              class="border-b border-border hover:bg-muted/30 transition-colors group"
-            >
-              <!-- Member info -->
-              <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
-                  <div
-                    class="size-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                    :style="{ background: memberColor(m) }"
-                  >
-                    {{ memberInitials(m) }}
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-1.5">
-                      <p class="font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
-                      <Crown
-                        v-if="m.role === 'manager' && isOwner"
-                        class="size-3 text-blue-500 shrink-0"
-                      />
-                    </div>
-                    <p v-if="m.full_name" class="text-[11.5px] text-muted-foreground">{{ m.email }}</p>
-                  </div>
+      <!-- Members table -->
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Joined</TableHead>
+            <TableHead class="h-11 w-36" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="m in members" :key="m.id" class="group border-border">
+            <!-- Member info -->
+            <TableCell class="px-2 py-3">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                  :style="{ background: memberColor(m) }"
+                >
+                  {{ memberInitials(m) }}
                 </div>
-              </td>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <p class="text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
+                    <Icon name="solar:crown-linear" v-if="m.role === 'manager' && isOwner" class="size-3 shrink-0 text-blue-500" />
+                  </div>
+                  <p v-if="m.full_name" class="text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+                </div>
+              </div>
+            </TableCell>
 
-              <!-- Role badge -->
-              <td class="px-3 py-3.5">
-                <span
-                  class="inline-flex items-center text-[11.5px] font-medium px-2 py-0.5 rounded-full capitalize"
-                  :class="roleBadgeClass(m.role ?? '')"
-                >
-                  {{ m.role ?? '—' }}
-                </span>
-              </td>
+            <!-- Role badge -->
+            <TableCell class="py-3">
+              <Badge variant="outline" class="border-transparent font-normal capitalize" :class="roleBadgeClass(m.role ?? '')">
+                {{ m.role ?? '—' }}
+              </Badge>
+            </TableCell>
 
-              <!-- Joined date -->
-              <td class="px-3 py-3.5 text-muted-foreground">
-                {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
-              </td>
+            <!-- Joined date -->
+            <TableCell class="py-3 text-muted-foreground">
+              {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+            </TableCell>
 
-              <!-- Actions (owner only) -->
-              <td class="px-5 py-3.5 text-right">
-                <Button
-                  v-if="isOwner && m.role !== 'manager' && m.role !== 'owner'"
-                  variant="ghost"
-                  size="xs"
-                  class="opacity-0 group-hover:opacity-100 text-[11.5px] h-7 gap-1 text-muted-foreground hover:text-foreground"
-                  :disabled="changingManager"
-                  @click="setAsManager(m)"
-                >
-                  <Crown class="size-3" />
-                  Set as Manager
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-      </div>
+            <!-- Actions (owner only) -->
+            <TableCell class="py-3 text-right">
+              <Button
+                v-if="isOwner && m.role !== 'manager' && m.role !== 'owner'"
+                variant="outline"
+                size="sm"
+                class="h-8 gap-1 rounded-lg px-3 text-[13px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
+                :disabled="changingManager"
+                @click="setAsManager(m)"
+              >
+                <Icon name="solar:crown-linear" class="size-3.5" />
+                Set as manager
+              </Button>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </template>
 
     <!-- ═══════════════════════════════════════════════════════════
@@ -374,12 +348,12 @@ async function setAsManager(member: any) {
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
               <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
             </svg>
-            <Mail v-else class="size-3.5 mr-1.5" />
+            <Icon name="solar:letter-linear" v-else class="size-3.5 mr-1.5" />
             {{ inviteLoading ? 'Sending…' : 'Send invite' }}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
-  </div>
+  </AppPage>
 </template>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
-import { SlidersHorizontal, ArrowUpDown, Search, Plus, X } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -11,7 +10,6 @@ const role        = computed(() => ctx.value?.member?.role)
 const expenses    = ref<Expense[]>([])
 const loading     = ref(true)
 const search      = ref('')
-const showSearch  = ref(false)
 const selected    = ref<Set<string>>(new Set())
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
@@ -63,9 +61,9 @@ function statusLabel(s: string) {
 }
 
 function statusStyle(s: string) {
-  if (s === 'paid')     return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400'
-  if (s === 'rejected') return 'text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400'
-  return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400'
+  if (s === 'paid')     return 'border-transparent text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400'
+  if (s === 'rejected') return 'border-transparent text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400'
+  return 'border-transparent text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400'
 }
 
 function dotStyle(s: string) {
@@ -101,180 +99,140 @@ onMounted(async () => { await load(); await fetchExpenses() })
 </script>
 
 <template>
-  <div class="-m-6 flex flex-col h-full">
+  <AppPage>
 
-    <!-- ── Sub-toolbar ─────────────────────────────────────────────────── -->
-    <div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-background shrink-0 flex-wrap">
-      <!-- Filter tabs -->
-      <div class="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
-        <button
-          v-for="tab in [
-            { id: 'all',      label: 'All' },
-            { id: 'pending',  label: 'Pending' },
-            { id: 'approved', label: 'Approved' },
-            { id: 'rejected', label: 'Rejected' },
-          ]"
-          :key="tab.id"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium shrink-0 transition-colors"
-          :class="activeFilter === tab.id
-            ? 'bg-accent text-accent-foreground'
-            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'"
-          @click="setFilter(tab.id)"
-        >
-          <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-          </svg>
-          {{ tab.label }}
-          <span class="text-[11px] text-muted-foreground/70">{{ counts[tab.id] }}</span>
-        </button>
-      </div>
-
-      <!-- Action buttons -->
-      <div class="flex items-center gap-1.5 shrink-0">
-        <div v-if="showSearch" class="flex items-center gap-1 bg-accent rounded-lg px-2.5 h-8">
-          <Search class="size-3.5 text-muted-foreground shrink-0" />
-          <input
-            v-model="search"
-            placeholder="Search…"
-            class="bg-transparent text-[12.5px] text-foreground placeholder:text-muted-foreground outline-none w-40"
-            @keydown.escape="showSearch = false; search = ''"
-          />
-          <button @click="showSearch = false; search = ''">
-            <X class="size-3.5 text-muted-foreground hover:text-foreground" />
-          </button>
-        </div>
-
-        <Button v-else variant="outline" size="sm" class="h-8 text-[12.5px] gap-1.5" @click="showSearch = true">
-          <Search class="size-3.5" /> Search
-        </Button>
-        <Button variant="outline" size="sm" class="h-8 text-[12.5px] gap-1.5">
-          <ArrowUpDown class="size-3.5" /> Sort
-        </Button>
-        <Button variant="outline" size="sm" class="h-8 text-[12.5px] gap-1.5">
-          <SlidersHorizontal class="size-3.5" /> Filter
-        </Button>
-        <Button v-if="role === 'employee'" as-child size="sm" class="h-8 text-[12.5px] gap-1.5">
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <AppPageHeader :title="role === 'employee' ? 'My Expenses' : 'Expenses'">
+      <template #actions>
+        <Button v-if="role === 'employee'" as-child class="h-9 gap-1.5 rounded-lg px-4">
           <NuxtLink to="/app/expenses/new">
-            <Plus class="size-3.5" /> New Expense
+            <Icon name="solar:add-linear" class="size-4" /> New expense
           </NuxtLink>
         </Button>
+      </template>
+    </AppPageHeader>
+
+    <!-- ── Tabs ────────────────────────────────────────────────────────── -->
+    <AppPageTabs
+      :model-value="activeFilter"
+      :tabs="[
+        { id: 'all',      label: 'All',      count: counts.all },
+        { id: 'pending',  label: 'Pending',  count: counts.pending },
+        { id: 'approved', label: 'Approved', count: counts.approved },
+        { id: 'rejected', label: 'Rejected', count: counts.rejected },
+      ]"
+      @update:model-value="setFilter"
+    />
+
+    <!-- ── Search + filters ────────────────────────────────────────────── -->
+    <AppSearchInput v-model="search" placeholder="Search by vendor or category" />
+    <div class="mt-3 mb-4 flex items-center gap-2">
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 rounded-md px-2.5 text-[13px] font-medium">
+        <Icon name="solar:sort-vertical-linear" class="size-3.5" /> Sort
+      </Button>
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 rounded-md px-2.5 text-[13px] font-medium">
+        <Icon name="solar:tuning-2-linear" class="size-3.5" /> Filter
+      </Button>
+    </div>
+
+    <!-- ── Loading ─────────────────────────────────────────────────────── -->
+    <div v-if="loading" class="flex flex-col">
+      <div v-for="n in 8" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+        <Skeleton class="size-4 rounded" />
+        <Skeleton class="size-8 rounded-lg" />
+        <Skeleton class="h-4 w-32 rounded" />
+        <Skeleton class="ml-auto h-4 w-24 rounded" />
+        <Skeleton class="h-5 w-16 rounded-full" />
       </div>
+    </div>
+
+    <!-- ── Empty state ─────────────────────────────────────────────────── -->
+    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+      <Icon name="solar:bill-list-linear" class="size-7 text-muted-foreground" />
+      <p class="text-[15px] text-foreground">No expenses found</p>
+      <p class="-mt-1.5 text-sm text-muted-foreground">
+        {{ search ? 'Try a different search term.' : 'Submit your first expense to get started.' }}
+      </p>
+      <Button v-if="role === 'employee' && !search" as-child variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4">
+        <NuxtLink to="/app/expenses/new"><Icon name="solar:add-linear" class="size-4" /> New expense</NuxtLink>
+      </Button>
     </div>
 
     <!-- ── Table ───────────────────────────────────────────────────────── -->
-    <div class="flex-1 overflow-auto">
-
-      <!-- Loading -->
-      <div v-if="loading" class="flex flex-col">
-        <div v-for="n in 8" :key="n" class="flex items-center gap-4 px-5 py-3.5 border-b border-border">
-          <Skeleton class="size-4 rounded" />
-          <Skeleton class="size-8 rounded-lg" />
-          <Skeleton class="h-4 w-32 rounded" />
-          <Skeleton class="h-4 w-24 rounded ml-auto" />
-          <Skeleton class="h-5 w-16 rounded-full" />
-        </div>
-      </div>
-
-      <!-- Empty state -->
-      <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center py-28 gap-5">
-        <div class="size-16 rounded-2xl border border-border bg-muted/40 flex items-center justify-center">
-          <Plus class="size-7 text-muted-foreground/50" />
-        </div>
-        <div class="text-center">
-          <p class="text-[15px] font-semibold text-foreground">No expenses found</p>
-          <p class="text-[13px] text-muted-foreground mt-1">
-            {{ search ? 'Try a different search term.' : 'Submit your first expense to get started.' }}
-          </p>
-        </div>
-        <Button v-if="role === 'employee' && !search" as-child size="sm">
-          <NuxtLink to="/app/expenses/new"><Plus class="size-3.5 mr-1.5" /> New Expense</NuxtLink>
-        </Button>
-      </div>
-
-      <!-- Table -->
-      <table v-else class="w-full text-[13px]">
-        <thead class="sticky top-0 bg-background border-b border-border z-10">
-          <tr>
-            <th class="w-10 px-5 py-3 text-left">
-              <input
-                type="checkbox"
-                class="rounded border-border accent-foreground cursor-pointer"
-                :checked="selected.size === filtered.length && filtered.length > 0"
-                :indeterminate="selected.size > 0 && selected.size < filtered.length"
-                @change="toggleAll"
-              />
-            </th>
-            <th class="px-3 py-3 text-left font-medium text-muted-foreground">
-              Expense
-              <span class="ml-1 text-muted-foreground/50">({{ filtered.length }})</span>
-            </th>
-            <th class="px-3 py-3 text-left font-medium text-muted-foreground">Category</th>
-            <th class="px-3 py-3 text-left font-medium text-muted-foreground">Date</th>
-            <th class="px-3 py-3 text-left font-medium text-muted-foreground">Amount</th>
-            <th class="px-3 py-3 text-left font-medium text-muted-foreground">Status</th>
-            <th class="w-10 px-5 py-3" />
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="e in filtered"
-            :key="e.id"
-            class="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer group"
-            @click="navigateTo(`/app/expenses/${e.id}`)"
-          >
-            <td class="px-5 py-3.5" @click.stop>
-              <input
-                type="checkbox"
-                class="rounded border-border accent-foreground cursor-pointer"
-                :checked="selected.has(e.id)"
-                @change="toggleSelect(e.id)"
-              />
-            </td>
-            <td class="px-3 py-3.5">
-              <div class="flex items-center gap-3">
-                <div
-                  class="size-8 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                  :style="{ background: catColor(e.category) }"
-                >
-                  {{ initials(e.vendor ?? e.category) }}
-                </div>
-                <div>
-                  <p class="font-medium text-foreground leading-tight">{{ e.vendor ?? 'Expense' }}</p>
-                  <p class="text-[11.5px] text-muted-foreground mt-0.5">{{ e.category }}</p>
-                </div>
-              </div>
-            </td>
-            <td class="px-3 py-3.5">
-              <Badge variant="outline" class="text-[11px] font-medium">{{ e.category }}</Badge>
-            </td>
-            <td class="px-3 py-3.5 text-muted-foreground">
-              {{ e.expense_date ?? e.created_at.slice(0, 10) }}
-            </td>
-            <td class="px-3 py-3.5 font-semibold text-foreground tabular-nums">
-              ₹{{ Number(e.amount).toLocaleString('en-IN') }}
-            </td>
-            <td class="px-3 py-3.5">
-              <span
-                class="inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2 py-0.5 rounded-full"
-                :class="statusStyle(e.status)"
+    <Table v-else>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="w-10 px-2">
+            <input
+              type="checkbox"
+              class="cursor-pointer rounded border-border accent-foreground"
+              :checked="selected.size === filtered.length && filtered.length > 0"
+              :indeterminate="selected.size > 0 && selected.size < filtered.length"
+              @change="toggleAll"
+            />
+          </TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">
+            Name <span class="ml-0.5 text-muted-foreground/60">({{ filtered.length }})</span>
+          </TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Date</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Amount</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Status</TableHead>
+          <TableHead class="w-10" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow
+          v-for="e in filtered"
+          :key="e.id"
+          class="group cursor-pointer border-border"
+          @click="navigateTo(`/app/expenses/${e.id}`)"
+        >
+          <TableCell class="px-2 py-3" @click.stop>
+            <input
+              type="checkbox"
+              class="cursor-pointer rounded border-border accent-foreground"
+              :checked="selected.has(e.id)"
+              @change="toggleSelect(e.id)"
+            />
+          </TableCell>
+          <TableCell class="py-3">
+            <div class="flex items-center gap-3">
+              <div
+                class="flex size-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+                :style="{ background: catColor(e.category) }"
               >
-                <span class="size-1.5 rounded-full shrink-0" :class="dotStyle(e.status)" />
-                {{ statusLabel(e.status) }}
-              </span>
-            </td>
-            <td class="px-5 py-3.5 text-right">
-              <button class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-all">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/>
-                  <circle cx="12" cy="19" r="1" fill="currentColor"/>
-                </svg>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+                {{ initials(e.vendor ?? e.category) }}
+              </div>
+              <div>
+                <p class="text-sm font-medium leading-tight text-foreground">{{ e.vendor ?? 'Expense' }}</p>
+                <p class="mt-0.5 text-[12.5px] capitalize text-muted-foreground">{{ e.category }}</p>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell class="py-3">
+            <Badge variant="outline" class="font-normal capitalize">{{ e.category }}</Badge>
+          </TableCell>
+          <TableCell class="py-3 text-muted-foreground">
+            {{ e.expense_date ?? e.created_at.slice(0, 10) }}
+          </TableCell>
+          <TableCell class="py-3 font-medium tabular-nums text-foreground">
+            ₹{{ Number(e.amount).toLocaleString('en-IN') }}
+          </TableCell>
+          <TableCell class="py-3">
+            <Badge variant="outline" class="gap-1.5 font-normal" :class="statusStyle(e.status)">
+              <span class="size-1.5 shrink-0 rounded-full" :class="dotStyle(e.status)" />
+              {{ statusLabel(e.status) }}
+            </Badge>
+          </TableCell>
+          <TableCell class="py-3 text-right">
+            <Button variant="ghost" size="icon-sm" class="text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:text-foreground" @click.stop>
+              <Icon name="solar:menu-dots-vertical-linear" class="size-4" />
+            </Button>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
 
-  </div>
+  </AppPage>
 </template>

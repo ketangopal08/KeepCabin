@@ -43,3 +43,14 @@ Available components (all Nuxt auto-imported — no explicit import needed):
 - Manual table markup → use `<Table>` family
 - Custom `animate-pulse` skeleton divs → use `<Skeleton>`
 - `<hr>` or `border-b` dividers → use `<Separator>`
+
+## Intro Video Project (outside this repo)
+
+The KeepCabin intro video lives in a separate folder: `/Users/ketangopalspectro/repos/ketan/KeepCabin-video` (sibling of this repo — not part of the Nuxt app).
+
+- **Remotion (main, React)** — root of that folder. Composition `KeepCabinIntro` in `src/` (16:9, 1920x1080, 30fps, ~30s).
+  - `npm run dev` → Remotion Studio preview
+  - `npm run render` → `out/keepcabin-intro.mp4`
+- **HyperFrames (HTML-based, secondary)** — `hyperframes/` subfolder (has its own `CLAUDE.md`).
+  - `npm run hf:dev` → preview, `npm run hf:render` → render
+- Do not install Remotion/React/HyperFrames into this Nuxt repo. Branding (colors, logo, fonts) can be referenced from this repo but video code goes in `KeepCabin-video`.
