@@ -77,37 +77,42 @@ watch(() => ctx.value, fetchMembers, { immediate: true })
     <!-- Tabs -->
     <AppPageTabs model-value="members" :tabs="[{ id: 'members', label: 'Members', count: members.length }]" />
 
-    <!-- Empty -->
-    <div v-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-24 text-center">
-      <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
-      <p class="text-[15px] text-foreground">No team members yet</p>
-      <p class="-mt-1.5 max-w-[320px] text-sm text-muted-foreground">Invite employees above — they'll show up here once they accept.</p>
-    </div>
+    <AppTableCard>
+      <!-- Empty -->
+      <div v-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">No team members yet</p>
+        <p class="-mt-1.5 max-w-[320px] text-sm text-muted-foreground">Invite employees above — they'll show up here once they accept.</p>
+      </div>
 
-    <!-- Members table -->
-    <Table v-else>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="m in members" :key="m.id" class="border-border">
-          <TableCell class="px-2 py-3">
-            <div class="flex items-center gap-3">
-              <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                <span class="text-[12px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+      <!-- Members table -->
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>Name</TableHead>
+            <TableHead>Role</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="m in members" :key="m.id" class="border-border">
+            <TableCell>
+              <div class="flex items-center gap-3">
+                <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <span class="text-[12px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+                </div>
+                <p class="font-mono text-sm font-medium text-foreground">{{ m.user_id.slice(0, 8) }}…</p>
               </div>
-              <p class="font-mono text-sm font-medium text-foreground">{{ m.user_id.slice(0, 8) }}…</p>
-            </div>
-          </TableCell>
-          <TableCell class="py-3">
-            <Badge :variant="m.role === 'employee' ? 'secondary' : 'outline'" class="capitalize">{{ m.role }}</Badge>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+            </TableCell>
+            <TableCell>
+              <Badge :variant="m.role === 'employee' ? 'neutral' : 'info'" class="capitalize">{{ m.role }}</Badge>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+        <template #footer>
+          Showing {{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}
+        </template>
+      </Table>
+    </AppTableCard>
 
   </AppPage>
 </template>

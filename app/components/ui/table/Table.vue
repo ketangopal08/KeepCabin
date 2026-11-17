@@ -12,5 +12,12 @@ const props = defineProps<{
     <table data-slot="table" :class="cn('w-full caption-bottom text-sm', props.class)">
       <slot />
     </table>
+    <div
+      v-if="$slots.footer"
+      data-slot="table-footer-bar"
+      class="px-4 py-2.5 text-[13px] text-muted-foreground"
+    >
+      <slot name="footer" />
+    </div>
   </div>
 </template>

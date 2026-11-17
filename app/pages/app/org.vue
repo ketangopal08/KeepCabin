@@ -129,11 +129,11 @@ function teamInitials(name: string) {
   return name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function roleBadgeClass(r: string) {
-  if (r === 'owner')   return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400'
-  if (r === 'manager') return 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400'
-  if (r === 'finance') return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400'
-  return 'text-muted-foreground bg-muted'
+function roleVariant(r: string) {
+  if (r === 'owner')   return 'warning'
+  if (r === 'manager') return 'info'
+  if (r === 'finance') return 'success'
+  return 'neutral'
 }
 
 function roleDesc(r: string) {
@@ -187,124 +187,136 @@ onMounted(async () => {
     <!-- ── TEAMS TAB ──────────────────────────────────── -->
     <template v-if="activeTab === 'teams'">
 
-      <!-- loading skeletons -->
-      <div v-if="loadingTeams" class="flex flex-col">
-        <div v-for="n in 3" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
-          <Skeleton class="size-8 shrink-0 rounded-xl" />
-          <Skeleton class="h-4 w-36 rounded" />
-          <Skeleton class="ml-auto h-4 w-24 rounded" />
+      <AppTableCard>
+        <!-- loading skeletons -->
+        <div v-if="loadingTeams" class="flex flex-col">
+          <div v-for="n in 3" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+            <Skeleton class="size-8 shrink-0 rounded-xl" />
+            <Skeleton class="h-4 w-36 rounded" />
+            <Skeleton class="ml-auto h-4 w-24 rounded" />
+          </div>
         </div>
-      </div>
 
-      <!-- empty -->
-      <div v-else-if="teams.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
-        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
-        <p class="text-[15px] text-foreground">No teams yet</p>
-        <p class="-mt-1.5 text-sm text-muted-foreground">Create teams to group members and assign managers.</p>
-        <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
-          <Icon name="solar:add-linear" class="size-4" /> New team
-        </Button>
-      </div>
+        <!-- empty -->
+        <div v-else-if="teams.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+          <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+          <p class="text-[15px] text-foreground">No teams yet</p>
+          <p class="-mt-1.5 text-sm text-muted-foreground">Create teams to group members and assign managers.</p>
+          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
+            <Icon name="solar:add-linear" class="size-4" /> New team
+          </Button>
+        </div>
 
-      <!-- table -->
-      <Table v-else>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Members</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Created</TableHead>
-            <TableHead class="h-11 w-10" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow
-            v-for="(t, i) in teams"
-            :key="t.id"
-            class="kc-row cursor-pointer border-border"
-            :style="{ animationDelay: `${i * 55}ms` }"
-            @click="navigateTo(`/app/teams/${t.id}`)"
-          >
-            <TableCell class="px-2 py-3">
-              <div class="flex items-center gap-3">
-                <TeamAvatar :name="t.name" size="md" />
-                <p class="truncate text-sm font-medium text-foreground">{{ t.name }}</p>
-              </div>
-            </TableCell>
-            <TableCell class="py-3 tabular-nums text-muted-foreground">
-              {{ members.filter(m => m.team_name === t.name).length }}
-            </TableCell>
-            <TableCell class="py-3 text-muted-foreground">
-              {{ t.created_at ? new Date(t.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
-            </TableCell>
-            <TableCell class="py-3 text-right">
-              <Icon name="solar:alt-arrow-right-linear" class="ml-auto size-4 text-muted-foreground/60" />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+        <!-- table -->
+        <Table v-else>
+          <TableHeader>
+            <TableRow class="hover:bg-transparent">
+              <TableHead>Name</TableHead>
+              <TableHead>Members</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead class="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow
+              v-for="(t, i) in teams"
+              :key="t.id"
+              class="kc-row cursor-pointer border-border"
+              :style="{ animationDelay: `${i * 55}ms` }"
+              @click="navigateTo(`/app/teams/${t.id}`)"
+            >
+              <TableCell>
+                <div class="flex items-center gap-3">
+                  <TeamAvatar :name="t.name" size="md" />
+                  <p class="truncate text-sm font-medium text-foreground">{{ t.name }}</p>
+                </div>
+              </TableCell>
+              <TableCell class="tabular-nums text-muted-foreground">
+                {{ members.filter(m => m.team_name === t.name).length }}
+              </TableCell>
+              <TableCell class="text-muted-foreground">
+                {{ t.created_at ? new Date(t.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+              </TableCell>
+              <TableCell class="text-right">
+                <Button variant="outline" size="sm" class="h-8 rounded-lg px-3 text-[13px]" as-child @click.stop>
+                  <NuxtLink :to="`/app/teams/${t.id}`">View</NuxtLink>
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+          <template #footer>
+            Showing {{ teams.length }} {{ teams.length === 1 ? 'team' : 'teams' }}
+          </template>
+        </Table>
+      </AppTableCard>
     </template>
 
     <!-- ── MEMBERS TAB ──────────────────────────────────── -->
     <template v-else>
 
-      <!-- loading -->
-      <div v-if="loadingMembers" class="flex flex-col">
-        <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
-          <Skeleton class="size-8 shrink-0 rounded-full" />
-          <div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-28 rounded" /><Skeleton class="h-3 w-36 rounded" /></div>
-          <Skeleton class="ml-auto h-5 w-16 rounded-full" />
+      <AppTableCard>
+        <!-- loading -->
+        <div v-if="loadingMembers" class="flex flex-col">
+          <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+            <Skeleton class="size-8 shrink-0 rounded-full" />
+            <div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-28 rounded" /><Skeleton class="h-3 w-36 rounded" /></div>
+            <Skeleton class="ml-auto h-5 w-16 rounded-full" />
+          </div>
         </div>
-      </div>
 
-      <!-- empty -->
-      <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
-        <Icon name="solar:user-plus-linear" class="size-7 text-muted-foreground" />
-        <p class="text-[15px] text-foreground">No members yet</p>
-        <p class="-mt-1.5 text-sm text-muted-foreground">Invite someone to join your organization.</p>
-        <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
-          <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
-        </Button>
-      </div>
+        <!-- empty -->
+        <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+          <Icon name="solar:user-plus-linear" class="size-7 text-muted-foreground" />
+          <p class="text-[15px] text-foreground">No members yet</p>
+          <p class="-mt-1.5 text-sm text-muted-foreground">Invite someone to join your organization.</p>
+          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
+            <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+          </Button>
+        </div>
 
-      <!-- table -->
-      <Table v-else>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Team</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Joined</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow
-            v-for="(m, i) in members"
-            :key="m.id"
-            class="kc-row border-border"
-            :style="{ animationDelay: `${i * 55}ms` }"
-          >
-            <TableCell class="px-2 py-3">
-              <div class="flex items-center gap-3">
-                <div
-                  class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                  :style="{ background: memberColor(m) }"
-                >{{ memberInitials(m) }}</div>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
-                  <p v-if="m.full_name" class="truncate text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+        <!-- table -->
+        <Table v-else>
+          <TableHeader>
+            <TableRow class="hover:bg-transparent">
+              <TableHead>Name</TableHead>
+              <TableHead>Team</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Joined</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow
+              v-for="(m, i) in members"
+              :key="m.id"
+              class="kc-row border-border"
+              :style="{ animationDelay: `${i * 55}ms` }"
+            >
+              <TableCell>
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    :style="{ background: memberColor(m) }"
+                  >{{ memberInitials(m) }}</div>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
+                    <p v-if="m.full_name" class="truncate text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+                  </div>
                 </div>
-              </div>
-            </TableCell>
-            <TableCell class="py-3 text-muted-foreground">{{ m.team_name ?? '—' }}</TableCell>
-            <TableCell class="py-3">
-              <Badge variant="outline" class="border-transparent font-normal capitalize" :class="roleBadgeClass(m.role ?? '')">{{ m.role ?? '—' }}</Badge>
-            </TableCell>
-            <TableCell class="py-3 text-muted-foreground">
-              {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+              </TableCell>
+              <TableCell class="text-muted-foreground">{{ m.team_name ?? '—' }}</TableCell>
+              <TableCell>
+                <Badge :variant="roleVariant(m.role ?? '')" class="capitalize">{{ m.role ?? '—' }}</Badge>
+              </TableCell>
+              <TableCell class="text-muted-foreground">
+                {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+          <template #footer>
+            Showing {{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}
+          </template>
+        </Table>
+      </AppTableCard>
     </template>
 
     <!-- ═══════════════════════════════════════════════════════════════

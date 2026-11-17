@@ -196,6 +196,15 @@ function expInitials(e: Expense) {
   return (e.vendor ?? e.category ?? '?').slice(0, 2).toUpperCase()
 }
 
+// Brand logos that failed to load fall back to initials
+const failedLogos = ref(new Set<string>())
+function expLogo(e: Expense) {
+  return failedLogos.value.has(e.id) ? null : brandLogoUrl(e.vendor)
+}
+function onLogoError(id: string) {
+  failedLogos.value = new Set(failedLogos.value).add(id)
+}
+
 function fmtShortDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
@@ -420,6 +429,19 @@ onMounted(async () => { await load(); await fetchAll() })
                 class="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/50"
               >
                 <div
+                  v-if="expLogo(e)"
+                  class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white"
+                >
+                  <img
+                    :src="expLogo(e) ?? undefined"
+                    :alt="e.vendor ?? ''"
+                    class="size-5 object-contain"
+                    loading="lazy"
+                    @error="onLogoError(e.id)"
+                  >
+                </div>
+                <div
+                  v-else
                   class="flex size-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
                   :style="{ background: catColor(e.category) }"
                 >{{ expInitials(e) }}</div>

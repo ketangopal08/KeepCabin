@@ -14,6 +14,12 @@ export const badgeVariants = cva(
         outline: 'border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground',
         ghost: 'hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50',
         link: 'text-primary underline-offset-4 hover:underline',
+        // Tinted status variants — pair with <span class="size-1.5 rounded-full bg-current" /> for a dot
+        success: 'h-6 rounded-md border-emerald-500/25 bg-emerald-500/10 px-2 font-normal text-emerald-600 dark:text-emerald-400',
+        warning: 'h-6 rounded-md border-amber-500/25 bg-amber-500/10 px-2 font-normal text-amber-600 dark:text-amber-400',
+        danger: 'h-6 rounded-md border-red-500/25 bg-red-500/10 px-2 font-normal text-red-600 dark:text-red-400',
+        info: 'h-6 rounded-md border-blue-500/25 bg-blue-500/10 px-2 font-normal text-blue-600 dark:text-blue-400',
+        neutral: 'h-6 rounded-md border-border bg-muted/50 px-2 font-normal text-muted-foreground',
       },
     },
     defaultVariants: {
