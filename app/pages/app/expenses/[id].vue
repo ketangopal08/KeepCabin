@@ -2,7 +2,6 @@
 import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
-import { ArrowLeft, Check, X, CreditCard, FileText, ZoomIn, UserCheck, BadgeCheck, Upload } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -203,21 +202,21 @@ async function submitPay() {
 </script>
 
 <template>
-  <div class="-m-6 flex flex-col" style="height:calc(100vh - 44px)">
+  <AppPage>
 
     <!-- ── Loading ────────────────────────────────────────────────────── -->
     <template v-if="loading">
-      <div class="shrink-0 px-6 py-4 border-b border-border flex flex-col gap-3">
-        <Skeleton class="h-4 w-28 rounded" />
-        <Skeleton class="h-7 w-64 rounded" />
-        <Skeleton class="h-5 w-32 rounded" />
-      </div>
-      <div class="flex-1 grid grid-cols-[1fr_360px] divide-x divide-border">
-        <div class="px-6 py-5 flex flex-col gap-6">
-          <Skeleton v-for="n in 3" :key="n" class="h-20 rounded-2xl" />
+      <Skeleton class="mb-4 h-4 w-28 rounded" />
+      <div class="mb-7 flex items-start justify-between">
+        <div class="flex flex-col gap-2">
+          <Skeleton class="h-7 w-64 rounded" />
+          <Skeleton class="h-4 w-40 rounded" />
         </div>
-        <div class="px-5 py-5 flex flex-col gap-4">
-          <Skeleton class="h-24 rounded-xl" />
+        <Skeleton class="h-8 w-40 rounded-lg" />
+      </div>
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+        <Skeleton class="h-[420px] rounded-xl" />
+        <div class="flex flex-col gap-4">
           <Skeleton class="h-40 rounded-xl" />
           <Skeleton class="h-48 rounded-xl" />
         </div>
@@ -226,10 +225,11 @@ async function submitPay() {
 
     <!-- ── Error ──────────────────────────────────────────────────────── -->
     <template v-else-if="fetchError || !expense">
-      <div class="flex-1 flex flex-col items-center justify-center gap-4">
-        <p class="text-[15px] font-semibold text-foreground">{{ fetchError || 'Expense not found' }}</p>
-        <Button variant="outline" size="sm" as-child>
-          <NuxtLink to="/app/expenses"><ArrowLeft class="size-3.5 mr-1.5" />Back to Expenses</NuxtLink>
+      <div class="flex flex-col items-center justify-center gap-4 py-28">
+        <Icon name="solar:document-text-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">{{ fetchError || 'Expense not found' }}</p>
+        <Button variant="outline" class="h-9 gap-1.5 rounded-lg px-4" as-child>
+          <NuxtLink to="/app/expenses"><Icon name="solar:arrow-left-linear" class="size-4" />Back to Expenses</NuxtLink>
         </Button>
       </div>
     </template>
@@ -237,58 +237,42 @@ async function submitPay() {
     <!-- ── Content ────────────────────────────────────────────────────── -->
     <template v-else>
 
-      <!-- Header bar -->
-      <div class="shrink-0 border-b border-border bg-background">
-        <div class="px-6 pt-3 pb-1">
-          <NuxtLink
-            to="/app/expenses"
-            class="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft class="size-3.5" /> All Expenses
-          </NuxtLink>
-        </div>
-        <div class="px-6 pb-4 flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <h1 class="text-[20px] font-semibold text-foreground leading-tight">{{ expense.vendor ?? 'Expense' }}</h1>
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-              <span class="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground capitalize">
-                <span class="size-2 rounded-full shrink-0" :style="{ background: catColor(expense.category) }" />
-                {{ expense.category }}
-              </span>
-              <span class="text-border">·</span>
-              <span class="text-[12.5px] text-muted-foreground">
-                {{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}
-              </span>
-              <template v-if="expense.description">
-                <span class="text-border">·</span>
-                <span class="text-[12.5px] text-muted-foreground truncate max-w-[280px]">{{ expense.description }}</span>
-              </template>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span
-              class="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
-              :class="STATUS_META[expense.status]?.cls"
-            >
-              <span
-                class="size-1.5 rounded-full shrink-0"
-                :class="[STATUS_META[expense.status]?.dot, ['paid','rejected'].includes(expense.status) ? '' : 'animate-pulse']"
-              />
-              {{ STATUS_META[expense.status]?.label ?? expense.status }}
+      <!-- Header -->
+      <AppPageHeader :title="expense.vendor ?? 'Expense'" :back="{ label: 'All expenses', to: '/app/expenses' }">
+        <template #description>
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span class="inline-flex items-center gap-1.5 capitalize">
+              <span class="size-2 shrink-0 rounded-full" :style="{ background: catColor(expense.category) }" />
+              {{ expense.category }}
             </span>
-            <p class="text-[24px] font-bold text-foreground tabular-nums leading-none">
-              ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
-            </p>
-          </div>
-        </div>
-      </div>
+            <span class="text-border">·</span>
+            <span>{{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}</span>
+            <template v-if="expense.description">
+              <span class="text-border">·</span>
+              <span class="max-w-[320px] truncate">{{ expense.description }}</span>
+            </template>
+          </span>
+        </template>
+        <template #actions>
+          <Badge variant="outline" class="h-7 gap-1.5 border-transparent px-2.5 text-[13px] font-medium" :class="STATUS_META[expense.status]?.cls">
+            <span
+              class="size-1.5 shrink-0 rounded-full"
+              :class="[STATUS_META[expense.status]?.dot, ['paid','rejected'].includes(expense.status) ? '' : 'animate-pulse']"
+            />
+            {{ STATUS_META[expense.status]?.label ?? expense.status }}
+          </Badge>
+          <p class="text-2xl font-medium leading-none tabular-nums text-foreground">
+            ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
+          </p>
+        </template>
+      </AppPageHeader>
 
       <!-- Two-column body -->
-      <div class="flex-1 grid grid-cols-[1fr_360px] divide-x divide-border min-h-0 overflow-hidden">
+      <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
 
         <!-- ── Left: Workflow stepper ──────────────────────────────── -->
-        <div class="overflow-y-auto px-8 py-8">
-          <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-7">Workflow</p>
+        <Card class="gap-0 rounded-xl px-6 py-6">
+          <p class="mb-6 text-[14px] font-medium text-foreground">Workflow</p>
 
           <div class="flex flex-col max-w-lg">
             <div v-for="(step, idx) in workflowSteps" :key="step.key" class="flex gap-5">
@@ -308,14 +292,14 @@ async function submitPay() {
                   }"
                 >
                   <!-- submitted -->
-                  <Upload     v-if="step.key === 'submitted'"                         class="size-3.5" />
+                  <Icon name="solar:upload-linear"     v-if="step.key === 'submitted'"                         class="size-3.5" />
                   <!-- manager -->
-                  <X          v-else-if="step.key === 'manager' && step.state === 'rejected'" class="size-3.5 stroke-[2.5]" />
-                  <UserCheck  v-else-if="step.key === 'manager'"                      class="size-3.5" />
+                  <Icon name="solar:close-linear"          v-else-if="step.key === 'manager' && step.state === 'rejected'" class="size-3.5 stroke-[2.5]" />
+                  <Icon name="solar:user-check-linear"  v-else-if="step.key === 'manager'"                      class="size-3.5" />
                   <!-- finance -->
-                  <CreditCard v-else-if="step.key === 'finance'"                      class="size-3.5" />
+                  <Icon name="solar:card-linear" v-else-if="step.key === 'finance'"                      class="size-3.5" />
                   <!-- completed -->
-                  <BadgeCheck v-else-if="step.key === 'completed'"                    class="size-3.5" />
+                  <Icon name="solar:verified-check-linear" v-else-if="step.key === 'completed'"                    class="size-3.5" />
                 </div>
 
                 <!-- Connector line -->
@@ -356,7 +340,7 @@ async function submitPay() {
                 >
                   <div class="size-10 rounded-lg overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
                     <img v-if="expense.receipt_url" :src="expense.receipt_url" class="w-full h-full object-cover" />
-                    <FileText v-else class="size-4 text-muted-foreground/40" />
+                    <Icon name="solar:document-text-linear" v-else class="size-4 text-muted-foreground/40" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-[13px] font-medium text-foreground truncate">{{ expense.vendor ?? 'Expense' }}</p>
@@ -399,14 +383,14 @@ async function submitPay() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- ── Right: Details + Actions + Receipt ──────────────────── -->
-        <div class="overflow-y-auto flex flex-col divide-y divide-border bg-background">
+        <Card class="gap-0 divide-y divide-border rounded-xl py-0">
 
           <!-- Action panel (role-gated) -->
-          <div v-if="canApproveOrReject || canPay" class="px-5 py-4 bg-muted/20">
-            <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Your Action</p>
+          <div v-if="canApproveOrReject || canPay" class="px-5 py-4">
+            <p class="mb-3 text-[14px] font-medium text-foreground">Your action</p>
 
             <!-- Manager: approve / reject -->
             <div v-if="canApproveOrReject" class="flex gap-2">
@@ -419,7 +403,7 @@ async function submitPay() {
                   <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
                   <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                 </svg>
-                <Check v-else class="size-3.5" />
+                <Icon name="solar:check-linear" v-else class="size-3.5" />
                 {{ approving ? 'Approving…' : 'Approve' }}
               </Button>
               <Button
@@ -427,7 +411,7 @@ async function submitPay() {
                 class="flex-1 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20"
                 @click="rejectOpen = true"
               >
-                <X class="size-3.5" /> Reject
+                <Icon name="solar:close-linear" class="size-3.5" /> Reject
               </Button>
             </div>
 
@@ -451,7 +435,7 @@ async function submitPay() {
                   <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
                   <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                 </svg>
-                <CreditCard v-else class="size-3.5" />
+                <Icon name="solar:card-linear" v-else class="size-3.5" />
                 {{ payLoading ? 'Recording…' : 'Mark as Paid' }}
               </Button>
             </div>
@@ -459,29 +443,29 @@ async function submitPay() {
 
           <!-- Expense details -->
           <div class="px-5 py-4">
-            <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</p>
+            <p class="mb-3 text-[14px] font-medium text-foreground">Details</p>
             <div class="flex flex-col gap-3">
               <div class="flex items-start justify-between gap-4">
-                <span class="text-[12.5px] text-muted-foreground shrink-0">Amount</span>
+                <span class="text-sm text-muted-foreground shrink-0">Amount</span>
                 <span class="text-[13px] font-semibold text-foreground tabular-nums">₹{{ Number(expense.amount).toLocaleString('en-IN') }}</span>
               </div>
               <div class="flex items-start justify-between gap-4">
-                <span class="text-[12.5px] text-muted-foreground shrink-0">Category</span>
+                <span class="text-sm text-muted-foreground shrink-0">Category</span>
                 <span class="text-[13px] text-foreground capitalize flex items-center gap-1.5">
                   <span class="size-2 rounded-full shrink-0" :style="{ background: catColor(expense.category) }" />
                   {{ expense.category }}
                 </span>
               </div>
               <div class="flex items-start justify-between gap-4">
-                <span class="text-[12.5px] text-muted-foreground shrink-0">Date</span>
+                <span class="text-sm text-muted-foreground shrink-0">Date</span>
                 <span class="text-[13px] text-foreground">{{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}</span>
               </div>
               <div v-if="expense.description" class="flex items-start justify-between gap-4">
-                <span class="text-[12.5px] text-muted-foreground shrink-0">Description</span>
+                <span class="text-sm text-muted-foreground shrink-0">Description</span>
                 <span class="text-[13px] text-foreground text-right">{{ expense.description }}</span>
               </div>
               <div v-if="expense.utr_number" class="flex items-start justify-between gap-4">
-                <span class="text-[12.5px] text-muted-foreground shrink-0">UTR / Reference</span>
+                <span class="text-sm text-muted-foreground shrink-0">UTR / Reference</span>
                 <span class="text-[13px] text-foreground font-mono">{{ expense.utr_number }}</span>
               </div>
             </div>
@@ -489,7 +473,7 @@ async function submitPay() {
 
           <!-- Receipt -->
           <div class="px-5 py-4">
-            <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Receipt</p>
+            <p class="mb-3 text-[14px] font-medium text-foreground">Receipt</p>
 
             <div v-if="expense.receipt_url">
               <div
@@ -502,19 +486,19 @@ async function submitPay() {
                 class="mt-2 w-full text-center text-[12px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
                 @click="receiptZoom = true"
               >
-                <ZoomIn class="size-3" /> View full size
+                <Icon name="solar:magnifer-zoom-in-linear" class="size-3" /> View full size
               </button>
             </div>
 
             <div v-else class="flex flex-col items-center gap-2 py-8">
               <div class="size-12 rounded-xl border-2 border-dashed border-border flex items-center justify-center">
-                <FileText class="size-5 text-muted-foreground/40" />
+                <Icon name="solar:document-text-linear" class="size-5 text-muted-foreground/40" />
               </div>
               <p class="text-[12.5px] text-muted-foreground">No receipt attached</p>
             </div>
           </div>
 
-        </div>
+        </Card>
       </div>
     </template>
 
@@ -562,5 +546,5 @@ async function submitPay() {
       </DialogContent>
     </Dialog>
 
-  </div>
+  </AppPage>
 </template>

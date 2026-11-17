@@ -18,7 +18,13 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  modules: [],
+  modules: ['@nuxt/icon'],
+  // Solar icon set (https://icon-sets.iconify.design/solar/) bundled locally — only used icons ship.
+  icon: {
+    mode: 'svg',
+    serverBundle: 'local',
+    clientBundle: { scan: true },
+  },
   // Supabase session lives in the browser only, so the server can't run the auth check.
   // Render /app client-side so logged-out users are redirected before any dashboard UI shows.
   routeRules: {

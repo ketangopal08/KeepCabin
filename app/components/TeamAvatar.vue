@@ -1,31 +1,36 @@
 <script setup lang="ts">
 const props = defineProps<{ name: string; size?: 'sm' | 'md' | 'lg' }>()
 
-const COLORS = [
-  { bg: '#ede9fe', shape: '#7c3aed' }, // violet
-  { bg: '#d1fae5', shape: '#059669' }, // emerald
-  { bg: '#fed7aa', shape: '#ea580c' }, // orange
-  { bg: '#dbeafe', shape: '#2563eb' }, // blue
-  { bg: '#fce7f3', shape: '#db2777' }, // pink
-  { bg: '#fef9c3', shape: '#ca8a04' }, // yellow
-  { bg: '#ccfbf1', shape: '#0d9488' }, // teal
-  { bg: '#e0e7ff', shape: '#4338ca' }, // indigo
+// Gradient tiles (ElevenLabs-style) — top-left → bottom-right
+const GRADIENTS = [
+  ['#60a5fa', '#4f46e5'], // sky → indigo
+  ['#f472b6', '#e11d48'], // pink → rose
+  ['#fb923c', '#e0475b'], // orange → coral
+  ['#34d399', '#0d9488'], // emerald → teal
+  ['#a78bfa', '#7c3aed'], // lavender → violet
+  ['#fbbf24', '#ea580c'], // amber → orange
+  ['#22d3ee', '#2563eb'], // cyan → blue
+  ['#e879f9', '#9333ea'], // fuchsia → purple
 ]
 
-// 6 two-layer shape combos: background (low opacity) + foreground (full)
-const SHAPES = [
-  // Concentric circles — outer ring + inner filled sphere
-  `<circle cx="12" cy="12" r="9" opacity="0.28"/><circle cx="12" cy="12" r="5.5"/>`,
-  // Offset stacked blocks
-  `<rect x="3" y="7" width="13" height="12" rx="3.5" opacity="0.3"/><rect x="8" y="5" width="13" height="12" rx="3.5"/>`,
-  // Arrow head + base bar
-  `<rect x="4" y="15.5" width="16" height="5" rx="2.5" opacity="0.35"/><path d="M6 15L12 4.5L18 15H6z"/>`,
-  // Nested diamonds
-  `<path d="M12 2L22 12L12 22L2 12Z" opacity="0.28"/><path d="M12 6L18.5 12L12 18L5.5 12Z"/>`,
-  // Hexagon shell + center circle
-  `<path d="M12 2L21.5 7V17L12 22L2.5 17V7Z" opacity="0.28"/><circle cx="12" cy="12" r="4.5"/>`,
-  // Rounded square backdrop + plus/cross
-  `<rect x="3" y="3" width="18" height="18" rx="5" opacity="0.28"/><path d="M10 5h4v5h5v4h-5v5h-4v-5h-5v-4h5z"/>`,
+// White glyphs: a soft (translucent) layer + a solid layer
+const GLYPHS = [
+  // Orbit — ring with a satellite dot
+  `<circle cx="12" cy="12" r="7.5" fill="none" stroke="white" stroke-width="2" opacity="0.45"/><circle cx="12" cy="12" r="3.5" fill="white"/><circle cx="18.2" cy="7.6" r="2" fill="white"/>`,
+  // Stacked layers
+  `<path d="M12 3.5L21 8L12 12.5L3 8Z" fill="white"/><path d="M4.2 11.6L12 15.5L19.8 11.6L21 12.2L12 16.7L3 12.2Z" fill="white" opacity="0.6"/><path d="M4.2 15.6L12 19.5L19.8 15.6L21 16.2L12 20.7L3 16.2Z" fill="white" opacity="0.35"/>`,
+  // Sun rise — half disc over horizon lines
+  `<path d="M5 15a7 7 0 0 1 14 0Z" fill="white"/><rect x="3" y="16.6" width="18" height="1.8" rx="0.9" fill="white" opacity="0.6"/><rect x="6" y="19.6" width="12" height="1.8" rx="0.9" fill="white" opacity="0.35"/>`,
+  // Four-point spark
+  `<path d="M12 2.5C12.8 8 16 11.2 21.5 12C16 12.8 12.8 16 12 21.5C11.2 16 8 12.8 2.5 12C8 11.2 11.2 8 12 2.5Z" fill="white"/><circle cx="19" cy="5" r="1.6" fill="white" opacity="0.5"/>`,
+  // Dot grid with one highlight
+  `<g fill="white" opacity="0.4"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></g><circle cx="18" cy="6" r="2.4" fill="white"/><circle cx="12" cy="12" r="2.4" fill="white"/><circle cx="6" cy="18" r="2.4" fill="white"/>`,
+  // Overlapping quarter petals
+  `<path d="M4 20V12a8 8 0 0 1 8 8Z" fill="white" opacity="0.45"/><path d="M12 12V4a8 8 0 0 1 8 8Z" fill="white" opacity="0.45"/><path d="M12 20a8 8 0 0 1-8-8h8Z" fill="white"/><path d="M20 12a8 8 0 0 1-8 8v-8Z" fill="white" opacity="0.75"/>`,
+  // Double chevron (forward motion)
+  `<path d="M5 5.5L11.5 12L5 18.5" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M12 5.5L18.5 12L12 18.5" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  // Crescent + star
+  `<path d="M14.5 3.5a8.5 8.5 0 1 0 6 14.5A7 7 0 0 1 14.5 3.5Z" fill="white"/><path d="M18 4l.7 1.6L20.3 6.3l-1.6.7L18 8.6l-.7-1.6-1.6-.7 1.6-.7Z" fill="white" opacity="0.6"/>`,
 ]
 
 function hash(s: string) {
@@ -34,24 +39,26 @@ function hash(s: string) {
   return h
 }
 
-const color = computed(() => COLORS[hash(props.name) % COLORS.length])
-const shape = computed(() => SHAPES[hash(props.name + 'shape') % SHAPES.length])
+const gradient = computed(() => GRADIENTS[hash(props.name) % GRADIENTS.length]!)
+const glyph = computed(() => GLYPHS[hash(props.name + 'glyph') % GLYPHS.length])
 
 const sizeClass = computed(() => {
-  if (props.size === 'sm') return 'size-7'
-  if (props.size === 'lg') return 'size-12'
-  return 'size-9'
+  if (props.size === 'sm') return 'size-7 rounded-lg'
+  if (props.size === 'lg') return 'size-12 rounded-xl'
+  return 'size-9 rounded-[10px]'
 })
 </script>
 
 <template>
   <div
-    :class="[sizeClass, 'rounded-xl flex items-center justify-center shrink-0 overflow-hidden']"
-    :style="{ background: color.bg }"
+    :class="[sizeClass, 'relative flex shrink-0 items-center justify-center overflow-hidden shadow-sm']"
+    :style="{ background: `linear-gradient(135deg, ${gradient[0]} 0%, ${gradient[1]} 100%)` }"
   >
-    <svg viewBox="0 0 24 24" class="size-[55%]" :fill="color.shape" xmlns="http://www.w3.org/2000/svg">
+    <!-- soft top highlight -->
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
+    <svg viewBox="0 0 24 24" class="relative size-[56%]" xmlns="http://www.w3.org/2000/svg">
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <g v-html="shape" />
+      <g v-html="glyph" />
     </svg>
   </div>
 </template>

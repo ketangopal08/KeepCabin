@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
-import { FileDown } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -50,114 +49,79 @@ async function downloadCSV() {
 </script>
 
 <template>
-  <div class="-m-6 flex h-[calc(100vh-44px)]">
+  <AppPage>
 
-    <!-- ── Left config panel ── -->
-    <div class="w-[360px] shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
-
-      <div class="px-5 pt-5 pb-4 border-b border-border">
-        <div class="flex items-center gap-2 mb-0.5">
-          <FileDown class="size-4 text-muted-foreground" />
-          <h1 class="text-[15px] font-semibold text-foreground">Export Report</h1>
-        </div>
-        <p class="text-[12.5px] text-muted-foreground">Export expense data as a CSV file</p>
-      </div>
-
-      <div class="flex flex-col gap-4 px-5 py-5 flex-1">
-
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[11.5px] font-semibold text-muted-foreground uppercase tracking-wider">Month</label>
-          <Input v-model="selectedMonth" type="month" />
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-[11.5px] font-semibold text-muted-foreground uppercase tracking-wider">Included columns</label>
-          <div class="rounded-lg border border-border overflow-hidden divide-y divide-border">
-            <div
-              v-for="col in exportColumns"
-              :key="col.key"
-              class="flex items-center gap-3 px-3.5 py-2.5 bg-card"
-            >
-              <div class="size-1.5 rounded-full bg-emerald-400 shrink-0" />
-              <span class="text-[12.5px] text-foreground">{{ col.label }}</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="px-5 py-4 border-t border-border">
-        <Button :disabled="downloading" class="w-full gap-2" @click="downloadCSV">
-          <svg v-if="downloading" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
+    <!-- Header -->
+    <AppPageHeader title="Reports" description="Export expense data as a CSV file.">
+      <template #actions>
+        <Button :disabled="downloading" class="h-9 gap-1.5 rounded-lg px-4" @click="downloadCSV">
+          <svg v-if="downloading" class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
             <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
           </svg>
-          <FileDown v-else class="size-4 shrink-0" />
+          <Icon name="solar:file-download-linear" v-else class="size-4 shrink-0" />
           {{ downloading ? 'Downloading…' : 'Download CSV' }}
         </Button>
-      </div>
+      </template>
+    </AppPageHeader>
+
+    <!-- Tabs -->
+    <AppPageTabs model-value="export" :tabs="[{ id: 'export', label: 'Export' }]" />
+
+    <!-- Month -->
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <span class="text-sm text-muted-foreground">Month</span>
+      <Input v-model="selectedMonth" type="month" class="h-9 w-48 rounded-lg text-sm" />
     </div>
 
-    <!-- ── Right panel: table preview ── -->
-    <div class="flex-1 bg-muted/30 flex flex-col overflow-auto p-6">
-      <div class="w-full max-w-[760px] mx-auto flex flex-col gap-4">
-
-        <div class="flex items-center justify-between">
-          <p class="text-[13px] font-semibold text-foreground">Preview</p>
-          <Badge variant="outline">{{ selectedMonth }}</Badge>
-        </div>
-
-        <!-- Table card -->
-        <Card>
-          <CardContent class="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead class="w-[80px]">ID</TableHead>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead class="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="row in previewRows" :key="row.id">
-                  <TableCell class="font-mono text-muted-foreground text-xs">{{ row.id }}</TableCell>
-                  <TableCell class="text-[12.5px]">{{ row.employee }}</TableCell>
-                  <TableCell class="text-[12.5px]">{{ row.team }}</TableCell>
-                  <TableCell class="text-[12.5px]">{{ row.vendor }}</TableCell>
-                  <TableCell class="text-[12.5px] capitalize">{{ row.category }}</TableCell>
-                  <TableCell class="text-right font-semibold text-[12.5px]">{{ row.amount }}</TableCell>
-                  <TableCell>
-                    <Badge :variant="row.status === 'paid' ? 'default' : 'secondary'" class="capitalize">
-                      {{ row.status }}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-          <CardFooter class="px-4 py-3 border-t border-border">
-            <p class="text-[12px] text-muted-foreground">Showing sample rows · all approved &amp; paid expenses for {{ selectedMonth }} will be exported</p>
-          </CardFooter>
-        </Card>
-
-        <!-- Column chips -->
-        <Card size="sm">
-          <CardContent class="px-4 py-3.5">
-            <p class="text-[11.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">{{ exportColumns.length }} columns exported</p>
-            <div class="flex flex-wrap gap-1.5">
-              <Badge v-for="col in exportColumns" :key="col.key" variant="secondary">
-                {{ col.label }}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
+    <!-- Preview -->
+    <div class="mb-3 flex items-center justify-between">
+      <p class="text-[14px] font-medium text-foreground">Preview</p>
+      <Badge variant="outline" class="font-normal">{{ selectedMonth }}</Badge>
     </div>
 
-  </div>
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="h-11 w-[100px] px-2 font-normal text-muted-foreground">ID</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Employee</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Team</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Vendor</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
+          <TableHead class="h-11 text-right font-normal text-muted-foreground">Amount</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="row in previewRows" :key="row.id" class="border-border">
+          <TableCell class="px-2 py-3 font-mono text-xs text-muted-foreground">{{ row.id }}</TableCell>
+          <TableCell class="py-3">{{ row.employee }}</TableCell>
+          <TableCell class="py-3">{{ row.team }}</TableCell>
+          <TableCell class="py-3">{{ row.vendor }}</TableCell>
+          <TableCell class="py-3 capitalize">{{ row.category }}</TableCell>
+          <TableCell class="py-3 text-right font-medium">{{ row.amount }}</TableCell>
+          <TableCell class="py-3">
+            <Badge :variant="row.status === 'paid' ? 'default' : 'secondary'" class="capitalize">
+              {{ row.status }}
+            </Badge>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+    <p class="mt-3 text-[13px] text-muted-foreground">
+      Showing sample rows · all approved &amp; paid expenses for {{ selectedMonth }} will be exported
+    </p>
+
+    <Separator class="my-7" />
+
+    <!-- Columns -->
+    <p class="mb-3 text-[14px] font-medium text-foreground">Included columns <span class="ml-1 text-sm font-normal text-muted-foreground">{{ exportColumns.length }}</span></p>
+    <div class="flex flex-wrap gap-2">
+      <Badge v-for="col in exportColumns" :key="col.key" variant="outline" class="h-7 gap-1.5 rounded-md px-2.5 text-[13px] font-normal">
+        <span class="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+        {{ col.label }}
+      </Badge>
+    </div>
+
+  </AppPage>
 </template>

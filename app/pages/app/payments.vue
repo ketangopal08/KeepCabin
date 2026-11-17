@@ -2,7 +2,6 @@
 import { useSupabase } from '~~/lib/supabase'
 import type { Expense } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
-import { CreditCard, Eye, Wallet } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -11,6 +10,15 @@ const expenses   = ref<Expense[]>([])
 const loading    = ref(true)
 const utrInputs  = ref<Record<string, string>>({})
 const submitting = ref<Set<string>>(new Set())
+const search     = ref('')
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return expenses.value
+  return expenses.value.filter(e =>
+    (e.vendor ?? '').toLowerCase().includes(q) || e.category.toLowerCase().includes(q)
+  )
+})
 
 function catColor(cat: string) {
   const p = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
@@ -68,22 +76,22 @@ onMounted(fetchPending)
 </script>
 
 <template>
-  <div class="-m-6 flex flex-col h-full">
+  <AppPage>
 
-    <!-- Sub-toolbar -->
-    <div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-background shrink-0">
-      <Wallet class="size-4 text-muted-foreground" />
-      <span class="text-[13px] font-medium text-foreground flex-1">Pending Payments</span>
-      <Badge v-if="!loading && expenses.length > 0" variant="secondary" class="text-[11.5px]">
-        {{ expenses.length }}
-      </Badge>
-    </div>
+    <!-- Header -->
+    <AppPageHeader title="Payments" description="Record payments for approved expenses." />
+
+    <!-- Tabs -->
+    <AppPageTabs model-value="pending" :tabs="[{ id: 'pending', label: 'Pending payment', count: loading ? undefined : expenses.length }]" />
+
+    <!-- Search -->
+    <AppSearchInput v-model="search" placeholder="Search by vendor or category" class="mb-4" />
 
     <!-- Loading -->
     <div v-if="loading" class="flex flex-col">
-      <div v-for="n in 5" :key="n" class="flex items-center gap-4 px-5 py-4 border-b border-border">
-        <Skeleton class="size-10 rounded-xl shrink-0" />
-        <div class="flex flex-col gap-1.5 flex-1">
+      <div v-for="n in 5" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-4">
+        <Skeleton class="size-9 shrink-0 rounded-lg" />
+        <div class="flex flex-1 flex-col gap-1.5">
           <Skeleton class="h-4 w-36 rounded" />
           <Skeleton class="h-3 w-48 rounded" />
         </div>
@@ -93,77 +101,80 @@ onMounted(fetchPending)
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="expenses.length === 0" class="flex flex-col items-center justify-center flex-1 gap-5">
-      <div class="size-[72px] rounded-2xl border-2 border-dashed border-border flex items-center justify-center">
-        <Wallet class="size-8 text-muted-foreground/40" />
-      </div>
-      <div class="text-center">
-        <p class="text-[15px] font-semibold text-foreground">No pending payments</p>
-        <p class="text-[13px] text-muted-foreground mt-1">Approved expenses awaiting payment will appear here.</p>
-      </div>
+    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+      <Icon name="solar:wallet-linear" class="size-7 text-muted-foreground" />
+      <p class="text-[15px] text-foreground">{{ search ? 'No matching expenses' : 'No pending payments' }}</p>
+      <p class="-mt-1.5 text-sm text-muted-foreground">
+        {{ search ? 'Try a different search term.' : 'Approved expenses awaiting payment will appear here.' }}
+      </p>
     </div>
 
-    <!-- Expense list -->
-    <div v-else class="flex-1 overflow-auto">
-      <div
-        v-for="e in expenses"
-        :key="e.id"
-        class="flex items-center gap-4 px-5 py-4 border-b border-border hover:bg-muted/20 transition-colors"
-      >
-        <!-- Category avatar -->
-        <div
-          class="size-10 rounded-xl flex items-center justify-center text-[12px] font-bold text-white shrink-0"
-          :style="{ background: catColor(e.category) }"
-        >
-          {{ initials(e.vendor ?? e.category) }}
-        </div>
-
-        <!-- Details -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <p class="text-[13.5px] font-medium text-foreground truncate">{{ e.vendor ?? 'Expense' }}</p>
-            <Badge variant="outline" class="text-[11px] shrink-0 capitalize">{{ e.category }}</Badge>
-          </div>
-          <p class="text-[12px] text-muted-foreground mt-0.5">
+    <!-- Expense table -->
+    <Table v-else>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Date</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Amount</TableHead>
+          <TableHead class="h-11 w-px" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="e in filtered" :key="e.id" class="border-border">
+          <TableCell class="px-2 py-3">
+            <div class="flex items-center gap-3">
+              <div
+                class="flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+                :style="{ background: catColor(e.category) }"
+              >
+                {{ initials(e.vendor ?? e.category) }}
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-foreground">{{ e.vendor ?? 'Expense' }}</p>
+                <p v-if="e.description" class="mt-0.5 max-w-[280px] truncate text-[12.5px] text-muted-foreground">{{ e.description }}</p>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell class="py-3">
+            <Badge variant="outline" class="font-normal capitalize">{{ e.category }}</Badge>
+          </TableCell>
+          <TableCell class="py-3 text-muted-foreground">
             {{ e.expense_date ? fmtDate(e.expense_date) : fmtDate(e.created_at) }}
-            <template v-if="e.description"> · {{ e.description }}</template>
-          </p>
-        </div>
+          </TableCell>
+          <TableCell class="py-3 font-medium tabular-nums text-foreground">
+            ₹{{ Number(e.amount).toLocaleString('en-IN') }}
+          </TableCell>
+          <TableCell class="py-3">
+            <div class="flex items-center justify-end gap-2">
+              <Input
+                v-model="utrInputs[e.id]"
+                placeholder="UTR / Reference no."
+                class="h-8 w-52 font-mono text-[13px]"
+                @keydown.enter="markPaid(e.id)"
+              />
+              <Button
+                class="h-8 gap-1.5 rounded-lg px-3"
+                :disabled="submitting.has(e.id) || !utrInputs[e.id]?.trim()"
+                @click="markPaid(e.id)"
+              >
+                <svg v-if="submitting.has(e.id)" class="size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <Icon name="solar:card-linear" v-else class="size-3.5" />
+                {{ submitting.has(e.id) ? 'Saving…' : 'Mark paid' }}
+              </Button>
+              <Button variant="outline" size="icon" class="rounded-lg text-muted-foreground" as-child>
+                <NuxtLink :to="`/app/expenses/${e.id}`">
+                  <Icon name="solar:eye-linear" class="size-4" />
+                </NuxtLink>
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
 
-        <!-- Amount -->
-        <p class="text-[15px] font-bold text-foreground shrink-0 tabular-nums">
-          ₹{{ Number(e.amount).toLocaleString('en-IN') }}
-        </p>
-
-        <!-- UTR input + pay button -->
-        <div class="flex items-center gap-2 shrink-0">
-          <Input
-            v-model="utrInputs[e.id]"
-            placeholder="UTR / Reference no."
-            class="w-52 text-[12.5px] font-mono h-9"
-            @keydown.enter="markPaid(e.id)"
-          />
-          <Button
-            size="sm"
-            class="h-9 gap-1.5 text-[12.5px]"
-            :disabled="submitting.has(e.id) || !utrInputs[e.id]?.trim()"
-            @click="markPaid(e.id)"
-          >
-            <svg v-if="submitting.has(e.id)" class="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            <CreditCard v-else class="size-3.5" />
-            {{ submitting.has(e.id) ? 'Saving…' : 'Mark Paid' }}
-          </Button>
-          <Button variant="ghost" size="icon-sm" class="h-9 w-9 text-muted-foreground" as-child>
-            <NuxtLink :to="`/app/expenses/${e.id}`">
-              <Eye class="size-3.5" />
-            </NuxtLink>
-          </Button>
-        </div>
-      </div>
-    </div>
-
-  </div>
+  </AppPage>
 </template>

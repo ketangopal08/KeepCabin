@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
-import { UserPlus, Users, Mail, Settings2, ChevronRight } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -158,170 +157,155 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full min-w-0 px-28 py-1">
-    <div class="w-full max-w-5xl mx-auto flex flex-col">
+  <AppPage>
 
     <!-- ── Page header ───────────────────────────────────────────── -->
-    <div class="mb-7">
-      <h1 class="text-[17px] font-semibold text-foreground">Organization</h1>
-      <p class="text-[12.5px] text-muted-foreground mt-0.5">
-        Manage members and teams for <span class="font-medium text-foreground">{{ ctx?.org?.name }}</span>
-      </p>
-    </div>
+    <AppPageHeader title="Organization">
+      <template #description>
+        Manage members and teams for <span class="font-medium text-foreground capitalize">{{ ctx?.org?.name }}</span>
+      </template>
+      <template #actions>
+        <Button v-if="activeTab === 'teams'" class="h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
+          <Icon name="solar:add-linear" class="size-4" /> New team
+        </Button>
+        <Button v-else class="h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
+          <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+        </Button>
+      </template>
+    </AppPageHeader>
 
+    <!-- ── Tabs ──────────────────────────────────────────────────── -->
+    <AppPageTabs
+      :model-value="activeTab"
+      :tabs="[
+        { id: 'teams', label: 'Teams', count: loadingTeams ? undefined : teams.length },
+        { id: 'members', label: 'Members', count: loadingMembers ? undefined : members.length },
+      ]"
+      @update:model-value="setTab"
+    />
 
-    <!-- ── List panel ───────────────────────────────────────────────── -->
-    <div class="rounded-xl border border-border bg-card overflow-hidden flex flex-col w-full">
+    <!-- ── TEAMS TAB ──────────────────────────────────── -->
+    <template v-if="activeTab === 'teams'">
 
-        <!-- tab bar -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
-          <div class="flex items-center gap-0.5 bg-muted/60 p-1 rounded-lg">
-            <button
-              v-for="tab in [{ id: 'teams', label: 'Teams' }, { id: 'members', label: 'Members' }]"
-              :key="tab.id"
-              class="px-4 py-1 rounded-md text-[12.5px] font-medium transition-all duration-150"
-              :class="activeTab === tab.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-              @click="setTab(tab.id)"
-            >{{ tab.label }}</button>
-          </div>
-          <Button v-if="activeTab === 'teams'" size="sm" class="gap-1.5 h-8 text-[12.5px]" @click="showTeamDialog = true">
-            <Users class="size-3.5" /> New Team
-          </Button>
-          <Button v-else size="sm" class="gap-1.5 h-8 text-[12.5px]" @click="showInviteDialog = true">
-            <UserPlus class="size-3.5" /> Invite Member
-          </Button>
+      <!-- loading skeletons -->
+      <div v-if="loadingTeams" class="flex flex-col">
+        <div v-for="n in 3" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+          <Skeleton class="size-8 shrink-0 rounded-xl" />
+          <Skeleton class="h-4 w-36 rounded" />
+          <Skeleton class="ml-auto h-4 w-24 rounded" />
         </div>
+      </div>
 
-        <!-- list area -->
-        <div class="p-4 flex flex-col gap-2.5">
+      <!-- empty -->
+      <div v-else-if="teams.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">No teams yet</p>
+        <p class="-mt-1.5 text-sm text-muted-foreground">Create teams to group members and assign managers.</p>
+        <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
+          <Icon name="solar:add-linear" class="size-4" /> New team
+        </Button>
+      </div>
 
-          <!-- ── TEAMS TAB ──────────────────────────────────── -->
-          <template v-if="activeTab === 'teams'">
-
-            <!-- loading skeletons -->
-            <div v-if="loadingTeams" class="flex flex-col gap-2.5">
-              <div v-for="n in 3" :key="n" class="rounded-xl border border-border p-4">
-                <div class="flex items-center justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <Skeleton class="size-8 rounded-xl shrink-0" />
-                    <Skeleton class="h-4 w-28 rounded" />
-                  </div>
-                  <Skeleton class="h-5 w-14 rounded-full" />
-                </div>
-                <Skeleton class="h-3 w-48 rounded mb-3" />
-                <Skeleton class="h-3 w-32 rounded" />
-              </div>
-            </div>
-
-            <!-- empty -->
-            <div v-else-if="teams.length === 0" class="rounded-xl border border-dashed border-border flex flex-col items-center justify-center gap-3 py-14">
-              <div class="size-11 rounded-xl bg-muted flex items-center justify-center">
-                <Users class="size-5 text-muted-foreground" />
-              </div>
-              <p class="text-[13px] font-medium text-foreground">No teams yet</p>
-              <p class="text-[12px] text-muted-foreground text-center max-w-[220px]">Create teams to group members and assign managers.</p>
-              <Button size="sm" class="mt-1 gap-1.5" @click="showTeamDialog = true">
-                <Users class="size-3.5" /> New Team
-              </Button>
-            </div>
-
-            <!-- flat list rows -->
-            <div v-else class="-mx-4 -mb-4">
-              <NuxtLink
-                v-for="(t, i) in teams"
-                :key="t.id"
-                :to="`/app/teams/${t.id}`"
-                class="kc-row flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                :style="{ animationDelay: `${i * 55}ms` }"
-              >
+      <!-- table -->
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Members</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Created</TableHead>
+            <TableHead class="h-11 w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="(t, i) in teams"
+            :key="t.id"
+            class="kc-row cursor-pointer border-border"
+            :style="{ animationDelay: `${i * 55}ms` }"
+            @click="navigateTo(`/app/teams/${t.id}`)"
+          >
+            <TableCell class="px-2 py-3">
+              <div class="flex items-center gap-3">
                 <TeamAvatar :name="t.name" size="md" />
-
-                <div class="flex-1 min-w-0">
-                  <p class="text-[13.5px] font-semibold text-foreground leading-snug truncate">{{ t.name }}</p>
-                  <p class="text-[12px] text-muted-foreground truncate mt-0.5">
-                    {{ members.filter(m => m.team_name === t.name).length || 'No' }} member{{ members.filter(m => m.team_name === t.name).length === 1 ? '' : 's' }}
-                    <template v-if="t.created_at"> · {{ new Date(t.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) }}</template>
-                  </p>
-                </div>
-
-                <!-- member count badge + chevron -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-[11.5px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {{ members.filter(m => m.team_name === t.name).length }}
-                  </span>
-                  <ChevronRight class="size-4 text-muted-foreground/50" />
-                </div>
-              </NuxtLink>
-            </div>
-          </template>
-
-          <!-- ── MEMBERS TAB ──────────────────────────────────── -->
-          <template v-else>
-
-            <!-- loading -->
-            <div v-if="loadingMembers" class="flex flex-col gap-2.5">
-              <div v-for="n in 4" :key="n" class="rounded-xl border border-border p-4">
-                <div class="flex items-center justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <Skeleton class="size-9 rounded-full shrink-0" />
-                    <div><Skeleton class="h-3.5 w-28 rounded mb-1.5" /><Skeleton class="h-3 w-36 rounded" /></div>
-                  </div>
-                  <Skeleton class="h-5 w-16 rounded-full" />
-                </div>
-                <Skeleton class="h-3 w-32 rounded" />
+                <p class="truncate text-sm font-medium text-foreground">{{ t.name }}</p>
               </div>
-            </div>
+            </TableCell>
+            <TableCell class="py-3 tabular-nums text-muted-foreground">
+              {{ members.filter(m => m.team_name === t.name).length }}
+            </TableCell>
+            <TableCell class="py-3 text-muted-foreground">
+              {{ t.created_at ? new Date(t.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+            </TableCell>
+            <TableCell class="py-3 text-right">
+              <Icon name="solar:alt-arrow-right-linear" class="ml-auto size-4 text-muted-foreground/60" />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </template>
 
-            <!-- empty -->
-            <div v-else-if="members.length === 0" class="rounded-xl border border-dashed border-border flex flex-col items-center justify-center gap-3 py-14">
-              <div class="size-11 rounded-xl bg-muted flex items-center justify-center">
-                <UserPlus class="size-5 text-muted-foreground" />
-              </div>
-              <p class="text-[13px] font-medium text-foreground">No members yet</p>
-              <p class="text-[12px] text-muted-foreground">Invite someone to join your organization.</p>
-              <Button size="sm" class="mt-1 gap-1.5" @click="showInviteDialog = true">
-                <UserPlus class="size-3.5" /> Invite Member
-              </Button>
-            </div>
+    <!-- ── MEMBERS TAB ──────────────────────────────────── -->
+    <template v-else>
 
-            <!-- flat member rows -->
-            <div v-else class="-mx-4 -mb-4">
-              <div
-                v-for="(m, i) in members"
-                :key="m.id"
-                class="kc-row flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                :style="{ animationDelay: `${i * 55}ms` }"
-              >
-                <!-- avatar -->
+      <!-- loading -->
+      <div v-if="loadingMembers" class="flex flex-col">
+        <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+          <Skeleton class="size-8 shrink-0 rounded-full" />
+          <div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-28 rounded" /><Skeleton class="h-3 w-36 rounded" /></div>
+          <Skeleton class="ml-auto h-5 w-16 rounded-full" />
+        </div>
+      </div>
+
+      <!-- empty -->
+      <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+        <Icon name="solar:user-plus-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">No members yet</p>
+        <p class="-mt-1.5 text-sm text-muted-foreground">Invite someone to join your organization.</p>
+        <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
+          <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+        </Button>
+      </div>
+
+      <!-- table -->
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Team</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
+            <TableHead class="h-11 font-normal text-muted-foreground">Joined</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="(m, i) in members"
+            :key="m.id"
+            class="kc-row border-border"
+            :style="{ animationDelay: `${i * 55}ms` }"
+          >
+            <TableCell class="px-2 py-3">
+              <div class="flex items-center gap-3">
                 <div
-                  class="size-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                  class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
                   :style="{ background: memberColor(m) }"
                 >{{ memberInitials(m) }}</div>
-
-                <!-- name + meta -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-[13.5px] font-semibold text-foreground truncate leading-snug">{{ m.full_name ?? m.email }}</p>
-                  <p class="text-[12px] text-muted-foreground truncate mt-0.5">
-                    {{ m.email }}
-                    <template v-if="m.team_name"> · {{ m.team_name }}</template>
-                    <template v-if="m.created_at"> · Joined {{ new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) }}</template>
-                  </p>
-                </div>
-
-                <!-- role badge + chevron -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <span
-                    class="text-[10.5px] font-semibold px-2 py-0.5 rounded-full capitalize"
-                    :class="roleBadgeClass(m.role ?? '')"
-                  >{{ m.role ?? '—' }}</span>
-                  <ChevronRight class="size-4 text-muted-foreground/50" />
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
+                  <p v-if="m.full_name" class="truncate text-[12.5px] text-muted-foreground">{{ m.email }}</p>
                 </div>
               </div>
-            </div>
-          </template>
-
-        </div><!-- end list area -->
-      </div><!-- end panel -->
+            </TableCell>
+            <TableCell class="py-3 text-muted-foreground">{{ m.team_name ?? '—' }}</TableCell>
+            <TableCell class="py-3">
+              <Badge variant="outline" class="border-transparent font-normal capitalize" :class="roleBadgeClass(m.role ?? '')">{{ m.role ?? '—' }}</Badge>
+            </TableCell>
+            <TableCell class="py-3 text-muted-foreground">
+              {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </template>
 
     <!-- ═══════════════════════════════════════════════════════════════
          Invite Member Dialog
@@ -390,7 +374,7 @@ onMounted(async () => {
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
               <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
             </svg>
-            <Mail v-else class="size-3.5 mr-1.5" />
+            <Icon name="solar:letter-linear" v-else class="size-3.5 mr-1.5" />
             {{ inviteLoading ? 'Sending…' : 'Send invite' }}
           </Button>
         </DialogFooter>
@@ -426,7 +410,7 @@ onMounted(async () => {
           >
             <TeamAvatar :name="newTeamName" size="lg" />
             <div>
-              <p class="text-[13.5px] font-semibold text-foreground">{{ newTeamName }}</p>
+              <p class="text-sm font-semibold text-foreground">{{ newTeamName }}</p>
               <p class="text-[11.5px] text-muted-foreground">New team — no members yet</p>
             </div>
           </div>
@@ -445,8 +429,7 @@ onMounted(async () => {
       </DialogContent>
     </Dialog>
 
-    </div><!-- end container -->
-  </div>
+  </AppPage>
 </template>
 
 <style scoped>

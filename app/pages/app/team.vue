@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
-import { Users, Mail } from '@lucide/vue'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -46,84 +45,69 @@ watch(() => ctx.value, fetchMembers, { immediate: true })
 </script>
 
 <template>
-  <div class="-m-6 flex h-[calc(100vh-44px)]">
+  <AppPage>
 
-    <!-- ── Left config panel ── -->
-    <div class="w-[360px] shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
+    <!-- Header -->
+    <AppPageHeader title="My Team" description="Invite employees to your team." />
 
-      <div class="px-5 pt-5 pb-4 border-b border-border">
-        <div class="flex items-center gap-2 mb-0.5">
-          <Users class="size-4 text-muted-foreground" />
-          <h1 class="text-[15px] font-semibold text-foreground">My Team</h1>
-        </div>
-        <p class="text-[12.5px] text-muted-foreground">Invite employees to your team</p>
+    <!-- Invite card -->
+    <Card class="mb-7 gap-3 rounded-xl px-4 py-4">
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <Input
+          v-model="inviteEmail"
+          type="email"
+          placeholder="employee@company.com"
+          class="h-9 flex-1 rounded-lg text-sm"
+          @keydown.enter.prevent="sendInvite"
+        />
+        <Button :disabled="loading" class="h-9 gap-1.5 rounded-lg px-4" @click="sendInvite">
+          <svg v-if="loading" class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+            <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <Icon name="solar:letter-linear" v-else class="size-4 shrink-0" />
+          {{ loading ? 'Sending…' : 'Send invite' }}
+        </Button>
       </div>
+      <p class="text-[13px] text-muted-foreground">
+        Invited members join as <span class="font-medium text-foreground">employees</span> — they can submit and track their own expenses. You review and approve as their manager.
+      </p>
+    </Card>
 
-      <div class="flex flex-col gap-4 px-5 py-5 flex-1">
+    <!-- Tabs -->
+    <AppPageTabs model-value="members" :tabs="[{ id: 'members', label: 'Members', count: members.length }]" />
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[11.5px] font-semibold text-muted-foreground uppercase tracking-wider">Email address</label>
-          <Input
-            v-model="inviteEmail"
-            type="email"
-            placeholder="employee@company.com"
-            @keydown.enter.prevent="sendInvite"
-          />
-        </div>
-
-        <Card size="sm">
-          <CardContent class="px-3.5 py-3 text-[12px] text-muted-foreground">
-            Invited members join as <span class="font-semibold text-foreground">employees</span> — they can submit and track their own expenses. You review and approve as their manager.
-          </CardContent>
-        </Card>
-
-        <div class="mt-auto pt-4 border-t border-border">
-          <Button :disabled="loading" class="w-full gap-2" @click="sendInvite">
-            <svg v-if="loading" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            <Mail v-else class="size-4 shrink-0" />
-            {{ loading ? 'Sending…' : 'Send invite' }}
-          </Button>
-        </div>
-      </div>
+    <!-- Empty -->
+    <div v-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-24 text-center">
+      <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+      <p class="text-[15px] text-foreground">No team members yet</p>
+      <p class="-mt-1.5 max-w-[320px] text-sm text-muted-foreground">Invite employees above — they'll show up here once they accept.</p>
     </div>
 
-    <!-- ── Right panel: team members ── -->
-    <div class="flex-1 bg-muted/30 flex flex-col overflow-auto">
-
-      <div v-if="members.length === 0" class="flex flex-col items-center justify-center flex-1 gap-3 text-center px-8">
-        <div class="size-14 rounded-2xl bg-card border border-border flex items-center justify-center mb-1">
-          <Users class="size-6 text-muted-foreground/50" />
-        </div>
-        <p class="text-[14px] font-semibold text-foreground">No team members yet</p>
-        <p class="text-[12.5px] text-muted-foreground max-w-[280px]">Invite employees from the panel on the left — they'll show up here once they accept.</p>
-      </div>
-
-      <div v-else class="p-6 flex flex-col gap-3 max-w-[640px] w-full mx-auto">
-        <div class="flex items-center justify-between mb-1">
-          <p class="text-[13px] font-semibold text-foreground">Team members</p>
-          <span class="text-[12px] text-muted-foreground">{{ members.length }} member{{ members.length !== 1 ? 's' : '' }}</span>
-        </div>
-
-        <Card v-for="m in members" :key="m.id" size="sm">
-          <CardContent class="px-4 py-3 flex items-center gap-4">
-            <div class="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <span class="text-[13px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+    <!-- Members table -->
+    <Table v-else>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
+          <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="m in members" :key="m.id" class="border-border">
+          <TableCell class="px-2 py-3">
+            <div class="flex items-center gap-3">
+              <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                <span class="text-[12px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+              </div>
+              <p class="font-mono text-sm font-medium text-foreground">{{ m.user_id.slice(0, 8) }}…</p>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[13px] font-medium text-foreground font-mono">{{ m.user_id.slice(0, 8) }}…</p>
-              <p class="text-[11.5px] text-muted-foreground capitalize">{{ m.role }}</p>
-            </div>
-            <Badge
-              :variant="m.role === 'employee' ? 'secondary' : 'outline'"
-              class="capitalize"
-            >{{ m.role }}</Badge>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </TableCell>
+          <TableCell class="py-3">
+            <Badge :variant="m.role === 'employee' ? 'secondary' : 'outline'" class="capitalize">{{ m.role }}</Badge>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
 
-  </div>
+  </AppPage>
 </template>
