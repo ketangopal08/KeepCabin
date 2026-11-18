@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="mb-7">
+  <div class="mb-4">
     <NuxtLink
       v-if="back"
       :to="back.to"
