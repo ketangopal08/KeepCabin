@@ -45,11 +45,11 @@ function memberInitials(m: any) {
 
 function memberColor(m: any) { return colorFromStr(m.email ?? '?') }
 
-function roleBadgeClass(r: string) {
-  if (r === 'owner')   return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400'
-  if (r === 'manager') return 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400'
-  if (r === 'finance') return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400'
-  return 'text-muted-foreground bg-muted'
+function roleVariant(r: string) {
+  if (r === 'owner')   return 'warning'
+  if (r === 'manager') return 'info'
+  if (r === 'finance') return 'success'
+  return 'neutral'
 }
 
 function roleDesc(r: string) {
@@ -207,92 +207,97 @@ async function setAsManager(member: any) {
       <!-- Tabs -->
       <AppPageTabs model-value="members" :tabs="[{ id: 'members', label: 'Members', count: members.length }]" />
 
-      <!-- Loading members -->
-      <div v-if="loadingMembers" class="flex flex-col">
-        <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
-          <Skeleton class="size-8 shrink-0 rounded-full" />
-          <div class="flex flex-1 flex-col gap-1.5">
-            <Skeleton class="h-4 w-36 rounded" />
-            <Skeleton class="h-3 w-48 rounded" />
+      <AppTableCard>
+        <!-- Loading members -->
+        <div v-if="loadingMembers" class="flex flex-col">
+          <div v-for="n in 4" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+            <Skeleton class="size-8 shrink-0 rounded-full" />
+            <div class="flex flex-1 flex-col gap-1.5">
+              <Skeleton class="h-4 w-36 rounded" />
+              <Skeleton class="h-3 w-48 rounded" />
+            </div>
+            <Skeleton class="h-5 w-16 rounded-full" />
           </div>
-          <Skeleton class="h-5 w-16 rounded-full" />
         </div>
-      </div>
 
-      <!-- Empty state -->
-      <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
-        <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
-        <p class="text-[15px] text-foreground">No members in this team</p>
-        <p class="-mt-1.5 text-sm text-muted-foreground">
-          <template v-if="canInvite">
-            Use the <Button variant="link" class="h-auto p-0 text-sm text-foreground underline" @click="openInvite">Invite member</Button> button to add someone.
-          </template>
-          <template v-else>
-            Ask your organization owner to add members.
-          </template>
-        </p>
-      </div>
+        <!-- Empty state -->
+        <div v-else-if="members.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+          <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
+          <p class="text-[15px] text-foreground">No members in this team</p>
+          <p class="-mt-1.5 text-sm text-muted-foreground">
+            <template v-if="canInvite">
+              Use the <Button variant="link" class="h-auto p-0 text-sm text-foreground underline" @click="openInvite">Invite member</Button> button to add someone.
+            </template>
+            <template v-else>
+              Ask your organization owner to add members.
+            </template>
+          </p>
+        </div>
 
-      <!-- Members table -->
-      <Table v-else>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead class="h-11 px-2 font-normal text-muted-foreground">Name</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Role</TableHead>
-            <TableHead class="h-11 font-normal text-muted-foreground">Joined</TableHead>
-            <TableHead class="h-11 w-36" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="m in members" :key="m.id" class="group border-border">
-            <!-- Member info -->
-            <TableCell class="px-2 py-3">
-              <div class="flex items-center gap-3">
-                <div
-                  class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                  :style="{ background: memberColor(m) }"
-                >
-                  {{ memberInitials(m) }}
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <p class="text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
-                    <Icon name="solar:crown-linear" v-if="m.role === 'manager' && isOwner" class="size-3 shrink-0 text-blue-500" />
+        <!-- Members table -->
+        <Table v-else>
+          <TableHeader>
+            <TableRow class="hover:bg-transparent">
+              <TableHead>Name</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead class="w-36" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="m in members" :key="m.id" class="group border-border">
+              <!-- Member info -->
+              <TableCell>
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    :style="{ background: memberColor(m) }"
+                  >
+                    {{ memberInitials(m) }}
                   </div>
-                  <p v-if="m.full_name" class="text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <p class="text-sm font-medium text-foreground">{{ m.full_name ?? m.email }}</p>
+                      <Icon name="solar:crown-linear" v-if="m.role === 'manager' && isOwner" class="size-3 shrink-0 text-blue-500" />
+                    </div>
+                    <p v-if="m.full_name" class="text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+                  </div>
                 </div>
-              </div>
-            </TableCell>
+              </TableCell>
 
-            <!-- Role badge -->
-            <TableCell class="py-3">
-              <Badge variant="outline" class="border-transparent font-normal capitalize" :class="roleBadgeClass(m.role ?? '')">
-                {{ m.role ?? '—' }}
-              </Badge>
-            </TableCell>
+              <!-- Role badge -->
+              <TableCell>
+                <Badge :variant="roleVariant(m.role ?? '')" class="capitalize">
+                  {{ m.role ?? '—' }}
+                </Badge>
+              </TableCell>
 
-            <!-- Joined date -->
-            <TableCell class="py-3 text-muted-foreground">
-              {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
-            </TableCell>
+              <!-- Joined date -->
+              <TableCell class="text-muted-foreground">
+                {{ m.created_at ? new Date(m.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+              </TableCell>
 
-            <!-- Actions (owner only) -->
-            <TableCell class="py-3 text-right">
-              <Button
-                v-if="isOwner && m.role !== 'manager' && m.role !== 'owner'"
-                variant="outline"
-                size="sm"
-                class="h-8 gap-1 rounded-lg px-3 text-[13px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
-                :disabled="changingManager"
-                @click="setAsManager(m)"
-              >
-                <Icon name="solar:crown-linear" class="size-3.5" />
-                Set as manager
-              </Button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+              <!-- Actions (owner only) -->
+              <TableCell class="text-right">
+                <Button
+                  v-if="isOwner && m.role !== 'manager' && m.role !== 'owner'"
+                  variant="outline"
+                  size="sm"
+                  class="h-8 gap-1 rounded-lg px-3 text-[13px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
+                  :disabled="changingManager"
+                  @click="setAsManager(m)"
+                >
+                  <Icon name="solar:crown-linear" class="size-3.5" />
+                  Set as manager
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+          <template #footer>
+            Showing {{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}
+          </template>
+        </Table>
+      </AppTableCard>
     </template>
 
     <!-- ═══════════════════════════════════════════════════════════

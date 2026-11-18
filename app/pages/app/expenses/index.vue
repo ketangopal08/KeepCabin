@@ -11,6 +11,7 @@ const expenses    = ref<Expense[]>([])
 const loading     = ref(true)
 const search      = ref('')
 const selected    = ref<Set<string>>(new Set())
+const { filters, apply, group } = useExpenseFilters()
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
 const activeFilter = ref<Filter>('all')
@@ -29,8 +30,10 @@ const filtered = computed(() => {
       e.category.toLowerCase().includes(q)
     )
   }
-  return list
+  return apply(list)
 })
+
+const groups = computed(() => group(filtered.value))
 
 const counts = computed(() => ({
   all:      expenses.value.length,
@@ -60,16 +63,10 @@ function statusLabel(s: string) {
   return map[s] ?? s
 }
 
-function statusStyle(s: string) {
-  if (s === 'paid')     return 'border-transparent text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400'
-  if (s === 'rejected') return 'border-transparent text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400'
-  return 'border-transparent text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400'
-}
-
-function dotStyle(s: string) {
-  if (s === 'paid')     return 'bg-emerald-500'
-  if (s === 'rejected') return 'bg-red-500'
-  return 'bg-amber-500'
+function statusVariant(s: string) {
+  if (s === 'paid')     return 'success'
+  if (s === 'rejected') return 'danger'
+  return 'warning'
 }
 
 function catColor(cat: string) {
@@ -77,6 +74,15 @@ function catColor(cat: string) {
   let h = 0
   for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) % palette.length
   return palette[h]
+}
+
+// Brand logos that failed to load fall back to initials
+const failedLogos = ref(new Set<string>())
+function expLogo(e: Expense) {
+  return failedLogos.value.has(e.id) ? null : brandLogoUrl(e.vendor)
+}
+function onLogoError(id: string) {
+  failedLogos.value = new Set(failedLogos.value).add(id)
 }
 
 function initials(name: string) {
@@ -124,115 +130,130 @@ onMounted(async () => { await load(); await fetchExpenses() })
       @update:model-value="setFilter"
     />
 
-    <!-- ── Search + filters ────────────────────────────────────────────── -->
-    <AppSearchInput v-model="search" placeholder="Search by vendor or category" />
-    <div class="mt-3 mb-4 flex items-center gap-2">
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 rounded-md px-2.5 text-[13px] font-medium">
-        <Icon name="solar:sort-vertical-linear" class="size-3.5" /> Sort
-      </Button>
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 rounded-md px-2.5 text-[13px] font-medium">
-        <Icon name="solar:tuning-2-linear" class="size-3.5" /> Filter
-      </Button>
-    </div>
 
-    <!-- ── Loading ─────────────────────────────────────────────────────── -->
-    <div v-if="loading" class="flex flex-col">
-      <div v-for="n in 8" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
-        <Skeleton class="size-4 rounded" />
-        <Skeleton class="size-8 rounded-lg" />
-        <Skeleton class="h-4 w-32 rounded" />
-        <Skeleton class="ml-auto h-4 w-24 rounded" />
-        <Skeleton class="h-5 w-16 rounded-full" />
+    <AppTableCard>
+      <template #toolbar>
+        <AppExpenseToolbar v-model:search="search" :filters="filters" />
+      </template>
+      <!-- ── Loading ─────────────────────────────────────────────────────── -->
+      <div v-if="loading" class="flex flex-col">
+        <div v-for="n in 8" :key="n" class="flex items-center gap-4 border-b border-border px-2 py-3.5">
+          <Skeleton class="size-4 rounded" />
+          <Skeleton class="size-8 rounded-lg" />
+          <Skeleton class="h-4 w-32 rounded" />
+          <Skeleton class="ml-auto h-4 w-24 rounded" />
+          <Skeleton class="h-5 w-16 rounded-full" />
+        </div>
       </div>
-    </div>
 
-    <!-- ── Empty state ─────────────────────────────────────────────────── -->
-    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
-      <Icon name="solar:bill-list-linear" class="size-7 text-muted-foreground" />
-      <p class="text-[15px] text-foreground">No expenses found</p>
-      <p class="-mt-1.5 text-sm text-muted-foreground">
-        {{ search ? 'Try a different search term.' : 'Submit your first expense to get started.' }}
-      </p>
-      <Button v-if="role === 'employee' && !search" as-child variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4">
-        <NuxtLink to="/app/expenses/new"><Icon name="solar:add-linear" class="size-4" /> New expense</NuxtLink>
-      </Button>
-    </div>
+      <!-- ── Empty state ─────────────────────────────────────────────────── -->
+      <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-3 py-28">
+        <Icon name="solar:bill-list-linear" class="size-7 text-muted-foreground" />
+        <p class="text-[15px] text-foreground">No expenses found</p>
+        <p class="-mt-1.5 text-sm text-muted-foreground">
+          {{ search ? 'Try a different search term.' : 'Submit your first expense to get started.' }}
+        </p>
+        <Button v-if="role === 'employee' && !search" as-child variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4">
+          <NuxtLink to="/app/expenses/new"><Icon name="solar:add-linear" class="size-4" /> New expense</NuxtLink>
+        </Button>
+      </div>
 
-    <!-- ── Table ───────────────────────────────────────────────────────── -->
-    <Table v-else>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead class="w-10 px-2">
-            <input
-              type="checkbox"
-              class="cursor-pointer rounded border-border accent-foreground"
-              :checked="selected.size === filtered.length && filtered.length > 0"
-              :indeterminate="selected.size > 0 && selected.size < filtered.length"
-              @change="toggleAll"
-            />
-          </TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">
-            Name <span class="ml-0.5 text-muted-foreground/60">({{ filtered.length }})</span>
-          </TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Date</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Amount</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Status</TableHead>
-          <TableHead class="w-10" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow
-          v-for="e in filtered"
-          :key="e.id"
-          class="group cursor-pointer border-border"
-          @click="navigateTo(`/app/expenses/${e.id}`)"
-        >
-          <TableCell class="px-2 py-3" @click.stop>
-            <input
-              type="checkbox"
-              class="cursor-pointer rounded border-border accent-foreground"
-              :checked="selected.has(e.id)"
-              @change="toggleSelect(e.id)"
-            />
-          </TableCell>
-          <TableCell class="py-3">
-            <div class="flex items-center gap-3">
-              <div
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
-                :style="{ background: catColor(e.category) }"
-              >
-                {{ initials(e.vendor ?? e.category) }}
-              </div>
-              <div>
-                <p class="text-sm font-medium leading-tight text-foreground">{{ e.vendor ?? 'Expense' }}</p>
-                <p class="mt-0.5 text-[12.5px] capitalize text-muted-foreground">{{ e.category }}</p>
-              </div>
-            </div>
-          </TableCell>
-          <TableCell class="py-3">
-            <Badge variant="outline" class="font-normal capitalize">{{ e.category }}</Badge>
-          </TableCell>
-          <TableCell class="py-3 text-muted-foreground">
-            {{ e.expense_date ?? e.created_at.slice(0, 10) }}
-          </TableCell>
-          <TableCell class="py-3 font-medium tabular-nums text-foreground">
-            ₹{{ Number(e.amount).toLocaleString('en-IN') }}
-          </TableCell>
-          <TableCell class="py-3">
-            <Badge variant="outline" class="gap-1.5 font-normal" :class="statusStyle(e.status)">
-              <span class="size-1.5 shrink-0 rounded-full" :class="dotStyle(e.status)" />
-              {{ statusLabel(e.status) }}
-            </Badge>
-          </TableCell>
-          <TableCell class="py-3 text-right">
-            <Button variant="ghost" size="icon-sm" class="text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:text-foreground" @click.stop>
-              <Icon name="solar:menu-dots-vertical-linear" class="size-4" />
-            </Button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+      <!-- ── Table ───────────────────────────────────────────────────────── -->
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="w-10">
+              <Checkbox
+                aria-label="Select all"
+                :model-value="selected.size > 0 && selected.size < filtered.length ? 'indeterminate' : selected.size === filtered.length && filtered.length > 0"
+                @update:model-value="toggleAll"
+              />
+            </TableHead>
+            <TableHead>
+              Name <span class="ml-0.5 text-muted-foreground/60">({{ filtered.length }})</span>
+            </TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead class="w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <template v-for="g in groups" :key="g.key">
+            <TableRow v-if="g.label" class="bg-muted/40 hover:bg-muted/40">
+              <TableCell :colspan="7" class="py-2 text-[12.5px] font-medium text-foreground">
+                {{ g.label }} <span class="ml-1 font-normal text-muted-foreground">{{ g.items.length }}</span>
+              </TableCell>
+            </TableRow>
+            <TableRow
+              v-for="e in g.items"
+              :key="e.id"
+              class="group cursor-pointer border-border"
+              @click="navigateTo(`/app/expenses/${e.id}`)"
+            >
+              <TableCell @click.stop>
+                <Checkbox
+                  aria-label="Select expense"
+                  :model-value="selected.has(e.id)"
+                  @update:model-value="toggleSelect(e.id)"
+                />
+              </TableCell>
+              <TableCell>
+                <div class="flex items-center gap-3">
+                  <div
+                    v-if="expLogo(e)"
+                    class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white"
+                  >
+                    <img
+                      :src="expLogo(e) ?? undefined"
+                      :alt="e.vendor ?? ''"
+                      class="size-5 object-contain"
+                      loading="lazy"
+                      @error="onLogoError(e.id)"
+                    >
+                  </div>
+                  <div
+                    v-else
+                    class="flex size-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+                    :style="{ background: catColor(e.category) }"
+                  >
+                    {{ initials(e.vendor ?? e.category) }}
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium leading-tight text-foreground">{{ e.vendor ?? 'Expense' }}</p>
+                    <p class="mt-0.5 text-[12.5px] capitalize text-muted-foreground">{{ e.category }}</p>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant="neutral" class="capitalize">{{ e.category }}</Badge>
+              </TableCell>
+              <TableCell class="text-muted-foreground">
+                {{ e.expense_date ?? e.created_at.slice(0, 10) }}
+              </TableCell>
+              <TableCell class="font-medium tabular-nums text-foreground">
+                ₹{{ Number(e.amount).toLocaleString('en-IN') }}
+              </TableCell>
+              <TableCell>
+                <Badge :variant="statusVariant(e.status)" class="gap-1.5">
+                  <span class="size-1.5 shrink-0 rounded-full bg-current" />
+                  {{ statusLabel(e.status) }}
+                </Badge>
+              </TableCell>
+              <TableCell class="text-right">
+                <Button variant="outline" size="sm" class="h-8 rounded-lg px-3 text-[13px]" as-child @click.stop>
+                  <NuxtLink :to="`/app/expenses/${e.id}`">View</NuxtLink>
+                </Button>
+              </TableCell>
+            </TableRow>
+          </template>
+        </TableBody>
+        <template #footer>
+          Showing {{ filtered.length }} of {{ expenses.length }} expenses
+        </template>
+      </Table>
+    </AppTableCard>
 
   </AppPage>
 </template>

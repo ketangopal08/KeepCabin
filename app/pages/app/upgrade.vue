@@ -261,32 +261,34 @@ const highlights = [
       <h2 class="text-base font-medium tracking-tight text-foreground">Compare plans</h2>
       <p class="mt-1 mb-5 text-sm text-muted-foreground">A detailed look at what's included in each plan.</p>
 
-      <Table>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead class="h-11 w-[34%] px-2 font-normal text-muted-foreground">Feature</TableHead>
-            <TableHead v-for="p in plans" :key="p.id" class="h-11 font-medium text-foreground">
-              {{ p.name }}
-              <span v-if="p.id === currentPlan" class="ml-1 text-xs font-normal text-muted-foreground">(current)</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <template v-for="g in comparison" :key="g.group">
+      <AppTableCard>
+        <Table>
+          <TableHeader>
             <TableRow class="hover:bg-transparent">
-              <TableCell colspan="5" class="px-2 pt-6 pb-2 text-[13px] font-medium text-muted-foreground">{{ g.group }}</TableCell>
+              <TableHead class="w-[34%]">Feature</TableHead>
+              <TableHead v-for="p in plans" :key="p.id" class="font-medium text-foreground">
+                {{ p.name }}
+                <span v-if="p.id === currentPlan" class="ml-1 text-xs font-normal text-muted-foreground">(current)</span>
+              </TableHead>
             </TableRow>
-            <TableRow v-for="r in g.rows" :key="r.label" class="border-border">
-              <TableCell class="px-2 py-3 text-foreground">{{ r.label }}</TableCell>
-              <TableCell v-for="(v, i) in r.values" :key="i" class="py-3">
-                <Icon name="solar:check-linear" v-if="v === true" class="size-4 text-emerald-500" />
-                <Icon name="solar:minus-linear" v-else-if="v === false" class="size-4 text-muted-foreground/50" />
-                <span v-else class="text-foreground/90">{{ v }}</span>
-              </TableCell>
-            </TableRow>
-          </template>
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            <template v-for="g in comparison" :key="g.group">
+              <TableRow class="hover:bg-transparent">
+                <TableCell colspan="5" class="pt-6 pb-2 text-[13px] font-medium text-muted-foreground">{{ g.group }}</TableCell>
+              </TableRow>
+              <TableRow v-for="r in g.rows" :key="r.label" class="border-border">
+                <TableCell class="text-foreground">{{ r.label }}</TableCell>
+                <TableCell v-for="(v, i) in r.values" :key="i" class="py-3">
+                  <Icon name="solar:check-linear" v-if="v === true" class="size-4 text-emerald-500" />
+                  <Icon name="solar:minus-linear" v-else-if="v === false" class="size-4 text-muted-foreground/50" />
+                  <span v-else class="text-foreground/90">{{ v }}</span>
+                </TableCell>
+              </TableRow>
+            </template>
+          </TableBody>
+        </Table>
+      </AppTableCard>
     </div>
 
     <!-- ── FAQ ─────────────────────────────────────────────────────── -->

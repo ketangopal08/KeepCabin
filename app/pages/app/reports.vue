@@ -80,34 +80,40 @@ async function downloadCSV() {
       <Badge variant="outline" class="font-normal">{{ selectedMonth }}</Badge>
     </div>
 
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead class="h-11 w-[100px] px-2 font-normal text-muted-foreground">ID</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Employee</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Team</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Vendor</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Category</TableHead>
-          <TableHead class="h-11 text-right font-normal text-muted-foreground">Amount</TableHead>
-          <TableHead class="h-11 font-normal text-muted-foreground">Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="row in previewRows" :key="row.id" class="border-border">
-          <TableCell class="px-2 py-3 font-mono text-xs text-muted-foreground">{{ row.id }}</TableCell>
-          <TableCell class="py-3">{{ row.employee }}</TableCell>
-          <TableCell class="py-3">{{ row.team }}</TableCell>
-          <TableCell class="py-3">{{ row.vendor }}</TableCell>
-          <TableCell class="py-3 capitalize">{{ row.category }}</TableCell>
-          <TableCell class="py-3 text-right font-medium">{{ row.amount }}</TableCell>
-          <TableCell class="py-3">
-            <Badge :variant="row.status === 'paid' ? 'default' : 'secondary'" class="capitalize">
-              {{ row.status }}
-            </Badge>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <AppTableCard>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="w-[100px]">ID</TableHead>
+            <TableHead>Employee</TableHead>
+            <TableHead>Team</TableHead>
+            <TableHead>Vendor</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead class="text-right">Amount</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="row in previewRows" :key="row.id" class="border-border">
+            <TableCell class="font-mono text-xs text-muted-foreground">{{ row.id }}</TableCell>
+            <TableCell>{{ row.employee }}</TableCell>
+            <TableCell>{{ row.team }}</TableCell>
+            <TableCell>{{ row.vendor }}</TableCell>
+            <TableCell class="capitalize">{{ row.category }}</TableCell>
+            <TableCell class="text-right font-medium">{{ row.amount }}</TableCell>
+            <TableCell>
+              <Badge :variant="row.status === 'paid' ? 'success' : 'warning'" class="gap-1.5 capitalize">
+                <span class="size-1.5 shrink-0 rounded-full bg-current" />
+                {{ row.status }}
+              </Badge>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+        <template #footer>
+          Showing {{ previewRows.length }} sample rows
+        </template>
+      </Table>
+    </AppTableCard>
     <p class="mt-3 text-[13px] text-muted-foreground">
       Showing sample rows · all approved &amp; paid expenses for {{ selectedMonth }} will be exported
     </p>

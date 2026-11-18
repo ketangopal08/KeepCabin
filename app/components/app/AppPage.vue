@@ -5,7 +5,7 @@
 
 <template>
   <div class="-m-6 min-h-full [--text-sm:0.8rem]">
-    <div class="w-full px-6 pt-8 pb-12 lg:px-12 lg:pt-9">
+    <div class="w-full px-6 pt-5 pb-12 lg:px-12 lg:pt-6">
       <slot />
     </div>
   </div>

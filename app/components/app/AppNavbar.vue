@@ -56,7 +56,7 @@ const showAction = computed(() => {
 </script>
 
 <template>
-  <header class="relative h-12 shrink-0 [--text-sm:0.8rem] bg-background border-b border-border flex items-center px-4 gap-3">
+  <header class="sticky top-0 z-20 h-12 shrink-0 [--text-sm:0.8rem] bg-background border-b border-border flex items-center px-4 gap-3">
 
     <!-- shadcn SidebarTrigger handles collapse/expand -->
     <SidebarTrigger class="-ml-1 text-muted-foreground hover:text-foreground" />
