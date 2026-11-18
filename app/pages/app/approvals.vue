@@ -10,6 +10,22 @@ const expenses     = ref<Expense[]>([])
 const loading      = ref(true)
 const rejectingId  = ref<string | null>(null)
 const rejectReason = ref('')
+const rejectTarget = computed(() => expenses.value.find(e => e.id === rejectingId.value) ?? null)
+const rejectOpen   = computed({
+  get: () => rejectingId.value !== null,
+  set: (v: boolean) => { if (!v) { rejectingId.value = null; rejectReason.value = '' } },
+})
+const quickReasons = [
+  'Missing GST invoice',
+  'Receipt is not readable',
+  'Duplicate submission',
+  'Personal expense — not reimbursable',
+  'Exceeds policy limit',
+]
+function openReject(id: string) {
+  rejectReason.value = ''
+  rejectingId.value = id
+}
 const approving    = ref<Set<string>>(new Set())
 const rejecting    = ref<Set<string>>(new Set())
 const search       = ref('')
@@ -163,7 +179,7 @@ onMounted(fetchPending)
               </TableCell>
             </TableRow>
             <template v-for="e in g.items" :key="e.id">
-              <TableRow class="border-border" :class="rejectingId === e.id ? 'border-b-0' : ''">
+              <TableRow class="border-border">
                 <TableCell>
                   <div class="flex items-center gap-3">
                     <div
@@ -201,64 +217,36 @@ onMounted(fetchPending)
                   ₹{{ Number(e.amount).toLocaleString('en-IN') }}
                 </TableCell>
                 <TableCell>
-                  <div class="flex items-center justify-end gap-2">
-                    <Button
-                      class="h-8 gap-1.5 rounded-lg border-0 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
-                      :disabled="approving.has(e.id)"
-                      @click="approve(e.id)"
-                    >
-                      <svg v-if="approving.has(e.id)" class="size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                        <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                      </svg>
-                      <Icon name="solar:check-linear" v-else class="size-3.5" />
-                      {{ approving.has(e.id) ? 'Approving…' : 'Approve' }}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      class="h-8 gap-1.5 rounded-lg border-red-200 px-3 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20"
-                      @click="rejectingId = rejectingId === e.id ? null : e.id; rejectReason = ''"
-                    >
-                      <Icon name="solar:close-linear" class="size-3.5" /> Reject
-                    </Button>
-                    <Button variant="outline" size="sm" class="h-8 rounded-lg px-3 text-[13px]" as-child>
-                      <NuxtLink :to="`/app/expenses/${e.id}`">View</NuxtLink>
-                    </Button>
-                  </div>
+                  <div class="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="outline"
+                        class="h-8 gap-1.5 rounded-lg px-2.5 text-[12.5px] font-normal hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
+                        :disabled="approving.has(e.id)"
+                        @click="approve(e.id)"
+                      >
+                        <svg v-if="approving.has(e.id)" class="size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                          <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <Icon v-else name="solar:check-circle-linear" class="size-3.5 text-emerald-500" />
+                        {{ approving.has(e.id) ? 'Approving…' : 'Approve' }}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        class="h-8 gap-1.5 rounded-lg px-2.5 text-[12.5px] font-normal hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+                        :disabled="rejecting.has(e.id)"
+                        @click="openReject(e.id)"
+                      >
+                        <Icon name="solar:close-circle-linear" class="size-3.5 text-red-500" />
+                        Reject
+                      </Button>
+                      <Button variant="outline" class="h-8 gap-1.5 rounded-lg px-2.5 text-[12.5px] font-normal" as-child>
+                        <NuxtLink :to="`/app/expenses/${e.id}`">View</NuxtLink>
+                      </Button>
+                    </div>
                 </TableCell>
               </TableRow>
 
-              <!-- Reject reason input (inline expand) -->
-              <TableRow v-if="rejectingId === e.id" class="border-border hover:bg-transparent">
-                <TableCell colspan="5" class="px-2 pt-0 pb-4">
-                  <div class="flex gap-2">
-                    <Input
-                      v-model="rejectReason"
-                      placeholder="Reason for rejection…"
-                      class="h-9 text-sm"
-                      @keydown.enter="reject(e.id)"
-                      @keydown.escape="rejectingId = null; rejectReason = ''"
-                    />
-                    <Button
-                      variant="destructive"
-                      class="h-9 shrink-0 rounded-lg px-4"
-                      :disabled="rejecting.has(e.id) || !rejectReason.trim()"
-                      @click="reject(e.id)"
-                    >
-                      <svg v-if="rejecting.has(e.id)" class="mr-1 size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                        <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                      </svg>
-                      {{ rejecting.has(e.id) ? 'Rejecting…' : 'Confirm' }}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      class="h-9 shrink-0 rounded-lg px-4"
-                      @click="rejectingId = null; rejectReason = ''"
-                    >Cancel</Button>
-                  </div>
-                </TableCell>
-              </TableRow>
             </template>
           </template>
         </TableBody>
@@ -267,6 +255,80 @@ onMounted(fetchPending)
         </template>
       </Table>
     </AppTableCard>
+
+    <!-- Reject dialog -->
+    <Dialog v-model:open="rejectOpen">
+      <DialogContent class="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Reject expense</DialogTitle>
+          <DialogDescription>The submitter will see this reason and can resubmit.</DialogDescription>
+        </DialogHeader>
+
+        <Card v-if="rejectTarget" size="sm" class="flex-row items-center gap-3 px-3">
+          <div
+            v-if="expLogo(rejectTarget)"
+            class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white"
+          >
+            <img :src="expLogo(rejectTarget) ?? undefined" :alt="rejectTarget.vendor ?? ''" class="size-5 object-contain">
+          </div>
+          <div
+            v-else
+            class="flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+            :style="{ background: catColor(rejectTarget.category) }"
+          >
+            {{ initials(rejectTarget.vendor ?? rejectTarget.category) }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-foreground">{{ rejectTarget.vendor ?? 'Expense' }}</p>
+            <p class="text-[12.5px] capitalize text-muted-foreground">
+              {{ rejectTarget.category }} · {{ fmtDate(rejectTarget.expense_date ?? rejectTarget.created_at) }}
+            </p>
+          </div>
+          <p class="shrink-0 text-sm font-medium tabular-nums text-foreground">
+            ₹{{ Number(rejectTarget.amount).toLocaleString('en-IN') }}
+          </p>
+        </Card>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[12.5px] font-medium text-foreground">Reason</label>
+          <Input
+            v-model="rejectReason"
+            placeholder="Reason for rejection…"
+            class="h-9 text-sm"
+            @keydown.enter="rejectTarget && reject(rejectTarget.id)"
+          />
+          <div class="flex flex-wrap gap-1.5">
+            <Button
+              v-for="r in quickReasons"
+              :key="r"
+              variant="outline"
+              size="xs"
+              class="rounded-md font-normal"
+              :class="rejectReason === r ? 'bg-muted text-foreground' : 'text-muted-foreground'"
+              @click="rejectReason = r"
+            >
+              {{ r }}
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="rejectOpen = false">Cancel</Button>
+          <Button
+            variant="destructive"
+            class="gap-1.5"
+            :disabled="!rejectTarget || rejecting.has(rejectTarget.id) || !rejectReason.trim()"
+            @click="rejectTarget && reject(rejectTarget.id)"
+          >
+            <svg v-if="rejectTarget && rejecting.has(rejectTarget.id)" class="size-3.5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            {{ rejectTarget && rejecting.has(rejectTarget.id) ? 'Rejecting…' : 'Reject expense' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
   </AppPage>
 </template>
