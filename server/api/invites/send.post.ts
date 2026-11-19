@@ -1,6 +1,7 @@
 import { getOrgContext } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
 import type { OrgRole } from '~~/lib/supabase'
+import { assertWithinLimit } from '~~/lib/billing'
 
 export default defineEventHandler(async (event) => {
   const ctx = await getOrgContext(event)
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
   if (!['owner', 'manager'].includes(ctx.member.role)) {
     throw createError({ statusCode: 403, message: 'Forbidden' })
   }
+  await assertWithinLimit(ctx, 'members')
 
   const config = useRuntimeConfig()
   const supabase = createClient(config.public.supabaseUrl, config.supabaseServiceKey)

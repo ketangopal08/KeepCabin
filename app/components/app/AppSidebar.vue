@@ -13,6 +13,10 @@ async function logout() {
 }
 
 const role  = computed(() => ctx.value?.member?.role)
+
+// Billing state for premium (crown) markers
+const { exportLocked, load: loadBilling } = useBilling()
+watch(() => ctx.value?.org?.id, (orgId) => { if (orgId) loadBilling() }, { immediate: true })
 const orgSwitcherOpen = ref(false)
 
 // Fetch teams list (owner only)
@@ -40,11 +44,11 @@ const workspaceItems = computed(() => {
   if (role.value === 'finance') return [
     { label: 'Payments', icon: 'solar:card-linear', href: '/app/payments' },
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
-    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports' },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: exportLocked.value },
   ]
   if (role.value === 'owner') return [
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
-    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports' },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: exportLocked.value },
     { label: 'Organization', icon: 'solar:buildings-2-linear', href: '/app/org' },
   ]
   return []
@@ -121,6 +125,12 @@ const orgColor = computed(() => {
                 <NuxtLink :to="item.href">
                   <Icon :name="item.icon" />
                   <span>{{ item.label }}</span>
+                  <Icon
+                    v-if="'premium' in item && item.premium"
+                    name="solar:crown-linear"
+                    class="ml-auto !size-3.5 text-amber-500 group-data-[collapsible=icon]:hidden"
+                    aria-label="Paid feature"
+                  />
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

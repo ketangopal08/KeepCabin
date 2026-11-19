@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Receipt } from '~~/lib/supabase'
+import { getOrgContext } from '~~/lib/org'
+import { assertWithinLimit } from '~~/lib/billing'
 
 export default defineEventHandler(async (event) => {
+  const ctx = await getOrgContext(event)
+  if (!ctx) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  await assertWithinLimit(ctx, 'driveSync')
+
   const body = await readBody<{ imageUrl: string }>(event)
   const config = useRuntimeConfig()
 

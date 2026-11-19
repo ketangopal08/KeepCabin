@@ -86,7 +86,12 @@ onMounted(async () => {
   await loadMembers(session.access_token)
 })
 
+// Premium (crown): at the member cap, "Invite member" leads to the upgrade page instead
+const { membersAtCap, load: loadBilling, refresh: refreshBilling } = useBilling()
+onMounted(() => loadBilling())
+
 function openInvite() {
+  if (membersAtCap.value) { navigateTo('/app/upgrade'); return }
   inviteEmail.value = ''
   inviteRole.value = isOwner.value ? 'manager' : 'employee'
   inviteError.value = ''
@@ -110,7 +115,9 @@ async function sendInvite() {
       },
     })
     inviteOpen.value = false
+    refreshBilling()
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     inviteError.value = e?.data?.message ?? e?.message ?? 'Failed to send invite'
   } finally {
     inviteLoading.value = false
@@ -200,6 +207,7 @@ async function setAsManager(member: any) {
         <template #actions>
           <Button v-if="canInvite" class="h-9 gap-1.5 rounded-lg px-4" @click="openInvite">
             <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+            <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
           </Button>
         </template>
       </AppPageHeader>

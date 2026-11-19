@@ -1,115 +1,80 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { PLANS, PLAN_ORDER } from '~~/lib/plans'
+import type { PlanId } from '~~/lib/plans'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
 const billing = ref<'monthly' | 'yearly'>('monthly')
 function setBilling(v: string) { billing.value = v as 'monthly' | 'yearly' }
 
-// Current plan — placeholder until billing is wired to the backend
-const currentPlan = 'free'
+const { billing: status, loading: statusLoading, load, checkout, cancel } = useBilling()
+onMounted(() => load())
 
-type Plan = {
-  id: string
-  name: string
-  tagline: string
-  icon: any
-  gradient: [string, string]
-  monthly: number | null   // per user / month, null = custom
-  yearly: number | null    // per user / month, billed yearly
-  popular?: boolean
-  cta: string
-  includesFrom?: string
-  features: string[]
-}
+const plans = PLAN_ORDER.map(id => PLANS[id])
+type Plan = (typeof plans)[number]
 
-const plans: Plan[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    tagline: 'For small teams getting started with expense tracking.',
-    icon: 'solar:magic-stick-3-linear',
-    gradient: ['#a1a1aa', '#52525b'],
-    monthly: 0,
-    yearly: 0,
-    cta: 'Current plan',
-    features: [
-      'Up to 5 members',
-      '1 team',
-      '50 receipt scans / month',
-      'Single-level approvals',
-      'Monthly CSV export',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    tagline: 'For growing companies that need speed and control.',
-    icon: 'solar:rocket-2-linear',
-    gradient: ['#60a5fa', '#4f46e5'],
-    monthly: 499,
-    yearly: 399,
-    popular: true,
-    cta: 'Upgrade to Pro',
-    includesFrom: 'Everything in Free, plus',
-    features: [
-      'Unlimited members & teams',
-      'Unlimited receipt scans (OCR)',
-      'Manager + finance approval flow',
-      'Advanced reports & any-range export',
-      'Google Drive receipt sync',
-      'Priority email support',
-    ],
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    tagline: 'For finance teams running policy-driven workflows.',
-    icon: 'solar:buildings-2-linear',
-    gradient: ['#f472b6', '#e11d48'],
-    monthly: 899,
-    yearly: 719,
-    cta: 'Upgrade to Business',
-    includesFrom: 'Everything in Pro, plus',
-    features: [
-      'Custom approval policies & limits',
-      'Multi-currency expenses',
-      'Accounting export (Tally, Zoho Books)',
-      'Audit log & activity history',
-      'Role-based permissions',
-      'Chat support',
-    ],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    tagline: 'For large organizations with custom requirements.',
-    icon: 'solar:diamond-linear',
-    gradient: ['#fbbf24', '#ea580c'],
-    monthly: null,
-    yearly: null,
-    cta: 'Contact sales',
-    includesFrom: 'Everything in Business, plus',
-    features: [
-      'SSO / SAML login',
-      'Custom integrations & API access',
-      'Dedicated account manager',
-      'Uptime SLA & priority onboarding',
-      'Data residency in India',
-    ],
-  },
-]
+const currentPlan = computed<PlanId | null>(() => status.value?.plan ?? null)
+const onTrial = computed(() => !!status.value?.trial)
+const canManage = computed(() => !!status.value?.canManage)
+const busyPlan = ref<PlanId | null>(null)
 
 function price(p: Plan) {
-  const v = billing.value === 'monthly' ? p.monthly : p.yearly
-  return v
+  return billing.value === 'monthly' ? p.monthly : p.yearly
 }
 
-function choose(p: Plan) {
-  if (p.id === currentPlan) return
-  if (p.id === 'enterprise') { toast.info('Our sales team will reach out to you shortly.'); return }
-  toast.info(`Checkout for ${p.name} is coming soon.`)
+// The plan the workspace actually pays for (a trial counts as Free).
+const paidPlan = computed<PlanId>(() => (onTrial.value ? 'free' : currentPlan.value ?? 'free'))
+const isCurrent = (p: Plan) => p.id === paidPlan.value && (p.id === 'free' || status.value?.interval === billing.value)
+
+function ctaLabel(p: Plan) {
+  if (isCurrent(p)) return 'Current plan'
+  if (p.id === 'enterprise') return 'Contact sales'
+  if (p.id === 'free') return paidPlan.value === 'free' ? 'Current plan' : 'Cancel to switch'
+  if (!canManage.value) return 'Ask your owner to upgrade'
+  const order = PLAN_ORDER.indexOf(p.id) - PLAN_ORDER.indexOf(paidPlan.value)
+  if (order < 0 || (order === 0 && billing.value === 'monthly')) return `Switch to ${p.name}`
+  return `Upgrade to ${p.name}`
 }
+
+function ctaDisabled(p: Plan) {
+  if (p.id === 'enterprise') return false
+  if (isCurrent(p) || p.id === 'free') return true
+  return !canManage.value || busyPlan.value !== null || status.value?.pendingPlan != null
+}
+
+async function choose(p: Plan) {
+  if (p.id === 'enterprise') { toast.info('Our sales team will reach out to you shortly.'); return }
+  if (p.id !== 'pro' && p.id !== 'business') return
+  busyPlan.value = p.id
+  try {
+    await checkout(p.id, billing.value)
+  } finally {
+    busyPlan.value = null
+  }
+}
+
+// ── Your plan ────────────────────────────────────────────────────────────────
+const cancelOpen = ref(false)
+const cancelling = ref(false)
+async function confirmCancel() {
+  cancelling.value = true
+  try { await cancel() } finally { cancelling.value = false; cancelOpen.value = false }
+}
+
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+
+const meters = computed(() => {
+  const s = status.value
+  if (!s) return []
+  return [
+    { label: 'Members', used: s.usage.members + s.usage.pendingInvites, cap: s.limits.members, hint: s.usage.pendingInvites ? `incl. ${s.usage.pendingInvites} pending invite${s.usage.pendingInvites > 1 ? 's' : ''}` : '' },
+    { label: 'Teams', used: s.usage.teams, cap: s.limits.teams, hint: '' },
+    { label: 'Expenses this month', used: s.usage.expensesThisMonth, cap: s.limits.expensesPerMonth, hint: '' },
+  ]
+})
+const pct = (used: number, cap: number | null) => (cap ? Math.min(100, Math.round((used / cap) * 100)) : 0)
 
 // ── Comparison table ─────────────────────────────────────────────────────────
 type Cell = boolean | string
@@ -117,34 +82,33 @@ const comparison: { group: string; rows: { label: string; values: Cell[] }[] }[]
   {
     group: 'Team & usage',
     rows: [
-      { label: 'Members',               values: ['Up to 5', 'Unlimited', 'Unlimited', 'Unlimited'] },
-      { label: 'Teams',                 values: ['1', 'Unlimited', 'Unlimited', 'Unlimited'] },
-      { label: 'Receipt scans (OCR)',   values: ['50 / month', 'Unlimited', 'Unlimited', 'Unlimited'] },
-      { label: 'Receipt storage',       values: ['1 GB', '50 GB', '250 GB', 'Custom'] },
+      { label: 'Members',               values: ['Up to 3', 'Up to 15', 'Up to 50', 'Custom'] },
+      { label: 'Teams',                 values: ['1 + Finance', 'Unlimited', 'Unlimited', 'Unlimited'] },
+      { label: 'Expenses per month',    values: ['30', '500', 'Unlimited', 'Unlimited'] },
     ],
   },
   {
     group: 'Approvals & payments',
     rows: [
       { label: 'Manager approval',          values: [true, true, true, true] },
-      { label: 'Finance payment step',      values: [false, true, true, true] },
-      { label: 'Custom approval policies',  values: [false, false, true, true] },
-      { label: 'Multi-currency',            values: [false, false, true, true] },
+      { label: 'Finance payment step',      values: [true, true, true, true] },
+      { label: 'Custom approval policies',  values: [false, false, 'Coming soon', 'Coming soon'] },
+      { label: 'Multi-currency',            values: [false, false, 'Coming soon', 'Coming soon'] },
     ],
   },
   {
     group: 'Reports & integrations',
     rows: [
-      { label: 'CSV export',                 values: ['Monthly', 'Any range', 'Any range', 'Any range'] },
+      { label: 'CSV export',                 values: ['Current month', 'Any range', 'Any range', 'Any range'] },
       { label: 'Google Drive sync',          values: [false, true, true, true] },
-      { label: 'Tally / Zoho Books export',  values: [false, false, true, true] },
+      { label: 'Tally / Zoho Books export',  values: [false, false, 'Coming soon', 'Coming soon'] },
       { label: 'API access',                 values: [false, false, false, true] },
     ],
   },
   {
     group: 'Security & support',
     rows: [
-      { label: 'Audit log',           values: [false, false, true, true] },
+      { label: 'Audit log',           values: [false, false, 'Coming soon', 'Coming soon'] },
       { label: 'SSO / SAML',          values: [false, false, false, true] },
       { label: 'Support',             values: ['Community', 'Priority email', 'Chat', 'Dedicated manager'] },
     ],
@@ -152,11 +116,11 @@ const comparison: { group: string; rows: { label: string; values: Cell[] }[] }[]
 ]
 
 const faqs = [
-  { q: 'How is pricing calculated?', a: 'Paid plans are billed per active member each month. Members who did not submit or approve anything in a billing period are not charged.' },
-  { q: 'Can I switch plans later?', a: 'Yes. Upgrades apply immediately and are prorated. Downgrades take effect at the end of your current billing period.' },
+  { q: 'How is pricing calculated?', a: 'Each plan has a flat monthly or yearly price with a member limit. You are never charged per member.' },
+  { q: 'Can I switch plans later?', a: 'Yes. Upgrades apply immediately and the unused part of your current plan is refunded. Downgrades take effect at the end of your current billing period.' },
   { q: 'What happens to my data on the Free plan?', a: 'Nothing is deleted. If you exceed Free limits you keep read access to all history; new submissions pause until you upgrade or the month resets.' },
   { q: 'Do prices include GST?', a: 'Prices are shown in INR and exclude 18% GST, which is added at checkout. A GST invoice is issued for every payment.' },
-  { q: 'Which payment methods are supported?', a: 'UPI, credit and debit cards, and net banking. Annual Business and Enterprise plans can also pay by bank transfer against an invoice.' },
+  { q: 'Which payment methods are supported?', a: 'UPI AutoPay, credit and debit cards, and e-mandate. Payments renew automatically until you cancel.' },
   { q: 'Is there a free trial of Pro?', a: 'Every workspace can try Pro free for 14 days. No card is required, and you return to Free automatically if you do not upgrade.' },
 ]
 
@@ -173,13 +137,82 @@ const highlights = [
     <!-- ── Header ──────────────────────────────────────────────────── -->
     <AppPageHeader title="Upgrade" description="Choose the plan that fits your team. Upgrade or downgrade anytime." />
 
+    <!-- ── Your plan ───────────────────────────────────────────────── -->
+    <Skeleton v-if="statusLoading && !status" class="mb-8 h-[140px] w-full rounded-xl" />
+    <Card v-else-if="status" class="mb-8 gap-0 rounded-xl px-5 py-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-[13px] text-muted-foreground">Your plan</p>
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <p class="text-lg font-medium text-foreground">{{ PLANS[status.plan].name }}</p>
+            <Icon v-if="status.plan !== 'free'" name="solar:crown-linear" class="size-4 text-amber-500" />
+            <Badge v-if="status.trial" variant="secondary" class="rounded-full">Trial · ends {{ fmtDate(status.trialEndsAt) }}</Badge>
+            <Badge v-if="status.status === 'past_due'" variant="destructive" class="rounded-full">Payment failed — Razorpay is retrying</Badge>
+          </div>
+          <p class="mt-1 text-[13px] text-muted-foreground">
+            <template v-if="status.trial">You're trying Pro for free. Upgrade any time to keep it.</template>
+            <template v-else-if="status.plan === 'free'">Upgrade to unlock more members, teams and reports.</template>
+            <template v-else-if="status.cancelAtPeriodEnd && !status.pendingPlan">Cancelled · stays active until {{ fmtDate(status.currentPeriodEnd) }}</template>
+            <template v-else-if="status.currentPeriodEnd">Billed {{ status.interval }} · renews {{ fmtDate(status.currentPeriodEnd) }}</template>
+          </p>
+          <p v-if="status.pendingPlan && status.cancelAtPeriodEnd" class="mt-1 text-[13px] text-muted-foreground">
+            Switching to {{ PLANS[status.pendingPlan].name }} on {{ fmtDate(status.currentPeriodEnd) }}
+          </p>
+        </div>
+        <Button
+          v-if="canManage && !status.trial && status.plan !== 'free' && status.plan !== 'enterprise' && !status.cancelAtPeriodEnd"
+          variant="outline"
+          size="sm"
+          class="rounded-lg"
+          @click="cancelOpen = true"
+        >
+          Cancel subscription
+        </Button>
+      </div>
+
+      <Separator class="my-4" />
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div v-for="m in meters" :key="m.label">
+          <div class="flex items-baseline justify-between text-[13px]">
+            <span class="text-muted-foreground">{{ m.label }}</span>
+            <span class="tabular-nums text-foreground">{{ m.used }} / {{ m.cap ?? 'Unlimited' }}</span>
+          </div>
+          <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              class="h-full rounded-full transition-all"
+              :class="m.cap && m.used >= m.cap ? 'bg-destructive' : 'bg-primary'"
+              :style="{ width: m.cap ? `${pct(m.used, m.cap)}%` : '0%' }"
+            />
+          </div>
+          <p v-if="m.hint" class="mt-1 text-[12px] text-muted-foreground">{{ m.hint }}</p>
+        </div>
+      </div>
+    </Card>
+
+    <Dialog v-model:open="cancelOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Cancel subscription?</DialogTitle>
+          <DialogDescription>
+            Your {{ status ? PLANS[status.plan].name : '' }} plan stays active until {{ fmtDate(status?.currentPeriodEnd) }}.
+            After that your workspace moves to Free. No data is deleted.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" @click="cancelOpen = false">Keep plan</Button>
+          <Button variant="destructive" :disabled="cancelling" @click="confirmCancel">Cancel subscription</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <!-- ── Billing tabs ────────────────────────────────────────────── -->
     <AppPageTabs
       :model-value="billing"
       :tabs="[{ id: 'monthly', label: 'Monthly' }, { id: 'yearly', label: 'Yearly' }]"
       @update:model-value="setBilling"
     >
-      <Badge variant="secondary" class="h-6 rounded-full px-2.5 text-[12.5px] font-normal">Save 20% with yearly</Badge>
+      <Badge variant="secondary" class="h-6 rounded-full px-2.5 text-[12.5px] font-normal">2 months free with yearly</Badge>
     </AppPageTabs>
 
     <!-- ── Plans ───────────────────────────────────────────────────── -->
@@ -208,25 +241,26 @@ const highlights = [
         <div class="mt-5 flex items-end gap-1.5">
           <template v-if="price(p) !== null">
             <span class="text-[34px] leading-none font-normal tabular-nums text-foreground">₹{{ price(p)!.toLocaleString('en-IN') }}</span>
-            <span class="pb-1 text-[13px] text-muted-foreground">/ user / month</span>
+            <span class="pb-1 text-[13px] text-muted-foreground">{{ p.monthly === 0 ? '/ month' : billing === 'yearly' ? '/ year + GST' : '/ month + GST' }}</span>
           </template>
           <span v-else class="text-[34px] leading-none font-normal text-foreground">Custom</span>
         </div>
         <p class="mt-2 h-5 text-[12.5px] text-muted-foreground">
           <template v-if="p.monthly === 0">Free forever</template>
           <template v-else-if="price(p) === null">Tailored to your organization</template>
-          <template v-else-if="billing === 'yearly'">Billed yearly · ₹{{ (p.yearly! * 12).toLocaleString('en-IN') }} per user</template>
-          <template v-else>Billed monthly</template>
+          <template v-else-if="billing === 'yearly'">Billed yearly · ₹{{ p.yearly!.toLocaleString('en-IN') }} + GST</template>
+          <template v-else>Billed monthly · cancel anytime</template>
         </p>
 
         <!-- CTA -->
         <Button
           class="mt-5 h-9 w-full rounded-lg"
-          :variant="p.id === currentPlan ? 'secondary' : p.popular ? 'default' : 'outline'"
-          :disabled="p.id === currentPlan"
+          :variant="isCurrent(p) ? 'secondary' : p.popular ? 'default' : 'outline'"
+          :disabled="ctaDisabled(p)"
           @click="choose(p)"
         >
-          {{ p.cta }}
+          <Icon v-if="busyPlan === p.id" name="solar:refresh-linear" class="size-4 animate-spin" />
+          {{ ctaLabel(p) }}
         </Button>
 
         <Separator class="my-5" />
@@ -238,6 +272,10 @@ const highlights = [
           <li v-for="f in p.features" :key="f" class="flex items-start gap-2.5 text-sm text-foreground/90">
             <Icon name="solar:check-linear" class="mt-0.5 size-4 shrink-0 text-emerald-500" />
             {{ f }}
+          </li>
+          <li v-for="f in p.comingSoon ?? []" :key="f" class="flex items-start gap-2.5 text-sm text-muted-foreground">
+            <Icon name="solar:clock-circle-linear" class="mt-0.5 size-4 shrink-0" />
+            <span>{{ f }} <Badge variant="secondary" class="ml-1 h-5 rounded-full px-2 text-[11px] font-normal">Coming soon</Badge></span>
           </li>
         </ul>
       </Card>

@@ -1,5 +1,6 @@
 import { getOrgContext, requireRole } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
+import { assertWithinLimit } from '~~/lib/billing'
 
 export default defineEventHandler(async (event) => {
   const ctx = requireRole(await getOrgContext(event), 'owner')
@@ -8,6 +9,7 @@ export default defineEventHandler(async (event) => {
 
   const { name } = await readBody<{ name: string }>(event)
   if (!name?.trim()) throw createError({ statusCode: 400, message: 'Team name required' })
+  await assertWithinLimit(ctx, 'teams')
 
   const { data, error } = await supabase
     .from('teams')

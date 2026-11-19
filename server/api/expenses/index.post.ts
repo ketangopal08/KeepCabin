@@ -1,6 +1,7 @@
 import { getOrgContext, requireRole } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
 import type { ActionLogEntry } from '~~/lib/supabase'
+import { assertWithinLimit } from '~~/lib/billing'
 
 export default defineEventHandler(async (event) => {
   const ctx = requireRole(await getOrgContext(event), 'employee')
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
   if (!body.receipt_url) throw createError({ statusCode: 400, message: 'Receipt required' })
   if (!body.category) throw createError({ statusCode: 400, message: 'Category required' })
   if (!ctx.member.team_id) throw createError({ statusCode: 400, message: 'You are not assigned to a team' })
+  await assertWithinLimit(ctx, 'expenses')
 
   const log: ActionLogEntry[] = [{
     actor_id: ctx.member.user_id,

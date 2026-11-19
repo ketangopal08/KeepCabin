@@ -1,5 +1,6 @@
 import { getOrgContext, requireRole } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
+import { assertWithinLimit } from '~~/lib/billing'
 
 export default defineEventHandler(async (event) => {
   const ctx = requireRole(await getOrgContext(event), 'finance', 'owner')
@@ -7,6 +8,7 @@ export default defineEventHandler(async (event) => {
   const supabase = createClient(config.public.supabaseUrl, config.supabaseServiceKey)
 
   const query = getQuery(event)
+  await assertWithinLimit(ctx, 'export', { month: query.month as string | undefined })
   let dbQuery = supabase
     .from('expenses')
     .select('*, org_members!submitted_by(user_id, role, teams(name))')

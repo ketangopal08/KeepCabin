@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
+import { PLANS } from '~~/lib/plans'
 
 const sectionEl = ref<HTMLElement | null>(null)
 const revealed = ref(false)
@@ -16,32 +17,18 @@ const { stop } = useIntersectionObserver(
   { threshold: 0.15 },
 )
 
-const tiers = [
-  {
-    name: 'Free',
-    price: '₹0',
-    features: ['50 receipts/month', 'Google Drive sync', 'OCR extraction'],
+const tiers = (['free', 'pro', 'business'] as const).map(id => {
+  const p = PLANS[id]
+  return {
+    name: p.name,
+    price: `₹${(p.monthly ?? 0).toLocaleString('en-IN')}`,
+    suffix: p.monthly ? '/mo + GST' : '/mo',
+    features: p.features.slice(0, 4),
     cta: 'Get started',
     href: '/app',
-    highlighted: false,
-  },
-  {
-    name: 'Pro',
-    price: '₹499',
-    features: ['Unlimited receipts', 'Google Drive sync', 'Priority support', 'CSV export'],
-    cta: 'Get started',
-    href: '/app',
-    highlighted: true,
-  },
-  {
-    name: 'Business',
-    price: '₹999',
-    features: ['Unlimited receipts', 'Team access', 'API access', 'Custom branding'],
-    cta: 'Contact us',
-    href: 'mailto:hello@keepcabin.com',
-    highlighted: false,
-  },
-]
+    highlighted: !!p.popular,
+  }
+})
 </script>
 
 <template>
@@ -78,7 +65,7 @@ const tiers = [
             <p class="text-sm font-medium text-[var(--lp-muted)]">{{ tier.name }}</p>
             <div class="flex items-baseline gap-1 mt-2">
               <span class="text-[40px] font-bold leading-none text-[var(--lp-text)]">{{ tier.price }}</span>
-              <span class="text-sm text-[var(--lp-muted)]">/mo</span>
+              <span class="text-sm text-[var(--lp-muted)]">{{ tier.suffix }}</span>
             </div>
           </div>
 
@@ -104,6 +91,12 @@ const tiers = [
           </a>
         </div>
       </div>
+
+      <p class="mt-6 text-sm text-[var(--lp-muted)]">
+        Need more?
+        <a href="mailto:hello@keepcabin.com" class="font-medium text-[var(--lp-text)] underline underline-offset-4">Contact sales</a>
+        for Enterprise.
+      </p>
     </div>
   </section>
 </template>

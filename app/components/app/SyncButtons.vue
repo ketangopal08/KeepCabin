@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { useSupabase } from '~~/lib/supabase'
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await useSupabase().auth.getSession()
+  return session ? { Authorization: `Bearer ${session.access_token}` } : {}
+}
+
 const emit = defineEmits<{ synced: [] }>()
 
 const syncOpen = ref(false)
@@ -16,6 +23,7 @@ async function handleSync() {
   try {
     await $fetch('/api/sync-drive', {
       method: 'POST',
+      headers: await authHeaders(),
       body: { folderUrl: folderUrl.value },
     })
     if (process.client) {
@@ -24,6 +32,7 @@ async function handleSync() {
     syncOpen.value = false
     emit('synced')
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     error.value = e?.data?.message ?? 'Sync failed'
   } finally {
     loading.value = false
@@ -36,12 +45,14 @@ async function handleImport() {
   try {
     await $fetch('/api/import-url', {
       method: 'POST',
+      headers: await authHeaders(),
       body: { imageUrl: imageUrl.value },
     })
     imageUrl.value = ''
     importOpen.value = false
     emit('synced')
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     error.value = e?.data?.message ?? 'Import failed'
   } finally {
     loading.value = false

@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
+import { currentIstMonth } from '~~/lib/plans'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
 const supabase = useSupabase()
-const selectedMonth = ref(new Date().toISOString().slice(0, 7))
+const selectedMonth = ref(currentIstMonth(new Date()))
+
+// Free plan: only the current month can be exported (premium crown on older months)
+const { exportLocked, load: loadBilling } = useBilling()
+onMounted(() => loadBilling())
+const monthLocked = computed(() => exportLocked.value && selectedMonth.value !== currentIstMonth(new Date()))
 const downloading = ref(false)
 
 const exportColumns = [
@@ -34,6 +40,10 @@ async function downloadCSV() {
     const response = await fetch(`/api/reports/export?month=${selectedMonth.value}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
+    if (response.status === 402) {
+      const body = await response.json().catch(() => null)
+      if (showPlanLimitToast({ data: body })) return
+    }
     if (!response.ok) { console.error('Export failed', response.status); return }
     const blob = await response.blob()
     const link = document.createElement('a')
@@ -54,7 +64,7 @@ async function downloadCSV() {
     <!-- Header -->
     <AppPageHeader title="Reports" description="Export expense data as a CSV file.">
       <template #actions>
-        <Button :disabled="downloading" class="h-9 gap-1.5 rounded-lg px-4" @click="downloadCSV">
+        <Button :disabled="downloading || monthLocked" class="h-9 gap-1.5 rounded-lg px-4" @click="downloadCSV">
           <svg v-if="downloading" class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
             <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
@@ -72,6 +82,14 @@ async function downloadCSV() {
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <span class="text-sm text-muted-foreground">Month</span>
       <Input v-model="selectedMonth" type="month" class="h-9 w-48 rounded-lg text-sm" />
+      <span v-if="exportLocked" class="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+        <Icon name="solar:crown-linear" class="size-4 text-amber-500" />
+        <template v-if="monthLocked">Older months need Pro.</template>
+        <template v-else>Exporting older months needs Pro.</template>
+        <Button variant="link" class="h-auto p-0 text-[13px]" as-child>
+          <NuxtLink to="/app/upgrade">Upgrade</NuxtLink>
+        </Button>
+      </span>
     </div>
 
     <!-- Preview -->
