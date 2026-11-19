@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Receipt } from '~~/lib/supabase'
+import { getOrgContext } from '~~/lib/org'
+import { assertWithinLimit } from '~~/lib/billing'
 
 function extractFolderId(url: string): string | null {
   const match = url.match(/folders\/([a-zA-Z0-9_-]+)/)
@@ -7,6 +9,10 @@ function extractFolderId(url: string): string | null {
 }
 
 export default defineEventHandler(async (event) => {
+  const ctx = await getOrgContext(event)
+  if (!ctx) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  await assertWithinLimit(ctx, 'driveSync')
+
   const body = await readBody<{ folderUrl: string }>(event)
   const config = useRuntimeConfig()
 

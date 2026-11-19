@@ -53,9 +53,18 @@ export default defineNuxtConfig({
     brevoApiKey: process.env.BREVO_API_KEY ?? '',
     brevoSenderEmail: process.env.BREVO_SENDER_EMAIL ?? '',
     appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+    razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? '',
+    razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? '',
+    razorpayPlans: {
+      pro_monthly: process.env.RAZORPAY_PLAN_PRO_MONTHLY ?? '',
+      pro_yearly: process.env.RAZORPAY_PLAN_PRO_YEARLY ?? '',
+      business_monthly: process.env.RAZORPAY_PLAN_BUSINESS_MONTHLY ?? '',
+      business_yearly: process.env.RAZORPAY_PLAN_BUSINESS_YEARLY ?? '',
+    },
     public: {
       supabaseUrl: process.env.SUPABASE_URL ?? '',
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? '',
     },
   },
   css: ['~/assets/css/main.css', 'vue-sonner/style.css'],

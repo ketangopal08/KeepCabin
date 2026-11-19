@@ -68,6 +68,7 @@ async function submit() {
     toast.success('Expense submitted!')
     router.push('/app/expenses')
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     toast.error(e?.data?.message ?? e?.message ?? 'Failed to submit')
   } finally {
     submitting.value = false

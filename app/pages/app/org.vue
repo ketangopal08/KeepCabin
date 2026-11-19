@@ -67,6 +67,18 @@ async function fetchMembers() {
   } catch { /* silent */ } finally { loadingMembers.value = false }
 }
 
+// Premium (crown): at the plan cap, these buttons lead to the upgrade page instead
+const { membersAtCap, teamsAtCap, load: loadBilling, refresh: refreshBilling } = useBilling()
+onMounted(() => loadBilling())
+function openTeamDialog() {
+  if (teamsAtCap.value) { navigateTo('/app/upgrade'); return }
+  showTeamDialog.value = true
+}
+function openInviteDialog() {
+  if (membersAtCap.value) { navigateTo('/app/upgrade'); return }
+  showInviteDialog.value = true
+}
+
 async function createTeam() {
   if (!newTeamName.value.trim()) return
   newTeamLoading.value = true
@@ -80,8 +92,10 @@ async function createTeam() {
     newTeamName.value = ''
     showTeamDialog.value = false
     await fetchTeams()
+    refreshBilling()
     toast.success('Team created')
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     toast.error(e?.data?.message ?? 'Failed to create team')
   } finally { newTeamLoading.value = false }
 }
@@ -104,7 +118,9 @@ async function sendInvite() {
     inviteEmail.value = ''
     inviteTeamId.value = ''
     showInviteDialog.value = false
+    refreshBilling()
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     toast.error(e?.data?.message ?? 'Failed to send invite')
   } finally { inviteLoading.value = false }
 }
@@ -165,11 +181,13 @@ onMounted(async () => {
         Manage members and teams for <span class="font-medium text-foreground capitalize">{{ ctx?.org?.name }}</span>
       </template>
       <template #actions>
-        <Button v-if="activeTab === 'teams'" class="h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
+        <Button v-if="activeTab === 'teams'" class="h-9 gap-1.5 rounded-lg px-4" @click="openTeamDialog">
           <Icon name="solar:add-linear" class="size-4" /> New team
+          <Icon v-if="teamsAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
         </Button>
-        <Button v-else class="h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
+        <Button v-else class="h-9 gap-1.5 rounded-lg px-4" @click="openInviteDialog">
           <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+          <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
         </Button>
       </template>
     </AppPageHeader>
@@ -202,8 +220,9 @@ onMounted(async () => {
           <Icon name="solar:users-group-rounded-linear" class="size-7 text-muted-foreground" />
           <p class="text-[15px] text-foreground">No teams yet</p>
           <p class="-mt-1.5 text-sm text-muted-foreground">Create teams to group members and assign managers.</p>
-          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showTeamDialog = true">
+          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="openTeamDialog">
             <Icon name="solar:add-linear" class="size-4" /> New team
+            <Icon v-if="teamsAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
           </Button>
         </div>
 
@@ -269,8 +288,9 @@ onMounted(async () => {
           <Icon name="solar:user-plus-linear" class="size-7 text-muted-foreground" />
           <p class="text-[15px] text-foreground">No members yet</p>
           <p class="-mt-1.5 text-sm text-muted-foreground">Invite someone to join your organization.</p>
-          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="showInviteDialog = true">
+          <Button variant="outline" class="mt-2 h-9 gap-1.5 rounded-lg px-4" @click="openInviteDialog">
             <Icon name="solar:user-plus-linear" class="size-4" /> Invite member
+            <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
           </Button>
         </div>
 

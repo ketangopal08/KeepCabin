@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import { Copy, Check, Eye, EyeOff, Trash2, User, ShieldCheck, CreditCard, Bell, Palette, Building2 } from '@lucide/vue'
+import { PLANS } from '~~/lib/plans'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -74,6 +75,78 @@ function removeDevice(id: string) {
 
 // ── Billing ───────────────────────────────────────────────────────────────
 const billingBannerDismissed = ref(false)
+const { billing, loading: billingLoading, load: loadBilling, cancel: cancelSubscription } = useBilling()
+
+type Invoice = { id: string; date: string | null; amount: number; status: string; url: string | null }
+const invoices = ref<Invoice[]>([])
+const invoicesLoading = ref(false)
+const cancelOpen = ref(false)
+const cancelling = ref(false)
+
+const isOwner = computed(() => role.value === 'owner')
+const planName = computed(() => (billing.value ? PLANS[billing.value.plan].name : ''))
+const isPaid = computed(() => !!billing.value && !billing.value.trial && billing.value.plan !== 'free')
+
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+const fmtInr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+const planSummary = computed(() => {
+  const b = billing.value
+  if (!b) return ''
+  if (b.trial) return `Pro trial · ends ${fmtDate(b.trialEndsAt)}`
+  if (b.plan === 'free') return 'Free forever'
+  if (b.pendingPlan) return `Switching to ${PLANS[b.pendingPlan].name} on ${fmtDate(b.currentPeriodEnd)}`
+  if (b.cancelAtPeriodEnd || b.status === 'cancelled') return `Cancelled · active until ${fmtDate(b.currentPeriodEnd)}`
+  if (b.status === 'past_due') return 'Payment failed — Razorpay is retrying'
+  return `Billed ${b.interval} · renews ${fmtDate(b.currentPeriodEnd)}`
+})
+
+const usageRows = computed(() => {
+  const b = billing.value
+  if (!b) return []
+  return [
+    { label: 'Members', desc: 'Members plus pending invites. Each plan has a member limit.', used: b.usage.members + b.usage.pendingInvites, cap: b.limits.members },
+    { label: 'Teams', desc: 'Teams in your organization, including Finance.', used: b.usage.teams, cap: b.limits.teams },
+    { label: 'Expenses this month', desc: 'Expenses submitted this calendar month (IST). Resets on the 1st.', used: b.usage.expensesThisMonth, cap: b.limits.expensesPerMonth },
+  ]
+})
+const pctOf = (used: number, cap: number | null) => (cap ? Math.min(100, Math.round((used / cap) * 100)) : 0)
+
+// Banner: the most-used limit, shown when it's at 80% or more.
+const tightest = computed(() =>
+  usageRows.value
+    .filter(r => r.cap !== null)
+    .map(r => ({ ...r, pct: pctOf(r.used, r.cap) }))
+    .sort((a, b) => b.pct - a.pct)[0] ?? null,
+)
+const showLimitBanner = computed(() => !billingBannerDismissed.value && !!tightest.value && tightest.value.pct >= 80)
+
+async function loadInvoices() {
+  if (!isOwner.value || !isPaid.value) { invoices.value = []; return }
+  invoicesLoading.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    invoices.value = await $fetch<Invoice[]>('/api/billing/invoices' as string, {
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+    })
+  } catch {
+    invoices.value = []
+  } finally {
+    invoicesLoading.value = false
+  }
+}
+
+async function confirmCancel() {
+  cancelling.value = true
+  try { await cancelSubscription() } finally { cancelling.value = false; cancelOpen.value = false }
+}
+
+watch(activeSection, async (s) => {
+  if (s !== 'billing') return
+  await loadBilling()
+  loadInvoices()
+}, { immediate: true })
 
 // ── Notifications ─────────────────────────────────────────────────────────
 const notifList = ref([
@@ -299,64 +372,150 @@ async function deleteOrg() {
           </div>
           <Separator class="mb-5" />
 
-          <div v-if="!billingBannerDismissed" class="flex items-center gap-4 px-4 py-3.5 mb-6 rounded-xl border border-border bg-muted/40">
-            <div class="shrink-0 size-10 relative">
-              <svg class="size-10 -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" class="text-border" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" class="text-primary" stroke-dasharray="97.4 97.4" stroke-dashoffset="19.5" stroke-linecap="round" />
-              </svg>
-              <span class="absolute inset-0 flex items-center justify-center text-[8.5px] font-bold text-foreground">8/10</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[13px] font-semibold text-foreground">You've used 8 out of 10 available seats</p>
-              <p class="text-[12px] text-muted-foreground mt-0.5">Upgrade to a business plan to unlock up to 32 team members and 1 TB bandwidth.</p>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" class="text-[12px]" @click="billingBannerDismissed = true">Dismiss</Button>
-              <Button size="sm" class="text-[12px]">Upgrade plan</Button>
-            </div>
+          <div v-if="billingLoading && !billing" class="flex flex-col gap-3">
+            <Skeleton class="h-16 w-full rounded-xl" />
+            <Skeleton class="h-16 w-full rounded-xl" />
+            <Skeleton class="h-16 w-full rounded-xl" />
           </div>
 
-          <div class="flex items-start gap-20 py-5 border-b border-dashed border-border">
-            <div class="w-[300px] shrink-0">
-              <p class="text-[13px] font-medium text-foreground">Current plan</p>
-              <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Your active subscription tier. Upgrading unlocks more seats, higher storage limits, and advanced reporting features.</p>
+          <template v-else-if="billing">
+            <!-- Limit banner (most-used limit at 80%+) -->
+            <div v-if="showLimitBanner && tightest" class="flex items-center gap-4 px-4 py-3.5 mb-6 rounded-xl border border-border bg-muted/40">
+              <div class="shrink-0 size-10 relative">
+                <svg class="size-10 -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" class="text-border" />
+                  <circle
+                    cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3"
+                    :class="tightest.pct >= 100 ? 'text-destructive' : 'text-primary'"
+                    stroke-dasharray="97.4 97.4" :stroke-dashoffset="97.4 - (97.4 * tightest.pct) / 100" stroke-linecap="round"
+                  />
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-[8.5px] font-bold text-foreground">{{ tightest.used }}/{{ tightest.cap }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[13px] font-semibold text-foreground">
+                  <template v-if="tightest.pct >= 100">You've reached your {{ tightest.label.toLowerCase() }} limit</template>
+                  <template v-else>You've used {{ tightest.used }} of {{ tightest.cap }} {{ tightest.label.toLowerCase() }}</template>
+                </p>
+                <p class="text-[12px] text-muted-foreground mt-0.5">Upgrade your plan to raise your limits. Nothing is deleted when you're over a limit.</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" class="text-[12px]" @click="billingBannerDismissed = true">Dismiss</Button>
+                <Button size="sm" class="text-[12px]" as-child><NuxtLink to="/app/upgrade">Upgrade plan</NuxtLink></Button>
+              </div>
             </div>
-            <div class="flex-1 flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-2">
-                  <p class="text-[13px] font-semibold text-foreground">Free</p>
-                  <Badge variant="secondary" class="text-[10.5px] px-1.5">Current</Badge>
+
+            <!-- Current plan -->
+            <div class="flex items-start gap-20 py-5 border-b border-dashed border-border">
+              <div class="w-[300px] shrink-0">
+                <p class="text-[13px] font-medium text-foreground">Current plan</p>
+                <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Your workspace's subscription. Prices exclude 18% GST, which is added at checkout.</p>
+              </div>
+              <div class="flex-1 flex items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="text-[13px] font-semibold text-foreground">{{ planName }}</p>
+                    <Icon v-if="billing.plan !== 'free'" name="solar:crown-linear" class="size-3.5 text-amber-500" />
+                    <Badge v-if="billing.trial" variant="secondary" class="text-[10.5px] px-1.5">Trial</Badge>
+                    <Badge v-else-if="billing.status === 'past_due'" variant="destructive" class="text-[10.5px] px-1.5">Payment failed</Badge>
+                    <Badge v-else variant="secondary" class="text-[10.5px] px-1.5">Current</Badge>
+                  </div>
+                  <p class="text-[12px] text-muted-foreground mt-0.5">{{ planSummary }}</p>
                 </div>
-                <p class="text-[12px] text-muted-foreground mt-0.5">Up to 10 members, 3 teams.</p>
+                <div class="flex items-center gap-2 shrink-0">
+                  <Button
+                    v-if="isOwner && isPaid && billing.plan !== 'enterprise' && !billing.cancelAtPeriodEnd && billing.status !== 'cancelled'"
+                    variant="outline" size="sm" class="text-[12px]" @click="cancelOpen = true"
+                  >
+                    Cancel
+                  </Button>
+                  <Button size="sm" class="text-[12px]" as-child>
+                    <NuxtLink to="/app/upgrade">{{ isPaid ? 'Change plan' : 'Upgrade plan' }}</NuxtLink>
+                  </Button>
+                </div>
               </div>
-              <Button size="sm" class="text-[12px]">Upgrade to Premium</Button>
             </div>
-          </div>
 
-          <div class="flex items-start gap-20 py-5 border-b border-dashed border-border">
-            <div class="w-[300px] shrink-0">
-              <p class="text-[13px] font-medium text-foreground">Seats used</p>
-              <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">The number of active members currently occupying seats in your organization. Upgrade your plan to add more members.</p>
-            </div>
-            <div class="flex-1">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-[12.5px] text-foreground font-medium">8 of 10 seats used</span>
-                <span class="text-[12px] text-muted-foreground">80%</span>
+            <!-- Usage -->
+            <div v-for="r in usageRows" :key="r.label" class="flex items-start gap-20 py-5 border-b border-dashed border-border">
+              <div class="w-[300px] shrink-0">
+                <p class="text-[13px] font-medium text-foreground">{{ r.label }}</p>
+                <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{{ r.desc }}</p>
               </div>
-              <div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                <div class="h-full bg-primary rounded-full" style="width:80%" />
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[12.5px] text-foreground font-medium">
+                    {{ r.cap === null ? `${r.used} · Unlimited` : `${r.used} of ${r.cap} used` }}
+                  </span>
+                  <span v-if="r.cap !== null" class="text-[12px] text-muted-foreground">{{ pctOf(r.used, r.cap) }}%</span>
+                </div>
+                <div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    class="h-full rounded-full"
+                    :class="r.cap !== null && r.used >= r.cap ? 'bg-destructive' : 'bg-primary'"
+                    :style="{ width: r.cap === null ? '0%' : `${pctOf(r.used, r.cap)}%` }"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="py-10 flex flex-col items-center justify-center gap-3 text-center">
-            <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
-              <svg class="size-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <!-- Billing history -->
+            <div class="py-5">
+              <p class="text-[13px] font-medium text-foreground mb-3">Billing history</p>
+              <Skeleton v-if="invoicesLoading" class="h-24 w-full rounded-xl" />
+              <AppTableCard v-else-if="invoices.length">
+                <Table>
+                  <TableHeader>
+                    <TableRow class="hover:bg-transparent">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead class="text-right">Invoice</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="inv in invoices" :key="inv.id">
+                      <TableCell class="text-[12.5px]">{{ fmtDate(inv.date) }}</TableCell>
+                      <TableCell class="text-[12.5px] tabular-nums">{{ fmtInr(inv.amount) }}</TableCell>
+                      <TableCell>
+                        <Badge :variant="inv.status === 'paid' ? 'secondary' : 'outline'" class="text-[10.5px] capitalize">{{ inv.status }}</Badge>
+                      </TableCell>
+                      <TableCell class="text-right">
+                        <Button v-if="inv.url" variant="link" size="sm" class="h-auto p-0 text-[12px]" as-child>
+                          <a :href="inv.url" target="_blank" rel="noopener">View</a>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </AppTableCard>
+              <div v-else class="py-8 flex flex-col items-center justify-center gap-3 text-center">
+                <div class="size-10 rounded-xl bg-muted flex items-center justify-center">
+                  <CreditCard class="size-5 text-muted-foreground" />
+                </div>
+                <p class="text-[13px] font-semibold text-foreground">No billing history</p>
+                <p class="text-[12px] text-muted-foreground">
+                  {{ isOwner ? 'Invoices will appear here after your first payment.' : 'Only the workspace owner can see invoices.' }}
+                </p>
+              </div>
             </div>
-            <p class="text-[13px] font-semibold text-foreground">No billing history</p>
-            <p class="text-[12px] text-muted-foreground">Invoices will appear here after your first payment.</p>
-          </div>
+          </template>
+
+          <Dialog v-model:open="cancelOpen">
+            <DialogContent class="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cancel subscription?</DialogTitle>
+                <DialogDescription>
+                  Your {{ planName }} plan stays active until {{ fmtDate(billing?.currentPeriodEnd) }}.
+                  After that your workspace moves to Free. No data is deleted.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" @click="cancelOpen = false">Keep plan</Button>
+                <Button variant="destructive" :disabled="cancelling" @click="confirmCancel">Cancel subscription</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </template>
 
         <!-- ════════════════════════════════════════════════════════════════

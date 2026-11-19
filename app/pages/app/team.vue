@@ -22,7 +22,12 @@ async function fetchMembers() {
   members.value = data ?? []
 }
 
+// Premium (crown): at the member cap, the invite button leads to the upgrade page instead
+const { membersAtCap, load: loadBilling, refresh: refreshBilling } = useBilling()
+onMounted(() => loadBilling())
+
 async function sendInvite() {
+  if (membersAtCap.value) { navigateTo('/app/upgrade'); return }
   if (!inviteEmail.value.trim()) { toast.error('Email required'); return }
   loading.value = true
   try {
@@ -34,7 +39,9 @@ async function sendInvite() {
     })
     toast.success(`Invite sent to ${inviteEmail.value}`)
     inviteEmail.value = ''
+    refreshBilling()
   } catch (e: any) {
+    if (showPlanLimitToast(e)) return
     toast.error(e?.data?.message ?? 'Failed to send invite')
   } finally {
     loading.value = false
@@ -67,6 +74,7 @@ watch(() => ctx.value, fetchMembers, { immediate: true })
           </svg>
           <Icon name="solar:letter-linear" v-else class="size-4 shrink-0" />
           {{ loading ? 'Sending…' : 'Send invite' }}
+          <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 shrink-0 text-amber-500" />
         </Button>
       </div>
       <p class="text-[13px] text-muted-foreground">
