@@ -1,17 +1,8 @@
 <script setup lang="ts">
 const props = defineProps<{ name: string; size?: 'sm' | 'md' | 'lg' }>()
 
-// Gradient tiles (ElevenLabs-style) — top-left → bottom-right
-const GRADIENTS = [
-  ['#60a5fa', '#4f46e5'], // sky → indigo
-  ['#f472b6', '#e11d48'], // pink → rose
-  ['#fb923c', '#e0475b'], // orange → coral
-  ['#34d399', '#0d9488'], // emerald → teal
-  ['#a78bfa', '#7c3aed'], // lavender → violet
-  ['#fbbf24', '#ea580c'], // amber → orange
-  ['#22d3ee', '#2563eb'], // cyan → blue
-  ['#e879f9', '#9333ea'], // fuchsia → purple
-]
+// Gradient tiles — GitHub dark-mode palette (see app/utils/avatarColors.ts)
+const GRADIENTS = TEAM_GRADIENTS
 
 // White glyphs: a soft (translucent) layer + a solid layer
 const GLYPHS = [

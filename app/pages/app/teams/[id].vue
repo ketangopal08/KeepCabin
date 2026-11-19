@@ -30,7 +30,7 @@ const canInvite = computed(() => isOwner.value || isManager.value)
 const availableRoles = computed(() => isOwner.value ? (['manager', 'finance', 'employee'] as const) : (['employee'] as const))
 const currentManager = computed(() => members.value.find(m => m.role === 'manager'))
 
-const PALETTE = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
+const PALETTE = AVATAR_COLORS
 
 function colorFromStr(s: string) {
   let h = 0

@@ -137,7 +137,7 @@ function colorFromStr(s: string, palette: string[]) {
   return palette[h]
 }
 
-const PALETTE = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
+const PALETTE = AVATAR_COLORS
 
 function memberColor(m: any) { return colorFromStr(m.email ?? '?', PALETTE) }
 function teamColor(name: string) { return colorFromStr(name, PALETTE) }

@@ -5,7 +5,10 @@ import type { BillingInterval, BillingStatus } from '~~/lib/plans'
 // Shared, module-level billing state (loaded once per session, like useOrgContext).
 const _billing = ref<BillingStatus | null>(null)
 const _loading = ref(false)
+/** User id the cached billing belongs to — a different login must never see it. */
+let _loadedFor: string | null = null
 let _inflight: Promise<void> | null = null
+let _authWatch = false
 let _scriptPromise: Promise<void> | null = null
 
 // Premium (crown) state — true only when the current plan lacks the feature / is at its cap.
@@ -40,19 +43,40 @@ export function useBilling() {
     return session ? { Authorization: `Bearer ${session.access_token}` } : {}
   }
 
+  function clear() {
+    _billing.value = null
+    _loadedFor = null
+  }
+
+  // Drop cached billing whenever the signed-in user changes or signs out (registered once).
+  if (import.meta.client && !_authWatch) {
+    _authWatch = true
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if ((session?.user?.id ?? null) !== _loadedFor) clear()
+    })
+  }
+
   async function refresh() {
     _loading.value = true
     try {
-      _billing.value = await $fetch<BillingStatus>('/api/billing' as string, { headers: await authHeaders() })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { clear(); return }
+      const data = await $fetch<BillingStatus>('/api/billing' as string, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      _billing.value = data
+      _loadedFor = session.user.id
     } catch {
-      // Leave previous state; crowns/upgrade page simply don't render billing info.
+      // No workspace yet / not allowed: show nothing rather than another account's data.
+      clear()
     } finally {
       _loading.value = false
     }
   }
 
   async function load() {
-    if (_billing.value) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (_billing.value && session?.user?.id === _loadedFor) return
     _inflight ??= refresh().finally(() => { _inflight = null })
     await _inflight
   }
@@ -113,7 +137,7 @@ export function useBilling() {
   }
 
   return {
-    billing: readonly(_billing), loading: readonly(_loading), load, refresh, checkout, cancel,
+    billing: readonly(_billing), loading: readonly(_loading), load, refresh, clear, checkout, cancel,
     membersAtCap, teamsAtCap, exportLocked,
   }
 }

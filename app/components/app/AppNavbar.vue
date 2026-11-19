@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useSupabase } from '~~/lib/supabase'
 
 const route = useRoute()
 
@@ -21,6 +22,17 @@ const userInitials = computed(() => {
   return name.split(/[\s@.]/).filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'KC'
 })
 const role = computed(() => ctx.value?.member?.role)
+
+// Profile photo (user_metadata.avatar_url) — updates live after upload/remove in Settings.
+const avatarUrl = ref<string>('')
+watch(user, (u: any) => { avatarUrl.value = u?.user_metadata?.avatar_url ?? '' }, { immediate: true })
+let authSub: { unsubscribe: () => void } | null = null
+onMounted(() => {
+  authSub = useSupabase().auth.onAuthStateChange((_e, session) => {
+    avatarUrl.value = session?.user?.user_metadata?.avatar_url ?? ''
+  }).data.subscription
+})
+onBeforeUnmount(() => authSub?.unsubscribe())
 
 const { triggerSave, saving, saved } = useSettingsBar()
 const isSettings = computed(() => route.path === '/app/settings')
@@ -90,8 +102,10 @@ const showAction = computed(() => {
 
     <!-- Permanent right-side actions -->
     <div v-else class="flex items-center gap-2 shrink-0">
-      <Button variant="outline" class="h-8 gap-1.5 rounded-lg px-3 text-sm font-medium">
-        <Icon name="solar:question-circle-linear" class="size-4" /> Help
+      <Button variant="outline" class="h-8 gap-1.5 rounded-lg px-3 text-sm font-medium" as-child>
+        <NuxtLink to="/app/help">
+          <Icon name="solar:question-circle-linear" class="size-4" /> Help
+        </NuxtLink>
       </Button>
       <Button variant="outline" size="icon" class="relative rounded-lg" as-child>
         <NuxtLink to="/app/notifications">
@@ -99,8 +113,11 @@ const showAction = computed(() => {
           <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
         </NuxtLink>
       </Button>
-      <Button variant="outline" size="icon" class="rounded-full p-0 text-[11px] font-semibold" as-child>
-        <NuxtLink to="/app/settings">{{ userInitials }}</NuxtLink>
+      <Button variant="outline" size="icon" class="overflow-hidden rounded-full p-0 text-[11px] font-semibold" as-child>
+        <NuxtLink to="/app/settings" aria-label="Profile settings">
+          <img v-if="avatarUrl" :src="avatarUrl" alt="" class="size-full object-cover" @error="avatarUrl = ''" />
+          <template v-else>{{ userInitials }}</template>
+        </NuxtLink>
       </Button>
     </div>
 

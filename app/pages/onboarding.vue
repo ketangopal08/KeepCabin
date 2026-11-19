@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
+import { PLANS } from '~~/lib/plans'
 
 definePageMeta({ layout: false })
 
@@ -12,8 +13,8 @@ const { show: showLoader } = usePageLoader()
 
 const sizes = ['1-10', '11-50', '51-200', '200+']
 
-// ── Two-step flow ──
-type OStep = 'org' | 'team'
+// ── Three-step flow ──
+type OStep = 'org' | 'team' | 'plan'
 const ostep           = ref<OStep>('org')
 const sessionToken    = ref('')
 const customTeams     = ref<string[]>([])
@@ -101,6 +102,54 @@ async function handleContinue() {
   showLoader('We are setting up your account. Please wait.')
   await new Promise(resolve => setTimeout(resolve, 10000))
   navigateTo('/app')
+}
+
+// ── Step 3: choose plan ──
+type PlanChoice = 'trial' | 'pro' | 'business'
+const planChoice   = ref<PlanChoice>('trial')
+const planIntervals = ['monthly', 'yearly'] as const
+const planInterval = ref<'monthly' | 'yearly'>('monthly')
+const planBusy     = ref(false)
+const { billing, checkout, refresh: refreshBilling } = useBilling()
+
+const planOptions = computed(() => [
+  {
+    id: 'trial' as const,
+    name: 'Start with a 14-day Pro trial',
+    price: 'Free',
+    desc: 'No card needed. All Pro features for 14 days, then you move to the Free plan.',
+  },
+  {
+    id: 'pro' as const,
+    name: PLANS.pro.name,
+    price: planPrice(PLANS.pro.monthly!, PLANS.pro.yearly!),
+    desc: 'Up to 15 members, unlimited teams, 500 expenses a month, any-range exports.',
+  },
+  {
+    id: 'business' as const,
+    name: PLANS.business.name,
+    price: planPrice(PLANS.business.monthly!, PLANS.business.yearly!),
+    desc: 'Up to 50 members, unlimited expenses, chat support.',
+  },
+])
+
+function planPrice(monthly: number, yearly: number) {
+  return planInterval.value === 'monthly'
+    ? `₹${monthly.toLocaleString('en-IN')}/mo + GST`
+    : `₹${yearly.toLocaleString('en-IN')}/yr + GST`
+}
+
+async function handlePlanContinue() {
+  if (planChoice.value === 'trial') { handleContinue(); return }
+  planBusy.value = true
+  try {
+    await checkout(planChoice.value, planInterval.value)
+    await refreshBilling()
+    // Paid successfully → into the app; dialog closed → stay here to pick again.
+    if (billing.value && !billing.value.trial && billing.value.plan !== 'free') handleContinue()
+  } finally {
+    planBusy.value = false
+  }
 }
 
 onMounted(async () => {
@@ -257,13 +306,95 @@ onUnmounted(() => {
           <!-- Continue -->
           <button
             class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all flex items-center justify-center gap-2"
-            @click="handleContinue"
+            @click="ostep = 'plan'"
           >
             <span>Continue</span>
             <svg class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6"/>
             </svg>
           </button>
+        </div>
+
+        <!-- ── STEP 3: Choose plan ── -->
+        <div v-else-if="ostep === 'plan'" class="flex flex-col gap-5 w-full max-w-[420px]">
+          <div>
+            <h1 style="font-size:1.6rem;font-weight:400;color:#333">Choose your plan</h1>
+            <p class="text-[14px] text-gray-500 mt-1">Start free, or subscribe now. You can change plans anytime.</p>
+          </div>
+
+          <!-- Billing interval -->
+          <div class="flex gap-2">
+            <Button
+              v-for="iv in planIntervals"
+              :key="iv"
+              variant="outline"
+              size="sm"
+              :class="[
+                'rounded-xl capitalize shadow-none',
+                planInterval === iv
+                  ? 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:text-white dark:bg-gray-900 dark:border-gray-900 dark:hover:bg-gray-800'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-white hover:text-gray-900 dark:bg-white dark:border-gray-200 dark:hover:bg-white',
+              ]"
+              @click="planInterval = iv"
+            >
+              {{ iv }}
+            </Button>
+            <span class="self-center text-[12px] text-gray-500">2 months free with yearly</span>
+          </div>
+
+          <!-- Plan options -->
+          <div class="flex flex-col gap-2" role="radiogroup" aria-label="Plan">
+            <Button
+              v-for="o in planOptions"
+              :key="o.id"
+              variant="outline"
+              role="radio"
+              :aria-checked="planChoice === o.id"
+              :class="[
+                'h-auto w-full justify-start gap-3 rounded-xl p-4 text-left whitespace-normal shadow-none bg-white hover:bg-gray-50 dark:bg-white dark:hover:bg-gray-50',
+                planChoice === o.id ? 'border-gray-900 ring-1 ring-gray-900 dark:border-gray-900' : 'border-gray-200 dark:border-gray-200',
+              ]"
+              @click="planChoice = o.id"
+            >
+              <div
+                class="mt-0.5 size-4 shrink-0 self-start rounded-full border-2 flex items-center justify-center"
+                :class="planChoice === o.id ? 'border-gray-900' : 'border-gray-300'"
+              >
+                <div v-if="planChoice === o.id" class="size-2 rounded-full bg-gray-900" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[13px] font-semibold text-gray-900 flex items-center gap-1.5">
+                    {{ o.name }}
+                    <Icon v-if="o.id !== 'trial'" name="solar:crown-linear" class="size-3.5 text-amber-500" />
+                  </p>
+                  <p class="text-[12.5px] font-medium text-gray-900 shrink-0">{{ o.price }}</p>
+                </div>
+                <p class="text-[12px] font-normal text-gray-500 mt-0.5">{{ o.desc }}</p>
+              </div>
+            </Button>
+          </div>
+
+          <!-- Continue -->
+          <Button
+            :disabled="planBusy"
+            class="h-auto w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm"
+            @click="handlePlanContinue"
+          >
+            <svg v-if="planBusy" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <span>{{ planChoice === 'trial' ? 'Start free trial' : 'Continue to payment' }}</span>
+            <svg v-if="!planBusy" class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </Button>
+
+          <p class="text-[12px] text-gray-500 text-center">
+            Prices exclude 18% GST. Need Enterprise?
+            <a href="mailto:hello@keepcabin.com" class="font-medium text-gray-900 underline underline-offset-4">Contact sales</a>
+          </p>
         </div>
 
         <!-- Bottom info card (org step only) -->
@@ -387,34 +518,46 @@ onUnmounted(() => {
             <div
               :class="[
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1.5 transition-opacity',
-                ostep === 'team'
+                ostep !== 'org'
                   ? 'bg-white border border-[#e8e8e8] shadow-[0_1px_4px_rgba(0,0,0,0.04)]'
                   : 'opacity-50'
               ]"
             >
               <div
                 class="size-6 rounded-full flex items-center justify-center shrink-0"
-                :class="ostep === 'team' ? 'bg-gray-900' : 'border-2 border-gray-300'"
+                :class="ostep !== 'org' ? 'bg-gray-900' : 'border-2 border-gray-300'"
               >
-                <svg v-if="ostep === 'team'" class="size-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                <svg v-if="ostep !== 'org'" class="size-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                 <span v-else class="text-[10px] font-bold text-gray-400">2</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-[13px] font-semibold" :class="ostep === 'team' ? 'text-gray-900' : 'text-gray-500'">Set up your teams</p>
+                <p class="text-[13px] font-semibold" :class="ostep !== 'org' ? 'text-gray-900' : 'text-gray-500'">Set up your teams</p>
                 <p class="text-[11.5px] text-gray-400 truncate">Create Finance and your custom teams</p>
               </div>
-              <div v-if="ostep === 'team'" class="size-1.5 rounded-full bg-gray-900 shrink-0" />
+              <div v-if="ostep !== 'org'" class="size-1.5 rounded-full shrink-0" :class="ostep === 'team' ? 'bg-gray-900' : 'bg-green-500'" />
             </div>
 
             <!-- Step 3 -->
-            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-35">
-              <div class="size-6 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0">
-                <span class="text-[10px] font-bold text-gray-300">3</span>
+            <div
+              :class="[
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-opacity',
+                ostep === 'plan'
+                  ? 'bg-white border border-[#e8e8e8] shadow-[0_1px_4px_rgba(0,0,0,0.04)]'
+                  : 'opacity-35'
+              ]"
+            >
+              <div
+                class="size-6 rounded-full flex items-center justify-center shrink-0"
+                :class="ostep === 'plan' ? 'bg-gray-900' : 'border-2 border-gray-200'"
+              >
+                <svg v-if="ostep === 'plan'" class="size-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                <span v-else class="text-[10px] font-bold text-gray-300">3</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-[13px] font-medium text-gray-400">Start tracking expenses</p>
-                <p class="text-[11.5px] text-gray-300 truncate">Submit, approve, and reimburse</p>
+                <p class="text-[13px]" :class="ostep === 'plan' ? 'font-semibold text-gray-900' : 'font-medium text-gray-400'">Choose your plan</p>
+                <p class="text-[11.5px] truncate" :class="ostep === 'plan' ? 'text-gray-400' : 'text-gray-300'">Free trial, or subscribe to Pro or Business</p>
               </div>
+              <div v-if="ostep === 'plan'" class="size-1.5 rounded-full bg-gray-900 shrink-0" />
             </div>
           </div>
 
