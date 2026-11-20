@@ -1,7 +1,7 @@
 import { getOrgContext, requireRole } from '~~/lib/org'
 import { serviceClient } from '~~/lib/billing'
 import { createNotifications } from '~~/lib/notifications'
-import { logEntry } from '~~/lib/expenseActions'
+import { loadMembers, logEntry } from '~~/lib/expenseActions'
 
 export default defineEventHandler(async (event) => {
   const ctx = requireRole(await getOrgContext(event), 'finance', 'owner')
@@ -45,18 +45,41 @@ export default defineEventHandler(async (event) => {
 
   const { data: linked } = await supabase
     .from('expenses')
-    .select('id')
+    .select('id, team_id')
     .eq('payout_id', id)
-    .limit(1)
 
-  await createNotifications(supabase, [{
-    org_id: ctx.org.id,
-    user_id: row.user_id,
-    type: 'payout_paid',
-    title: 'Reimbursement paid',
-    body: `₹${amount.toLocaleString('en-IN')} for ${count} ${count === 1 ? 'expense' : 'expenses'} was paid. UTR ${utr}.`,
-    expense_id: linked?.[0]?.id ?? null,
-  }])
+  // Managers of the teams these expenses came from also hear about the payment
+  const teamIds = new Set((linked ?? []).map(e => e.team_id).filter(Boolean))
+  const members = await loadMembers(ctx.org.id)
+  const managers = [...new Set(members
+    .filter(m => m.role === 'manager' && m.team_id && teamIds.has(m.team_id)
+      && m.user_id !== row.user_id && m.user_id !== ctx.member.user_id)
+    .map(m => m.user_id))]
+  let employee = 'an employee'
+  if (managers.length) {
+    const { data: u } = await supabase.auth.admin.getUserById(row.user_id)
+    employee = u?.user?.user_metadata?.full_name ?? u?.user?.email ?? employee
+  }
+  const paid = `₹${amount.toLocaleString('en-IN')} for ${count} ${count === 1 ? 'expense' : 'expenses'}`
+
+  await createNotifications(supabase, [
+    {
+      org_id: ctx.org.id,
+      user_id: row.user_id,
+      type: 'payout_paid',
+      title: 'Reimbursement paid',
+      body: `${paid} was paid. UTR ${utr}.`,
+      expense_id: linked?.[0]?.id ?? null,
+    },
+    ...managers.map(user_id => ({
+      org_id: ctx.org.id,
+      user_id,
+      type: 'payout_paid_team',
+      title: 'Team reimbursement paid',
+      body: `${paid} was paid to ${employee}. UTR ${utr}.`,
+      expense_id: linked?.[0]?.id ?? null,
+    })),
+  ])
 
   return { ok: true, amount, expense_count: count }
 })

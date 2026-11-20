@@ -114,9 +114,9 @@ async function submitReject() {
         </div>
         <Skeleton class="h-8 w-40 rounded-lg" />
       </div>
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Skeleton class="h-[420px] rounded-xl lg:col-span-2" />
-        <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-10">
+        <Skeleton class="h-[520px] rounded-2xl lg:col-span-7" />
+        <div class="flex flex-col gap-4 lg:col-span-3">
           <Skeleton class="h-40 rounded-xl" />
           <Skeleton class="h-48 rounded-xl" />
         </div>
@@ -139,18 +139,55 @@ async function submitReject() {
 
       <!-- Header -->
       <AppPageHeader :title="expense.vendor ?? 'Expense'" :back="{ label: 'Expenses', to: '/app/expenses' }">
+        <template #description>
+          Submitted by <span class="font-medium text-foreground">{{ expense.submitter_name ?? expense.submitter_email ?? '—' }}</span>
+          · {{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}
+        </template>
         <template #actions>
           <AppExpenseStatusBadge :status="expense.status" :payout-date="expense.payout_date" />
           <p class="text-2xl font-medium leading-none tabular-nums text-foreground">
             ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
           </p>
+          <template v-if="canApproveOrReject">
+            <Separator orientation="vertical" class="mx-2 !h-7" />
+            <Button
+              variant="outline"
+              class="h-9 gap-2 rounded-lg px-4"
+              :disabled="approving"
+              @click="approve"
+            >
+              <svg v-if="approving" class="size-4 shrink-0 animate-spin text-emerald-500" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <Icon v-else name="solar:check-circle-linear" class="size-4 text-emerald-500" />
+              {{ approving ? 'Approving…' : 'Approve' }}
+            </Button>
+            <Button
+              variant="outline"
+              class="h-9 gap-2 rounded-lg px-4"
+              :disabled="approving"
+              @click="rejectOpen = true"
+            >
+              <Icon name="solar:close-circle-linear" class="size-4 text-red-500" /> Reject
+            </Button>
+          </template>
         </template>
       </AppPageHeader>
 
-      <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-10">
 
-        <!-- Left: Details + Receipt -->
-        <div class="flex flex-col gap-4 lg:col-span-2">
+        <!-- Left (70%): workflow canvas, centred vertically + horizontally -->
+        <div
+          class="relative flex min-h-[520px] items-center justify-center rounded-2xl border border-border bg-card px-6 py-10 lg:col-span-7"
+          style="background-image: radial-gradient(hsl(var(--muted-foreground) / 0.28) 1px, transparent 1px); background-size: 14px 14px;"
+        >
+          <p class="absolute top-4 left-5 text-[13px] font-medium text-muted-foreground">Workflow</p>
+          <AppExpenseTracker :expense="expense" />
+        </div>
+
+        <!-- Right (30%): action + details + receipt -->
+        <div class="flex flex-col gap-4 lg:col-span-3">
           <Card class="gap-0 rounded-xl px-6 py-5">
             <p class="mb-4 text-[14px] font-medium text-foreground">Details</p>
             <div class="flex flex-col gap-3">
@@ -171,12 +208,12 @@ async function submitReject() {
               </div>
               <div class="flex items-start justify-between gap-4">
                 <span class="shrink-0 text-sm text-muted-foreground">Submitted by</span>
-                <span class="flex flex-col items-end text-right">
+                <span class="flex min-w-0 flex-col items-end text-right">
                   <template v-if="expense.submitter_name">
                     <span class="text-[13px] font-medium text-foreground">{{ expense.submitter_name }}</span>
-                    <span v-if="expense.submitter_email" class="text-[12px] text-muted-foreground">{{ expense.submitter_email }}</span>
+                    <span v-if="expense.submitter_email" class="break-all text-[12px] text-muted-foreground">{{ expense.submitter_email }}</span>
                   </template>
-                  <span v-else class="text-[13px] text-foreground">{{ expense.submitter_email ?? '—' }}</span>
+                  <span v-else class="break-all text-[13px] text-foreground">{{ expense.submitter_email ?? '—' }}</span>
                 </span>
               </div>
               <div v-if="expense.description" class="flex items-start justify-between gap-4">
@@ -204,39 +241,6 @@ async function submitReject() {
                 <Icon name="solar:document-text-linear" class="size-5 text-muted-foreground/40" />
               </div>
               <p class="text-[12.5px] text-muted-foreground">No receipt attached</p>
-            </div>
-          </Card>
-        </div>
-
-        <!-- Right: Progress + Action -->
-        <div class="flex flex-col gap-4">
-          <Card class="gap-0 rounded-xl px-6 py-5">
-            <p class="mb-4 text-[14px] font-medium text-foreground">Progress</p>
-            <AppExpenseTracker :expense="expense" />
-          </Card>
-
-          <Card v-if="canApproveOrReject" class="gap-0 rounded-xl px-6 py-5">
-            <p class="mb-3 text-[14px] font-medium text-foreground">Your action</p>
-            <div class="flex gap-2">
-              <Button
-                class="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
-                :disabled="approving"
-                @click="approve"
-              >
-                <svg v-if="approving" class="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                </svg>
-                <Icon name="solar:check-linear" v-else class="size-3.5" />
-                {{ approving ? 'Approving…' : 'Approve' }}
-              </Button>
-              <Button
-                variant="outline"
-                class="flex-1 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20"
-                @click="rejectOpen = true"
-              >
-                <Icon name="solar:close-linear" class="size-3.5" /> Reject
-              </Button>
             </div>
           </Card>
         </div>

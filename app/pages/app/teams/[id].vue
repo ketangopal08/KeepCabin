@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useSupabase } from '~~/lib/supabase'
 import type { Team } from '~~/lib/supabase'
+import { toast } from 'vue-sonner'
+import { isFinanceTeamName } from '~~/lib/teamRoles'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
@@ -27,7 +29,13 @@ const isOwner   = computed(() => ctx.value?.member.role === 'owner')
 const isManager = computed(() => ctx.value?.member.role === 'manager')
 const canInvite = computed(() => isOwner.value || isManager.value)
 
-const availableRoles = computed(() => isOwner.value ? (['manager', 'finance', 'employee'] as const) : (['employee'] as const))
+// Finance team: everyone in it gets the finance role (the server enforces this too)
+const isFinanceTeam = computed(() => isFinanceTeamName(team.value?.name))
+const availableRoles = computed(() =>
+  !isOwner.value ? (['employee'] as const)
+    : isFinanceTeam.value ? (['finance'] as const)
+    : (['manager', 'finance', 'employee'] as const))
+const financeHeads = computed(() => members.value.filter(m => m.role === 'finance'))
 const currentManager = computed(() => members.value.find(m => m.role === 'manager'))
 
 const PALETTE = AVATAR_COLORS
@@ -93,7 +101,7 @@ onMounted(() => loadBilling())
 function openInvite() {
   if (membersAtCap.value) { navigateTo('/app/upgrade'); return }
   inviteEmail.value = ''
-  inviteRole.value = isOwner.value ? 'manager' : 'employee'
+  inviteRole.value = isOwner.value ? (isFinanceTeam.value ? 'finance' : 'manager') : 'employee'
   inviteError.value = ''
   inviteOpen.value = true
 }
@@ -115,6 +123,7 @@ async function sendInvite() {
       },
     })
     inviteOpen.value = false
+    toast.success(`Invite sent to ${inviteEmail.value.trim()}`)
     refreshBilling()
   } catch (e: any) {
     if (showPlanLimitToast(e)) return
@@ -200,7 +209,10 @@ async function setAsManager(member: any) {
         </template>
         <template #description>
           {{ members.length > 0 ? `${members.length} member${members.length !== 1 ? 's' : ''}` : 'Team workspace' }}
-          <template v-if="currentManager">
+          <template v-if="isFinanceTeam && financeHeads.length">
+            · Finance manager{{ financeHeads.length > 1 ? 's' : '' }}: <span class="font-medium text-foreground">{{ financeHeads.map(m => m.full_name ?? m.email).join(', ') }}</span>
+          </template>
+          <template v-else-if="currentManager">
             · Manager: <span class="font-medium text-foreground">{{ currentManager.full_name ?? currentManager.email }}</span>
           </template>
         </template>
@@ -288,7 +300,7 @@ async function setAsManager(member: any) {
               <!-- Actions (owner only) -->
               <TableCell class="text-right">
                 <Button
-                  v-if="isOwner && m.role !== 'manager' && m.role !== 'owner'"
+                  v-if="isOwner && !isFinanceTeam && m.role !== 'manager' && m.role !== 'owner'"
                   variant="outline"
                   size="sm"
                   class="h-8 gap-1 rounded-lg px-3 text-[13px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
@@ -345,7 +357,7 @@ async function setAsManager(member: any) {
                   : 'border-border hover:border-muted-foreground/50'"
                 @click="inviteRole = r"
               >
-                <span class="text-[12.5px] font-semibold text-foreground capitalize">{{ r }}</span>
+                <span class="text-[12.5px] font-semibold text-foreground capitalize">{{ isFinanceTeam && r === 'finance' ? 'Finance manager' : r }}</span>
                 <span class="text-[11px] text-muted-foreground mt-0.5 leading-tight">{{ roleDesc(r) }}</span>
               </button>
             </div>
