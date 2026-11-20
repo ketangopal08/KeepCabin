@@ -50,7 +50,8 @@ The mobile (PWA) UI is a separate set of routes under `/m`. Doing mobile work mu
 
 - Mobile pages: `app/pages/m/...` (`definePageMeta({ layout: 'mobile', middleware: 'mobile' })`).
 - Mobile components: `app/components/mobile/` (`Mobile*`). Mobile layout: `app/layouts/mobile.vue`.
-- Phones / installed PWA are sent from a web route to its mobile version by `app/middleware/mobile-redirect.global.ts` — add one entry to `MOBILE_ROUTES` per new mobile screen.
+- Phones / installed PWA are sent from `/app/<path>` to `/m/<path>` automatically by `app/middleware/mobile-redirect.global.ts` whenever a matching page exists under `app/pages/m/` — creating the mobile page is enough.
+- Shared mobile building blocks: `MobilePageHeader`, `MobilePullToRefresh`, `MobileTracker`, `MobileTabBar` (role-based tabs), and the `m-rise` / `m-press` / `m-list` / `m-swap` classes in `app/layouts/mobile.vue`.
 - Do NOT edit, split, move or refactor any web file (`app/pages/app/**`, `app/layouts/app.vue`, `app/components/app/**`, etc.) as part of a mobile change. No "one route, two components" switching inside web pages.
 - If a mobile screen needs page logic, copy it into a composable (e.g. `app/composables/useNewExpense.ts`) — the web page keeps its own code unchanged.
 - Mobile links may point to `/app/*` web pages until that screen has a mobile version.

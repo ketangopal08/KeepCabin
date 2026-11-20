@@ -116,7 +116,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         </p>
       </div>
       <Button variant="secondary" size="icon-lg" class="m-press relative rounded-full" as-child>
-        <NuxtLink to="/app/notifications" aria-label="Notifications" @click="haptic">
+        <NuxtLink to="/m/notifications" aria-label="Notifications" @click="haptic">
           <Icon name="solar:bell-linear" class="size-5 text-red-500" :class="unread > 0 ? 'm-wiggle' : ''" />
           <span v-if="unread > 0" class="absolute top-2 right-2.5 size-2 rounded-full bg-red-500 ring-2 ring-secondary" />
         </NuxtLink>
@@ -148,7 +148,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
           </div>
         </div>
         <Button size="sm" class="m-press h-9 rounded-full bg-background px-4 font-semibold text-foreground hover:bg-background/90" as-child>
-          <NuxtLink to="/app/payments">Payouts</NuxtLink>
+          <NuxtLink to="/m/payments">Payouts</NuxtLink>
         </Button>
       </div>
 
@@ -159,7 +159,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
           </NuxtLink>
         </Button>
         <Button class="m-press h-12 rounded-full bg-background/90 font-semibold text-foreground hover:bg-background" as-child>
-          <NuxtLink :to="current ? `/app/expenses/${current.id}` : '/app/expenses'" @click="haptic">
+          <NuxtLink :to="current ? `/m/expenses/${current.id}` : '/m/expenses'" @click="haptic">
             <Icon name="solar:map-point-wave-linear" class="size-5" /> Track Expense
           </NuxtLink>
         </Button>
@@ -205,14 +205,14 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         <p class="text-sm font-medium text-foreground">Nothing to track yet</p>
         <p class="text-[12.5px] text-muted-foreground">Submit an expense and follow it until it's paid.</p>
       </Card>
-      <NuxtLink v-else :to="`/app/expenses/${current.id}`" class="m-press block" @click="haptic">
+      <NuxtLink v-else :to="`/m/expenses/${current.id}`" class="m-press block" @click="haptic">
         <Card class="gap-0 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-[11.5px] text-muted-foreground">Expense ID:</p>
               <p class="text-[14px] font-semibold tracking-tight text-foreground">{{ expCode(current) }}</p>
             </div>
-            <ExpenseStatusBadge :status="current.status" :payout-date="current.payout_date" class="rounded-full px-3" />
+            <AppExpenseStatusBadge :status="current.status" :payout-date="current.payout_date" class="rounded-full px-3" />
           </div>
 
           <div class="mt-4 grid grid-cols-2 gap-3">
@@ -238,7 +238,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-[15px] font-semibold text-foreground">Recent Activities</h2>
         <Button variant="link" size="sm" class="h-auto p-0 text-[13px] text-foreground" as-child>
-          <NuxtLink to="/app/expenses">See all</NuxtLink>
+          <NuxtLink to="/m/expenses">See all</NuxtLink>
         </Button>
       </div>
 
@@ -254,7 +254,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         <NuxtLink
           v-for="(e, i) in recent"
           :key="e.id"
-          :to="`/app/expenses/${e.id}`"
+          :to="`/m/expenses/${e.id}`"
           class="m-press m-rise block"
           :style="{ '--d': `${280 + i * 60}ms` }"
           @click="haptic"
@@ -272,7 +272,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
             </div>
             <div class="min-w-0">
               <p class="mb-1 text-[11.5px] text-muted-foreground">Status:</p>
-              <ExpenseStatusBadge :status="e.status" :payout-date="e.payout_date" class="rounded-full" />
+              <AppExpenseStatusBadge :status="e.status" :payout-date="e.payout_date" class="rounded-full" />
             </div>
             <div class="min-w-0">
               <p class="text-[11.5px] text-muted-foreground">Amount · Date:</p>
