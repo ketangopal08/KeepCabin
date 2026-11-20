@@ -2,14 +2,23 @@
 // Mobile (PWA) shell — phone-width column + floating pill tab bar.
 const { load } = useOrgContext()
 const { init: initAccentColor } = useAccentColor()
+// Disable pinch-zoom on mobile screens. iOS Safari ignores user-scalable=no in a
+// regular tab, so also cancel its proprietary pinch gesture events.
+const blockGesture = (e: Event) => e.preventDefault()
+const GESTURES = ['gesturestart', 'gesturechange', 'gestureend'] as const
+
 onMounted(() => {
   load()
   initAccentColor()
+  GESTURES.forEach(g => document.addEventListener(g, blockGesture, { passive: false }))
+})
+onBeforeUnmount(() => {
+  GESTURES.forEach(g => document.removeEventListener(g, blockGesture))
 })
 
 useHead({
   meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
     { name: 'apple-mobile-web-app-title', content: 'KeepCabin' },
@@ -43,7 +52,7 @@ html.m-app-root body {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
-  touch-action: manipulation;             /* no 300ms double-tap zoom delay */
+  touch-action: pan-x pan-y;              /* scrolling only: no pinch or double-tap zoom */
 }
 .m-app input,
 .m-app textarea { user-select: text; }

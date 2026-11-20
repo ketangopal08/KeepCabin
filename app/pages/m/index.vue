@@ -173,7 +173,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         v-model="search"
         type="search"
         placeholder="Search expenses"
-        class="h-13 rounded-full pr-14 pl-11 text-[14px] transition-shadow focus-visible:shadow-[0_6px_24px_-10px_rgba(0,0,0,0.25)]"
+        class="h-13 rounded-full pr-14 pl-11 text-base transition-shadow md:text-base focus-visible:shadow-[0_6px_24px_-10px_rgba(0,0,0,0.25)]"
       />
       <DropdownMenu>
         <DropdownMenuTrigger as-child>

@@ -143,7 +143,7 @@ function onSubmit() {
         <Icon name="solar:shop-linear" class="size-5 shrink-0 text-muted-foreground" />
         <div class="min-w-0 flex-1">
           <label for="ne-vendor" class="text-[12px] text-muted-foreground">Vendor</label>
-          <Input id="ne-vendor" v-model="form.vendor" type="text" placeholder="Swiggy, Uber, Hotel…" class="h-8 border-0 px-0 text-[15px] shadow-none focus-visible:ring-0" />
+          <Input id="ne-vendor" v-model="form.vendor" type="text" placeholder="Swiggy, Uber, Hotel…" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
         </div>
       </div>
       <Separator />
@@ -154,7 +154,7 @@ function onSubmit() {
             Date
             <span v-if="ocrFilled.date" class="text-primary"> · from receipt</span>
           </label>
-          <Input id="ne-date" v-model="form.expense_date" type="date" class="h-8 border-0 px-0 text-[15px] shadow-none focus-visible:ring-0" />
+          <Input id="ne-date" v-model="form.expense_date" type="date" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
         </div>
       </div>
       <Separator />
@@ -162,7 +162,7 @@ function onSubmit() {
         <Icon name="solar:pen-linear" class="size-5 shrink-0 text-muted-foreground" />
         <div class="min-w-0 flex-1">
           <label for="ne-desc" class="text-[12px] text-muted-foreground">Description</label>
-          <Input id="ne-desc" v-model="form.description" type="text" placeholder="What was this for?" class="h-8 border-0 px-0 text-[15px] shadow-none focus-visible:ring-0" />
+          <Input id="ne-desc" v-model="form.description" type="text" placeholder="What was this for?" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
         </div>
       </div>
     </Card>
