@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (!expense) throw createError({ statusCode: 404, message: 'Expense not found or not payable' })
+  if (expense.submitted_by === ctx.member.user_id) {
+    throw createError({ statusCode: 403, message: "You can't pay your own expense" })
+  }
 
   const newLog: ActionLogEntry[] = [
     ...(expense.action_log ?? []),
@@ -32,7 +35,7 @@ export default defineEventHandler(async (event) => {
     },
   ]
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('expenses')
     .update({
       status: 'paid',
@@ -42,8 +45,11 @@ export default defineEventHandler(async (event) => {
     })
     .eq('id', id)
     .eq('org_id', ctx.org.id)
+    .eq('status', 'pending_finance')
+    .select('id')
 
   if (error) throw createError({ statusCode: 500, message: error.message })
+  if (!updated?.length) throw createError({ statusCode: 409, message: 'Already handled' })
 
   supabase.functions.invoke('notify', {
     body: { type: 'finance_paid', expense_id: id, org_id: ctx.org.id },

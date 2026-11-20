@@ -19,7 +19,7 @@ const filtered = computed(() =>
 )
 
 function teamColor(name: string) {
-  const palette = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316']
+  const palette = AVATAR_COLORS
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % palette.length
   return palette[h]

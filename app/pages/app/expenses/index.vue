@@ -20,7 +20,7 @@ function setFilter(f: string) { activeFilter.value = f as Filter }
 
 const filtered = computed(() => {
   let list = expenses.value
-  if (activeFilter.value === 'pending')  list = list.filter(e => e.status.includes('pending'))
+  if (activeFilter.value === 'pending')  list = list.filter(e => e.status.includes('pending') || e.status === 'scheduled')
   if (activeFilter.value === 'approved') list = list.filter(e => e.status === 'paid')
   if (activeFilter.value === 'rejected') list = list.filter(e => e.status === 'rejected')
   if (search.value.trim()) {
@@ -37,10 +37,28 @@ const groups = computed(() => group(filtered.value))
 
 const counts = computed(() => ({
   all:      expenses.value.length,
-  pending:  expenses.value.filter(e => e.status.includes('pending')).length,
+  pending:  expenses.value.filter(e => e.status.includes('pending') || e.status === 'scheduled').length,
   approved: expenses.value.filter(e => e.status === 'paid').length,
   rejected: expenses.value.filter(e => e.status === 'rejected').length,
 }))
+
+const isEmployee = computed(() => role.value === 'employee')
+const pendingCount = computed(() => expenses.value.filter(e => e.status === 'pending_manager' || e.status === 'pending_finance').length)
+const scheduledRows = computed(() => expenses.value.filter(e => e.status === 'scheduled'))
+const scheduledAmount = computed(() => scheduledRows.value.reduce((s, e) => s + Number(e.amount), 0))
+const nextPayout = computed(() => {
+  const dates = scheduledRows.value.map(e => e.payout_date).filter((d): d is string => !!d).sort()
+  return dates[0] ? statusText('scheduled', dates[0]).replace('Pays on ', '') : undefined
+})
+// Paid this month: rows with status paid whose updated_at falls in the current IST month
+const paidThisMonth = computed(() => {
+  const ym = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7)
+  const now = ym(new Date())
+  return expenses.value
+    .filter(e => e.status === 'paid' && ym(new Date(e.updated_at)) === now)
+    .reduce((s, e) => s + Number(e.amount), 0)
+})
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 function toggleSelect(id: string) {
   const s = new Set(selected.value)
@@ -51,22 +69,6 @@ function toggleSelect(id: string) {
 function toggleAll() {
   if (selected.value.size === filtered.value.length) selected.value = new Set()
   else selected.value = new Set(filtered.value.map(e => e.id))
-}
-
-function statusLabel(s: string) {
-  const map: Record<string, string> = {
-    pending_manager: 'Pending',
-    pending_finance: 'Pending',
-    paid: 'Paid',
-    rejected: 'Rejected',
-  }
-  return map[s] ?? s
-}
-
-function statusVariant(s: string) {
-  if (s === 'paid')     return 'success'
-  if (s === 'rejected') return 'danger'
-  return 'warning'
 }
 
 function catColor(cat: string) {
@@ -108,7 +110,10 @@ onMounted(async () => { await load(); await fetchExpenses() })
   <AppPage>
 
     <!-- ── Header ──────────────────────────────────────────────────────── -->
-    <AppPageHeader :title="role === 'employee' ? 'My Expenses' : 'Expenses'">
+    <AppPageHeader
+      :title="role === 'employee' ? 'My Expenses' : 'Expenses'"
+      :description="role === 'employee' ? 'Track your submitted expenses and payouts.' : 'All expenses across your teams.'"
+    >
       <template #actions>
         <Button v-if="role === 'employee'" as-child class="h-9 gap-1.5 rounded-lg px-4">
           <NuxtLink to="/app/expenses/new">
@@ -117,6 +122,13 @@ onMounted(async () => { await load(); await fetchExpenses() })
         </Button>
       </template>
     </AppPageHeader>
+
+    <!-- ── Summary ─────────────────────────────────────────────────────── -->
+    <div v-if="isEmployee" class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <AppStatCard label="Awaiting approval" icon="solar:hourglass-linear" tone="positive" :value="loading ? '—' : pendingCount" />
+      <AppStatCard label="Scheduled" icon="solar:calendar-linear" tone="positive" :value="loading ? '—' : inr(scheduledAmount)" :sub="nextPayout ? `next: ${nextPayout}` : undefined" />
+      <AppStatCard label="Paid this month" icon="solar:wallet-money-linear" tone="positive" :value="loading ? '—' : inr(paidThisMonth)" />
+    </div>
 
     <!-- ── Tabs ────────────────────────────────────────────────────────── -->
     <AppPageTabs
@@ -172,6 +184,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
             <TableHead>
               Name <span class="ml-0.5 text-muted-foreground/60">({{ filtered.length }})</span>
             </TableHead>
+            <TableHead v-if="!isEmployee">Submitted by</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Amount</TableHead>
@@ -182,7 +195,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
         <TableBody>
           <template v-for="g in groups" :key="g.key">
             <TableRow v-if="g.label" class="bg-muted/40 hover:bg-muted/40">
-              <TableCell :colspan="7" class="py-2 text-[12.5px] font-medium text-foreground">
+              <TableCell :colspan="isEmployee ? 7 : 8" class="py-2 text-[12.5px] font-medium text-foreground">
                 {{ g.label }} <span class="ml-1 font-normal text-muted-foreground">{{ g.items.length }}</span>
               </TableCell>
             </TableRow>
@@ -226,6 +239,20 @@ onMounted(async () => { await load(); await fetchExpenses() })
                   </div>
                 </div>
               </TableCell>
+              <TableCell v-if="!isEmployee">
+                <div class="flex items-center gap-2.5">
+                  <div
+                    class="flex size-7 shrink-0 items-center justify-center rounded-full text-[10.5px] font-semibold text-white"
+                    :style="{ background: personColor(e.submitter_email ?? e.submitted_by) }"
+                  >
+                    {{ personInitials(e.submitter_name ?? e.submitter_email) }}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="max-w-[200px] truncate text-sm text-foreground">{{ e.submitter_name ?? e.submitter_email ?? 'Unknown' }}</p>
+                    <p v-if="e.submitter_name && e.submitter_email" class="max-w-[200px] truncate text-[12px] text-muted-foreground">{{ e.submitter_email }}</p>
+                  </div>
+                </div>
+              </TableCell>
               <TableCell>
                 <Badge variant="neutral" class="capitalize">{{ e.category }}</Badge>
               </TableCell>
@@ -236,10 +263,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
                 ₹{{ Number(e.amount).toLocaleString('en-IN') }}
               </TableCell>
               <TableCell>
-                <Badge :variant="statusVariant(e.status)" class="gap-1.5">
-                  <span class="size-1.5 shrink-0 rounded-full bg-current" />
-                  {{ statusLabel(e.status) }}
-                </Badge>
+                <AppExpenseStatusBadge :status="e.status" :payout-date="e.payout_date" />
               </TableCell>
               <TableCell class="text-right">
                 <Button variant="outline" size="sm" class="h-8 rounded-lg px-3 text-[13px]" as-child @click.stop>

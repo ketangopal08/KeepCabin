@@ -24,6 +24,7 @@ export interface Organization {
   size: string | null
   owner_id: string
   created_at: string
+  payout_schedule?: 'semi_monthly' | 'monthly' | 'weekly'
 }
 
 export interface Team {
@@ -56,7 +57,7 @@ export interface Invite {
   expires_at: string
 }
 
-export type ExpenseStatus = 'pending_manager' | 'pending_finance' | 'paid' | 'rejected'
+export type ExpenseStatus = 'pending_manager' | 'pending_finance' | 'scheduled' | 'paid' | 'rejected'
 export type ExpenseCategory = 'food' | 'travel' | 'accommodation' | 'other'
 
 export interface ActionLogEntry {
@@ -82,9 +83,27 @@ export interface Expense {
   status: ExpenseStatus
   rejection_reason: string | null
   utr_number: string | null
+  payout_id?: string | null
+  payout_date?: string | null
   action_log: ActionLogEntry[]
   created_at: string
   updated_at: string
+  /** Added by GET /api/expenses */
+  submitter_name?: string | null
+  submitter_email?: string | null
+}
+
+export interface Payout {
+  id: string
+  org_id: string
+  user_id: string
+  cycle_date: string
+  amount: number
+  status: 'scheduled' | 'paid'
+  utr_number: string | null
+  paid_at: string | null
+  paid_by: string | null
+  created_at: string
 }
 
 export interface OrgContext {

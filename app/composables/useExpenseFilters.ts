@@ -83,6 +83,7 @@ function inAmountRange(e: Expense, range: string) {
 const STATUS_GROUP: Record<string, string> = {
   pending_manager: 'Pending',
   pending_finance: 'Pending',
+  scheduled: 'Pending',
   paid: 'Paid',
   rejected: 'Rejected',
 }

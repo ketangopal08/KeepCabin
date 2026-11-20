@@ -14,9 +14,37 @@ async function logout() {
 
 const role  = computed(() => ctx.value?.member?.role)
 
-// Billing state for premium (crown) markers
-const { exportLocked, load: loadBilling } = useBilling()
+// Menu items that contain premium features show a crown on Free and during the trial;
+// hidden once the workspace has purchased a paid plan.
+const { billing, load: loadBilling } = useBilling()
 watch(() => ctx.value?.org?.id, (orgId) => { if (orgId) loadBilling() }, { immediate: true })
+const showPremium = computed(() => !!billing.value && (billing.value.trial || billing.value.plan === 'free'))
+
+// Paid workspaces get a dismissible "You're on <Plan>" banner instead of the upgrade card.
+const isPaidPlan = computed(() => !!billing.value && !showPremium.value)
+const PLAN_NAMES: Record<string, string> = { pro: 'Pro', business: 'Business', enterprise: 'Enterprise' }
+const planStripText = computed(() => {
+  const b = billing.value
+  if (!b) return ''
+  const date = b.currentPeriodEnd
+    ? new Date(b.currentPeriodEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : ''
+  if (b.status === 'past_due') return 'Payment failed — retrying'
+  if (b.cancelAtPeriodEnd || b.status === 'cancelled') return date ? `Active until ${date}` : 'Cancelled'
+  return date ? `Renews ${date}` : 'All features unlocked'
+})
+const planBannerKey = computed(() => `kc-plan-banner-dismissed:${ctx.value?.org?.id ?? ''}:${billing.value?.plan ?? ''}`)
+const planBannerDismissed = ref(false)
+watch(planBannerKey, (key) => {
+  try { planBannerDismissed.value = import.meta.client && localStorage.getItem(key) === '1' } catch { planBannerDismissed.value = false }
+}, { immediate: true })
+function dismissPlanBanner() {
+  planBannerDismissed.value = true
+  try { localStorage.setItem(planBannerKey.value, '1') } catch { /* storage unavailable */ }
+}
+// Brand colours from public/logo.svg: lime background + dark dot grid + dark mark.
+const BRAND_LIME = '#C8E63C'
+const BRAND_INK = '#181810'
 const orgSwitcherOpen = ref(false)
 
 // Fetch teams list (owner only)
@@ -42,14 +70,16 @@ const workspaceItems = computed(() => {
     { label: 'My Team', icon: 'solar:users-group-rounded-linear', href: '/app/team' },
   ]
   if (role.value === 'finance') return [
-    { label: 'Payments', icon: 'solar:card-linear', href: '/app/payments' },
+    { label: 'Payouts', icon: 'solar:card-linear', href: '/app/payments' },
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
-    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: exportLocked.value },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: showPremium.value },
   ]
   if (role.value === 'owner') return [
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
-    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: exportLocked.value },
-    { label: 'Organization', icon: 'solar:buildings-2-linear', href: '/app/org' },
+    { label: 'Approvals', icon: 'solar:check-circle-linear', href: '/app/approvals' },
+    { label: 'Payouts', icon: 'solar:card-linear', href: '/app/payments' },
+    { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: showPremium.value },
+    { label: 'Organization', icon: 'solar:buildings-2-linear', href: '/app/org', premium: showPremium.value },
   ]
   return []
 })
@@ -59,19 +89,11 @@ function isActive(href: string) {
   return route.path.startsWith(href)
 }
 
-const orgInitials = computed(() => (ctx.value?.org?.name ?? '').slice(0, 2).toUpperCase() || 'KC')
 
 // Set to null to use initials, or a URL string to show an image
-const orgImageUrl = ref<string | null>('/images/org-temp.jpg')
+const orgImageUrl = ref<string | null>(null)
 const orgImageError = ref(false)
 
-const orgColor = computed(() => {
-  const colors = ['#C8E63C']
-  const name = ctx.value?.org?.name ?? ''
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length
-  return colors[h] ?? colors[0]
-})
 </script>
 
 <template>
@@ -93,10 +115,9 @@ const orgColor = computed(() => {
         />
         <div
           v-else
-          class="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-black"
-          :style="{ background: orgColor }"
+          class="flex size-6 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent text-sidebar-foreground/80"
         >
-          {{ orgInitials.charAt(0) }}
+          <Icon name="solar:buildings-2-linear" class="!size-3.5" />
         </div>
         <span class="min-w-0 flex-1 truncate text-left text-sm font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden">{{ ctx?.org?.name ?? 'KeepCabin' }}</span>
         <Badge variant="secondary" class="h-6 shrink-0 rounded-full bg-sidebar-accent px-2.5 text-xs font-medium capitalize text-sidebar-foreground group-data-[collapsible=icon]:hidden">
@@ -128,8 +149,9 @@ const orgColor = computed(() => {
                   <Icon
                     v-if="'premium' in item && item.premium"
                     name="solar:crown-linear"
-                    class="ml-auto !size-3.5 text-amber-500 group-data-[collapsible=icon]:hidden"
-                    aria-label="Paid feature"
+                    class="ml-auto !size-3.5 !text-amber-500 group-data-[collapsible=icon]:hidden"
+                    aria-label="Includes premium features"
+                    title="Includes premium features"
                   />
                 </NuxtLink>
               </SidebarMenuButton>
@@ -174,8 +196,31 @@ const orgColor = computed(() => {
 
     </SidebarContent>
 
-    <!-- ── Upgrade card ── -->
-    <div class="px-3 pb-2 group-data-[collapsible=icon]:hidden">
+    <!-- ── Plan strip (paid workspaces) ── -->
+    <div v-if="isPaidPlan && !planBannerDismissed" class="px-3 pb-2 group-data-[collapsible=icon]:hidden">
+      <div class="relative flex items-center gap-2.5 rounded-lg bg-sidebar-accent/60 py-2 pr-8 pl-2.5 transition-colors hover:bg-sidebar-accent">
+        <NuxtLink to="/app/upgrade" class="absolute inset-0 rounded-lg" aria-label="Manage plan" />
+        <div class="flex size-6 shrink-0 items-center justify-center rounded-full" :style="{ background: BRAND_LIME, color: BRAND_INK }">
+          <Icon name="solar:crown-linear" class="!size-3.5" />
+        </div>
+        <div class="min-w-0">
+          <p class="truncate text-[13px] font-medium leading-tight text-sidebar-foreground">{{ PLAN_NAMES[billing?.plan ?? ''] ?? 'Paid' }} plan</p>
+          <p class="truncate text-[11.5px] leading-tight text-sidebar-foreground/55">{{ planStripText }}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          class="absolute top-1/2 right-1.5 z-10 -translate-y-1/2 rounded-full text-sidebar-foreground/50 hover:bg-sidebar hover:text-sidebar-foreground"
+          aria-label="Dismiss"
+          @click="dismissPlanBanner"
+        >
+          <Icon name="solar:close-linear" class="!size-3" />
+        </Button>
+      </div>
+    </div>
+
+    <!-- ── Upgrade card (Free / trial) ── -->
+    <div v-else-if="billing && !isPaidPlan" class="px-3 pb-2 group-data-[collapsible=icon]:hidden">
       <Card class="gap-0 rounded-xl bg-sidebar-accent/70 px-4 py-4 ring-0">
         <div class="mb-3 flex size-9 items-center justify-center rounded-full bg-sidebar">
           <Icon name="solar:magic-stick-3-linear" class="size-4 text-sidebar-foreground/70" />
@@ -200,9 +245,11 @@ const orgColor = computed(() => {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton tooltip="Help center" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
-            <Icon name="solar:question-circle-linear" />
-            <span>Help center</span>
+          <SidebarMenuButton as-child :is-active="isActive('/app/help')" tooltip="Help center" class="h-9 gap-3 px-2.5 [&_svg]:size-[18px]">
+            <NuxtLink to="/app/help">
+              <Icon name="solar:question-circle-linear" />
+              <span>Help center</span>
+            </NuxtLink>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
@@ -239,10 +286,9 @@ const orgColor = computed(() => {
             />
             <div
               v-else
-              class="flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
-              :style="{ background: orgColor }"
+              class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground/80"
             >
-              {{ orgInitials.charAt(0) }}
+              <Icon name="solar:buildings-2-linear" class="size-4" />
             </div>
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium text-foreground capitalize">{{ ctx?.org?.name ?? 'KeepCabin' }}</p>

@@ -8,18 +8,23 @@ const supabase = useSupabase()
 const { ctx, load } = useOrgContext()
 onMounted(load)
 
-const members = ref<{ id: string; user_id: string; role: string }[]>([])
+const members = ref<{ id: string; user_id: string; role: string; email: string | null; full_name: string | null }[]>([])
 const inviteEmail = ref('')
 const loading = ref(false)
 
 async function fetchMembers() {
-  if (!ctx.value?.member?.team_id) return
-  const { data, error } = await supabase
-    .from('org_members')
-    .select('id, user_id, role')
-    .eq('team_id', ctx.value.member.team_id)
-  if (error) { console.error(error); return }
-  members.value = data ?? []
+  const teamId = ctx.value?.member?.team_id
+  if (!teamId) return
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    // Server endpoint returns names + emails (stored in Supabase Auth, not org_members)
+    members.value = await $fetch(`/api/teams/${teamId}/members` as string, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 // Premium (crown): at the member cap, the invite button leads to the upgrade page instead
@@ -40,6 +45,7 @@ async function sendInvite() {
     toast.success(`Invite sent to ${inviteEmail.value}`)
     inviteEmail.value = ''
     refreshBilling()
+    fetchMembers()
   } catch (e: any) {
     if (showPlanLimitToast(e)) return
     toast.error(e?.data?.message ?? 'Failed to send invite')
@@ -105,10 +111,16 @@ watch(() => ctx.value, fetchMembers, { immediate: true })
           <TableRow v-for="m in members" :key="m.id" class="border-border">
             <TableCell>
               <div class="flex items-center gap-3">
-                <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <span class="text-[12px] font-semibold text-muted-foreground">{{ m.user_id.slice(0, 2).toUpperCase() }}</span>
+                <div
+                  class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  :style="{ background: personColor(m.email ?? m.user_id) }"
+                >
+                  {{ personInitials(m.full_name ?? m.email) }}
                 </div>
-                <p class="font-mono text-sm font-medium text-foreground">{{ m.user_id.slice(0, 8) }}…</p>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-foreground">{{ m.full_name ?? m.email ?? 'Unknown' }}</p>
+                  <p v-if="m.full_name && m.email" class="truncate text-[12.5px] text-muted-foreground">{{ m.email }}</p>
+                </div>
               </div>
             </TableCell>
             <TableCell>

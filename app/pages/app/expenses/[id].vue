@@ -17,8 +17,6 @@ const approving     = ref(false)
 const rejectOpen    = ref(false)
 const rejectReason  = ref('')
 const rejectLoading = ref(false)
-const utrNumber     = ref('')
-const payLoading    = ref(false)
 const receiptZoom   = ref(false)
 
 const role     = computed(() => ctx.value?.member?.role)
@@ -28,11 +26,6 @@ const canApproveOrReject = computed(() =>
   role.value === 'manager' &&
   expense.value?.status === 'pending_manager' &&
   expense.value?.team_id === myTeamId.value
-)
-
-const canPay = computed(() =>
-  (role.value === 'finance' || role.value === 'owner') &&
-  expense.value?.status === 'pending_finance'
 )
 
 function expenseId() {
@@ -50,78 +43,6 @@ function catColor(cat: string) {
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-}
-
-const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
-  pending_manager: { label: 'Pending Manager',  cls: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400',    dot: 'bg-amber-500'  },
-  pending_finance: { label: 'Pending Payment',  cls: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400',        dot: 'bg-blue-500'   },
-  paid:            { label: 'Paid',             cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  rejected:        { label: 'Rejected',         cls: 'text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400',             dot: 'bg-red-500'    },
-}
-
-const workflowSteps = computed(() => {
-  const e = expense.value
-  if (!e) return []
-  const log      = e.action_log ?? []
-  const find     = (action: string) => log.find((l: any) => l.action === action)
-  const submitted = find('submitted')
-  const approved  = find('approved')
-  const rejected  = find('rejected')
-  const paid      = find('paid')
-  const isRej     = e.status === 'rejected'
-
-  return [
-    {
-      key:   'submitted',
-      step:  1,
-      title: 'Expense Submitted',
-      desc:  submitted ? `Submitted by ${submitted.actor_name}` : 'Submitted by employee',
-      actor: submitted?.actor_name,
-      time:  submitted?.timestamp ?? e.created_at,
-      note:  null as string | null,
-      state: 'done',
-    },
-    {
-      key:   'manager',
-      step:  2,
-      title: isRej ? 'Rejected by Manager' : approved ? 'Manager Approved' : 'Awaiting Manager Approval',
-      desc:  approved  ? `Approved by ${approved.actor_name}`
-           : rejected  ? `Rejected by ${rejected.actor_name}`
-           : 'Waiting for manager review',
-      actor: approved?.actor_name ?? rejected?.actor_name ?? null,
-      time:  approved?.timestamp ?? rejected?.timestamp ?? null,
-      note:  rejected?.note ?? null,
-      state: approved ? 'done' : isRej ? 'rejected' : e.status === 'pending_manager' ? 'active' : 'pending',
-    },
-    {
-      key:   'finance',
-      step:  3,
-      title: paid ? 'Payment Processed' : isRej ? 'Payment Not Required' : 'Awaiting Finance Payment',
-      desc:  paid   ? `Processed by ${paid.actor_name}`
-           : isRej  ? 'Expense was rejected — no payment needed'
-           : 'Waiting for finance to process payment',
-      actor: paid?.actor_name ?? null,
-      time:  paid?.timestamp ?? null,
-      note:  paid?.note ?? null,
-      state: isRej ? 'skipped' : paid ? 'done' : e.status === 'pending_finance' ? 'active' : 'pending',
-    },
-    {
-      key:   'completed',
-      step:  4,
-      title: paid ? 'Expense Completed' : isRej ? 'Expense Closed' : 'Expense Completed',
-      desc:  paid  ? 'All done. The expense has been fully processed.'
-           : isRej ? 'This expense was rejected and is now closed.'
-           : 'Will be marked complete after payment is processed.',
-      actor: null as string | null,
-      time:  paid?.timestamp ?? null,
-      note:  null as string | null,
-      state: paid ? 'done' : isRej ? 'rejected' : 'pending',
-    },
-  ]
-})
 
 async function fetchExpense() {
   try {
@@ -178,27 +99,6 @@ async function submitReject() {
     rejectLoading.value = false
   }
 }
-
-async function submitPay() {
-  if (!utrNumber.value.trim()) { toast.error('Enter UTR number'); return }
-  payLoading.value = true
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-    await $fetch(`/api/expenses/${expenseId()}/pay` as string, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      body: { utr_number: utrNumber.value.trim() },
-    })
-    toast.success('Payment recorded')
-    utrNumber.value = ''
-    await fetchExpense()
-  } catch (e: any) {
-    toast.error(e?.data?.message ?? 'Failed to record payment')
-  } finally {
-    payLoading.value = false
-  }
-}
 </script>
 
 <template>
@@ -214,8 +114,8 @@ async function submitPay() {
         </div>
         <Skeleton class="h-8 w-40 rounded-lg" />
       </div>
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        <Skeleton class="h-[420px] rounded-xl" />
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Skeleton class="h-[420px] rounded-xl lg:col-span-2" />
         <div class="flex flex-col gap-4">
           <Skeleton class="h-40 rounded-xl" />
           <Skeleton class="h-48 rounded-xl" />
@@ -238,162 +138,86 @@ async function submitPay() {
     <template v-else>
 
       <!-- Header -->
-      <AppPageHeader :title="expense.vendor ?? 'Expense'" :back="{ label: 'All expenses', to: '/app/expenses' }">
-        <template #description>
-          <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span class="inline-flex items-center gap-1.5 capitalize">
-              <span class="size-2 shrink-0 rounded-full" :style="{ background: catColor(expense.category) }" />
-              {{ expense.category }}
-            </span>
-            <span class="text-border">·</span>
-            <span>{{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}</span>
-            <template v-if="expense.description">
-              <span class="text-border">·</span>
-              <span class="max-w-[320px] truncate">{{ expense.description }}</span>
-            </template>
-          </span>
-        </template>
+      <AppPageHeader :title="expense.vendor ?? 'Expense'" :back="{ label: 'Expenses', to: '/app/expenses' }">
         <template #actions>
-          <Badge variant="outline" class="h-7 gap-1.5 border-transparent px-2.5 text-[13px] font-medium" :class="STATUS_META[expense.status]?.cls">
-            <span
-              class="size-1.5 shrink-0 rounded-full"
-              :class="[STATUS_META[expense.status]?.dot, ['paid','rejected'].includes(expense.status) ? '' : 'animate-pulse']"
-            />
-            {{ STATUS_META[expense.status]?.label ?? expense.status }}
-          </Badge>
+          <AppExpenseStatusBadge :status="expense.status" :payout-date="expense.payout_date" />
           <p class="text-2xl font-medium leading-none tabular-nums text-foreground">
             ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
           </p>
         </template>
       </AppPageHeader>
 
-      <!-- Two-column body -->
-      <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
+      <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
 
-        <!-- ── Left: Workflow stepper ──────────────────────────────── -->
-        <Card class="gap-0 rounded-xl px-6 py-6">
-          <p class="mb-6 text-[14px] font-medium text-foreground">Workflow</p>
-
-          <div class="flex flex-col max-w-lg">
-            <div v-for="(step, idx) in workflowSteps" :key="step.key" class="flex gap-5">
-
-              <!-- Circle + connector line -->
-              <div class="flex flex-col items-center w-10 shrink-0">
-
-                <!-- Step circle -->
-                <div
-                  class="size-8 rounded-full flex items-center justify-center shrink-0 transition-all"
-                  :class="{
-                    'bg-emerald-500 text-white':                               step.state === 'done',
-                    'bg-red-500 text-white':                                   step.state === 'rejected',
-                    'bg-amber-400 text-white':                                 step.state === 'active',
-                    'bg-background border-2 border-border/50 text-muted-foreground/30': step.state === 'pending',
-                    'bg-muted border border-border/40 text-muted-foreground/20': step.state === 'skipped',
-                  }"
-                >
-                  <!-- submitted -->
-                  <Icon name="solar:upload-linear"     v-if="step.key === 'submitted'"                         class="size-3.5" />
-                  <!-- manager -->
-                  <Icon name="solar:close-linear"          v-else-if="step.key === 'manager' && step.state === 'rejected'" class="size-3.5 stroke-[2.5]" />
-                  <Icon name="solar:user-check-linear"  v-else-if="step.key === 'manager'"                      class="size-3.5" />
-                  <!-- finance -->
-                  <Icon name="solar:card-linear" v-else-if="step.key === 'finance'"                      class="size-3.5" />
-                  <!-- completed -->
-                  <Icon name="solar:verified-check-linear" v-else-if="step.key === 'completed'"                    class="size-3.5" />
-                </div>
-
-                <!-- Connector line -->
-                <div
-                  v-if="idx < workflowSteps.length - 1"
-                  class="w-px flex-1 my-1.5"
-                  :class="{
-                    'bg-emerald-300 dark:bg-emerald-800': step.state === 'done',
-                    'bg-red-300 dark:bg-red-800':         step.state === 'rejected',
-                    'bg-amber-200 dark:bg-amber-800/50':  step.state === 'active',
-                    'bg-border/25':                       step.state === 'pending' || step.state === 'skipped',
-                  }"
-                  style="min-height: 20px"
-                />
+        <!-- Left: Details + Receipt -->
+        <div class="flex flex-col gap-4 lg:col-span-2">
+          <Card class="gap-0 rounded-xl px-6 py-5">
+            <p class="mb-4 text-[14px] font-medium text-foreground">Details</p>
+            <div class="flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-4">
+                <span class="shrink-0 text-sm text-muted-foreground">Date</span>
+                <span class="text-[13px] text-foreground">{{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}</span>
               </div>
-
-              <!-- Step content -->
-              <div
-                class="flex-1 min-w-0 pb-5 transition-opacity"
-                :class="idx === workflowSteps.length - 1 ? 'pb-0' : ''"
-                :style="step.state === 'pending' || step.state === 'skipped' ? 'opacity: 0.35' : ''"
-              >
-                <div class="flex items-start justify-between gap-4 pt-1">
-                  <div>
-                    <p class="text-[15px] font-semibold text-foreground leading-tight">{{ step.title }}</p>
-                    <p class="text-[13px] text-muted-foreground mt-0.5 leading-snug">{{ step.desc }}</p>
-                  </div>
-                  <div v-if="step.time" class="shrink-0 text-right">
-                    <p class="text-[12px] font-medium text-foreground">{{ fmtDate(step.time) }}</p>
-                    <p class="text-[11px] text-muted-foreground/60 mt-0.5">{{ fmtTime(step.time) }}</p>
-                  </div>
-                </div>
-
-                <!-- Step 1: submission receipt card -->
-                <div
-                  v-if="step.key === 'submitted'"
-                  class="mt-3 flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-3.5 py-3"
-                >
-                  <div class="size-10 rounded-lg overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
-                    <img v-if="expense.receipt_url" :src="expense.receipt_url" class="w-full h-full object-cover" />
-                    <Icon name="solar:document-text-linear" v-else class="size-4 text-muted-foreground/40" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-medium text-foreground truncate">{{ expense.vendor ?? 'Expense' }}</p>
-                    <p class="text-[12px] text-muted-foreground truncate mt-0.5">
-                      {{ expense.description ?? expense.category }}
-                    </p>
-                  </div>
-                  <p class="text-[14px] font-bold text-foreground shrink-0 tabular-nums">
-                    ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
-                  </p>
-                </div>
-
-                <!-- Active pulse indicator -->
-                <div v-if="step.state === 'active'" class="mt-3 inline-flex items-center gap-2">
-                  <span class="relative flex size-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                    <span class="relative inline-flex rounded-full size-2 bg-amber-400" />
-                  </span>
-                  <span class="text-[12px] text-amber-600 dark:text-amber-400 font-medium">In progress</span>
-                </div>
-
-                <!-- Rejection note -->
-                <div
-                  v-if="step.key === 'manager' && step.note"
-                  class="mt-3 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 px-4 py-3"
-                >
-                  <p class="text-[11px] font-semibold text-red-500 uppercase tracking-wider mb-1.5">Rejection Reason</p>
-                  <p class="text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{{ step.note }}</p>
-                </div>
-
-                <!-- UTR / payment reference -->
-                <div
-                  v-if="step.key === 'finance' && step.note"
-                  class="mt-3 inline-flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-1.5 border border-border/50"
-                >
-                  <span class="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">UTR</span>
-                  <span class="text-[12.5px] font-mono text-foreground">{{ step.note }}</span>
-                </div>
-
+              <div class="flex items-start justify-between gap-4">
+                <span class="shrink-0 text-sm text-muted-foreground">Category</span>
+                <span class="flex items-center gap-1.5 text-[13px] capitalize text-foreground">
+                  <span class="size-2 shrink-0 rounded-full" :style="{ background: catColor(expense.category) }" />
+                  {{ expense.category }}
+                </span>
+              </div>
+              <div class="flex items-start justify-between gap-4">
+                <span class="shrink-0 text-sm text-muted-foreground">Team</span>
+                <span class="text-[13px] text-foreground">{{ (expense as any).team_name ?? '—' }}</span>
+              </div>
+              <div class="flex items-start justify-between gap-4">
+                <span class="shrink-0 text-sm text-muted-foreground">Submitted by</span>
+                <span class="flex flex-col items-end text-right">
+                  <template v-if="expense.submitter_name">
+                    <span class="text-[13px] font-medium text-foreground">{{ expense.submitter_name }}</span>
+                    <span v-if="expense.submitter_email" class="text-[12px] text-muted-foreground">{{ expense.submitter_email }}</span>
+                  </template>
+                  <span v-else class="text-[13px] text-foreground">{{ expense.submitter_email ?? '—' }}</span>
+                </span>
+              </div>
+              <div v-if="expense.description" class="flex items-start justify-between gap-4">
+                <span class="shrink-0 text-sm text-muted-foreground">Description</span>
+                <span class="text-right text-[13px] text-foreground">{{ expense.description }}</span>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <!-- ── Right: Details + Actions + Receipt ──────────────────── -->
-        <Card class="gap-0 divide-y divide-border rounded-xl py-0">
+          <Card class="gap-0 rounded-xl px-6 py-5">
+            <p class="mb-4 text-[14px] font-medium text-foreground">Receipt</p>
+            <div v-if="expense.receipt_url">
+              <div
+                class="cursor-zoom-in overflow-hidden rounded-xl border border-border bg-card"
+                @click="receiptZoom = true"
+              >
+                <img :src="expense.receipt_url" class="max-h-[360px] w-full object-contain" />
+              </div>
+              <Button variant="ghost" size="sm" class="mt-2 w-full gap-1 text-muted-foreground" @click="receiptZoom = true">
+                <Icon name="solar:magnifer-zoom-in-linear" class="size-3" /> View full size
+              </Button>
+            </div>
+            <div v-else class="flex flex-col items-center gap-2 py-8">
+              <div class="flex size-12 items-center justify-center rounded-xl border-2 border-dashed border-border">
+                <Icon name="solar:document-text-linear" class="size-5 text-muted-foreground/40" />
+              </div>
+              <p class="text-[12.5px] text-muted-foreground">No receipt attached</p>
+            </div>
+          </Card>
+        </div>
 
-          <!-- Action panel (role-gated) -->
-          <div v-if="canApproveOrReject || canPay" class="px-5 py-4">
+        <!-- Right: Progress + Action -->
+        <div class="flex flex-col gap-4">
+          <Card class="gap-0 rounded-xl px-6 py-5">
+            <p class="mb-4 text-[14px] font-medium text-foreground">Progress</p>
+            <AppExpenseTracker :expense="expense" />
+          </Card>
+
+          <Card v-if="canApproveOrReject" class="gap-0 rounded-xl px-6 py-5">
             <p class="mb-3 text-[14px] font-medium text-foreground">Your action</p>
-
-            <!-- Manager: approve / reject -->
-            <div v-if="canApproveOrReject" class="flex gap-2">
+            <div class="flex gap-2">
               <Button
                 class="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
                 :disabled="approving"
@@ -414,91 +238,8 @@ async function submitPay() {
                 <Icon name="solar:close-linear" class="size-3.5" /> Reject
               </Button>
             </div>
-
-            <!-- Finance: UTR + mark paid -->
-            <div v-if="canPay" class="flex flex-col gap-2">
-              <div class="flex flex-col gap-1.5">
-                <label class="text-[12px] font-medium text-foreground">UTR / Reference Number</label>
-                <Input
-                  v-model="utrNumber"
-                  placeholder="e.g. UTR123456789"
-                  class="font-mono text-[13px]"
-                  @keydown.enter="submitPay"
-                />
-              </div>
-              <Button
-                class="gap-1.5"
-                :disabled="payLoading || !utrNumber.trim()"
-                @click="submitPay"
-              >
-                <svg v-if="payLoading" class="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                </svg>
-                <Icon name="solar:card-linear" v-else class="size-3.5" />
-                {{ payLoading ? 'Recording…' : 'Mark as Paid' }}
-              </Button>
-            </div>
-          </div>
-
-          <!-- Expense details -->
-          <div class="px-5 py-4">
-            <p class="mb-3 text-[14px] font-medium text-foreground">Details</p>
-            <div class="flex flex-col gap-3">
-              <div class="flex items-start justify-between gap-4">
-                <span class="text-sm text-muted-foreground shrink-0">Amount</span>
-                <span class="text-[13px] font-semibold text-foreground tabular-nums">₹{{ Number(expense.amount).toLocaleString('en-IN') }}</span>
-              </div>
-              <div class="flex items-start justify-between gap-4">
-                <span class="text-sm text-muted-foreground shrink-0">Category</span>
-                <span class="text-[13px] text-foreground capitalize flex items-center gap-1.5">
-                  <span class="size-2 rounded-full shrink-0" :style="{ background: catColor(expense.category) }" />
-                  {{ expense.category }}
-                </span>
-              </div>
-              <div class="flex items-start justify-between gap-4">
-                <span class="text-sm text-muted-foreground shrink-0">Date</span>
-                <span class="text-[13px] text-foreground">{{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}</span>
-              </div>
-              <div v-if="expense.description" class="flex items-start justify-between gap-4">
-                <span class="text-sm text-muted-foreground shrink-0">Description</span>
-                <span class="text-[13px] text-foreground text-right">{{ expense.description }}</span>
-              </div>
-              <div v-if="expense.utr_number" class="flex items-start justify-between gap-4">
-                <span class="text-sm text-muted-foreground shrink-0">UTR / Reference</span>
-                <span class="text-[13px] text-foreground font-mono">{{ expense.utr_number }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Receipt -->
-          <div class="px-5 py-4">
-            <p class="mb-3 text-[14px] font-medium text-foreground">Receipt</p>
-
-            <div v-if="expense.receipt_url">
-              <div
-                class="rounded-xl overflow-hidden border border-border bg-card cursor-zoom-in"
-                @click="receiptZoom = true"
-              >
-                <img :src="expense.receipt_url" class="w-full object-contain max-h-[280px]" />
-              </div>
-              <button
-                class="mt-2 w-full text-center text-[12px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
-                @click="receiptZoom = true"
-              >
-                <Icon name="solar:magnifer-zoom-in-linear" class="size-3" /> View full size
-              </button>
-            </div>
-
-            <div v-else class="flex flex-col items-center gap-2 py-8">
-              <div class="size-12 rounded-xl border-2 border-dashed border-border flex items-center justify-center">
-                <Icon name="solar:document-text-linear" class="size-5 text-muted-foreground/40" />
-              </div>
-              <p class="text-[12.5px] text-muted-foreground">No receipt attached</p>
-            </div>
-          </div>
-
-        </Card>
+          </Card>
+        </div>
       </div>
     </template>
 

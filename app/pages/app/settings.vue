@@ -2,11 +2,14 @@
 import { useSupabase } from '~~/lib/supabase'
 import { Copy, Check, Eye, EyeOff, Trash2, User, ShieldCheck, CreditCard, Bell, Palette, Building2 } from '@lucide/vue'
 import { PLANS } from '~~/lib/plans'
+import { toast } from 'vue-sonner'
+import { nextPayoutDate } from '~~/lib/payouts'
+import type { PayoutSchedule } from '~~/lib/payouts'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
 const supabase = useSupabase()
-const { ctx }  = useOrgContext()
+const { ctx, load: loadOrgContext, clear: clearOrgContext }  = useOrgContext()
 const { isDark, toggle } = useTheme()
 const { colorId, select: selectColor, clear: clearColor } = useAccentColor()
 
@@ -47,6 +50,7 @@ onMounted(async () => {
   const { data: { user } } = await supabase.auth.getUser()
   displayName.value = user?.user_metadata?.full_name ?? ''
   userEmail.value   = user?.email ?? ''
+  avatarUrl.value   = user?.user_metadata?.avatar_url ?? ''
   register(saveChanges)
 })
 
@@ -57,6 +61,55 @@ const initials = computed(() => {
   if (!n) return 'KC'
   return n.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 })
+
+// ── Profile photo ─────────────────────────────────────────────────────────
+const avatarUrl     = ref('')
+const avatarInput   = ref<HTMLInputElement | null>(null)
+const avatarBusy    = ref(false)
+
+async function avatarAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session ? { Authorization: `Bearer ${session.access_token}` } : {}
+}
+
+async function onAvatarSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) { toast.error('Please choose an image file.'); return }
+  if (file.size > 2 * 1024 * 1024) { toast.error('Image must be 2 MB or smaller.'); return }
+  avatarBusy.value = true
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await $fetch<{ avatarUrl: string }>('/api/profile/avatar' as string, {
+      method: 'POST', headers: await avatarAuthHeaders(), body: form,
+    })
+    avatarUrl.value = res.avatarUrl
+    await supabase.auth.refreshSession()
+    toast.success('Profile photo updated')
+  } catch (err: any) {
+    toast.error(err?.data?.message ?? 'Could not upload photo')
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
+async function removeAvatar() {
+  if (!avatarUrl.value) return
+  avatarBusy.value = true
+  try {
+    await $fetch('/api/profile/avatar' as string, { method: 'DELETE', headers: await avatarAuthHeaders() })
+    avatarUrl.value = ''
+    await supabase.auth.refreshSession()
+    toast.success('Profile photo removed')
+  } catch (err: any) {
+    toast.error(err?.data?.message ?? 'Could not remove photo')
+  } finally {
+    avatarBusy.value = false
+  }
+}
 
 // ── Security ──────────────────────────────────────────────────────────────
 const showCurrentPw = ref(false)
@@ -164,6 +217,43 @@ function toggleNotif(key: string) {
 }
 
 // ── Org ───────────────────────────────────────────────────────────────────
+// ── Payout schedule (owner) ───────────────────────────────────────────────
+const PAYOUT_OPTIONS: { value: PayoutSchedule; label: string }[] = [
+  { value: 'semi_monthly', label: 'Twice a month — 15th & last day' },
+  { value: 'monthly',      label: 'Monthly — last day' },
+  { value: 'weekly',       label: 'Weekly — every Friday' },
+]
+const payoutSchedule = ref<PayoutSchedule>('semi_monthly')
+const payoutSaving = ref(false)
+watch(() => ctx.value?.org?.payout_schedule, (v) => { if (v) payoutSchedule.value = v }, { immediate: true })
+const nextPayoutLabel = computed(() =>
+  new Date(`${nextPayoutDate(payoutSchedule.value, new Date())}T00:00:00Z`)
+    .toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }),
+)
+async function setPayoutSchedule(value: PayoutSchedule) {
+  if (value === payoutSchedule.value || payoutSaving.value) return
+  const previous = payoutSchedule.value
+  payoutSchedule.value = value
+  payoutSaving.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    await $fetch('/api/orgs/payout-schedule' as string, {
+      method: 'PATCH',
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      body: { schedule: value },
+    })
+    // Refresh the cached org context so the new schedule survives navigating away and back
+    clearOrgContext()
+    await loadOrgContext()
+    toast.success('Payout schedule updated')
+  } catch (e: any) {
+    payoutSchedule.value = previous
+    toast.error(e?.data?.message ?? 'Could not update payout schedule')
+  } finally {
+    payoutSaving.value = false
+  }
+}
+
 const copied = ref(false)
 function copyOrgId() {
   if (!ctx.value?.org?.id) return
@@ -232,15 +322,42 @@ async function deleteOrg() {
               <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Upload a profile picture that will be shown across the app — on your profile, in team listings, and beside your activity.</p>
             </div>
             <div class="flex items-center gap-4 flex-1">
-              <div class="size-[60px] rounded-xl bg-muted border border-border flex items-center justify-center text-base font-bold text-foreground select-none shrink-0">
-                {{ initials }}
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Button variant="outline" size="sm" class="text-[12px] gap-1.5 h-7">
-                  <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Upload photo
-                </Button>
-                <Button variant="ghost" size="sm" class="text-[12px] h-7 text-destructive hover:text-destructive hover:bg-destructive/8">Remove</Button>
+              <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" @change="onAvatarSelected" />
+              <Button
+                variant="ghost"
+                class="group relative size-16 shrink-0 overflow-hidden rounded-full border border-border bg-muted p-0 text-lg font-semibold text-foreground hover:bg-muted"
+                :disabled="avatarBusy"
+                aria-label="Change profile photo"
+                @click="avatarInput?.click()"
+              >
+                <img v-if="avatarUrl" :src="avatarUrl" alt="Profile photo" class="size-full object-cover" />
+                <span v-else class="select-none">{{ initials }}</span>
+                <span
+                  class="absolute inset-0 flex items-center justify-center bg-black/50 text-white transition-opacity"
+                  :class="avatarBusy ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                >
+                  <Icon v-if="avatarBusy" name="solar:refresh-linear" class="size-5 animate-spin" />
+                  <Icon v-else name="solar:camera-linear" class="size-5" />
+                </span>
+              </Button>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                  <Button variant="outline" size="sm" class="h-8 gap-1.5 text-[12px]" :disabled="avatarBusy" @click="avatarInput?.click()">
+                    <Icon name="solar:upload-minimalistic-linear" class="size-3.5" />
+                    {{ avatarBusy ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Upload photo' }}
+                  </Button>
+                  <Button
+                    v-if="avatarUrl"
+                    variant="ghost"
+                    size="sm"
+                    class="h-8 text-[12px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    :disabled="avatarBusy"
+                    @click="removeAvatar"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <p class="text-[11.5px] text-muted-foreground">PNG, JPG, WebP or GIF · max 2 MB</p>
               </div>
             </div>
           </div>
@@ -682,6 +799,29 @@ async function deleteOrg() {
               <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Your current permission level in this organization. Roles control what you can view, approve, and manage. Only an owner can change your role.</p>
             </div>
             <Badge variant="secondary" class="capitalize text-[11.5px] mt-0.5">{{ ctx?.member?.role }}</Badge>
+          </div>
+
+          <div v-if="role === 'owner'" class="flex items-start gap-20 py-4 border-b border-dashed border-border">
+            <div class="w-[300px] shrink-0">
+              <p class="text-[13px] font-medium text-foreground">Payout schedule</p>
+              <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">When approved expenses are reimbursed. Expenses approved by Finance are paid on the next payout date.</p>
+            </div>
+            <div class="flex-1">
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  v-for="opt in PAYOUT_OPTIONS"
+                  :key="opt.value"
+                  :variant="payoutSchedule === opt.value ? 'default' : 'outline'"
+                  size="sm"
+                  class="text-[12px]"
+                  :disabled="payoutSaving"
+                  @click="setPayoutSchedule(opt.value)"
+                >
+                  {{ opt.label }}
+                </Button>
+              </div>
+              <p class="mt-2 text-[12px] text-muted-foreground">Next payout: {{ nextPayoutLabel }}</p>
+            </div>
           </div>
 
           <!-- Danger zone -->

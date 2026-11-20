@@ -1,9 +1,11 @@
 import { getOrgContext, requireRole } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
-import type { ActionLogEntry } from '~~/lib/supabase'
+import { createNotifications, expenseLabel } from '~~/lib/notifications'
+import { assertCanAct, loadMembers, logEntry } from '~~/lib/expenseActions'
+import { stepApprovers } from '~~/lib/payouts'
 
 export default defineEventHandler(async (event) => {
-  const ctx = requireRole(await getOrgContext(event), 'manager')
+  const ctx = requireRole(await getOrgContext(event), 'manager', 'owner', 'finance')
   const id = getRouterParam(event, 'id')
   const config = useRuntimeConfig()
   const supabase = createClient(config.public.supabaseUrl, config.supabaseServiceKey)
@@ -12,29 +14,47 @@ export default defineEventHandler(async (event) => {
     .from('expenses')
     .select('*')
     .eq('id', id)
-    .eq('team_id', ctx.member.team_id!)
+    .eq('org_id', ctx.org.id)
     .eq('status', 'pending_manager')
     .single()
 
   if (!expense) throw createError({ statusCode: 404, message: 'Expense not found or not approvable' })
 
-  const newLog: ActionLogEntry[] = [
-    ...(expense.action_log ?? []),
-    {
-      actor_id: ctx.member.user_id,
-      actor_name: 'Manager',
-      action: 'approved',
-      timestamp: new Date().toISOString(),
-    },
-  ]
+  const members = await loadMembers(ctx.org.id)
+  assertCanAct('manager', ctx, expense, members)
 
-  const { error } = await supabase
+  const newLog = [...(expense.action_log ?? []), logEntry(ctx, 'approved')]
+
+  const { data: updated, error } = await supabase
     .from('expenses')
     .update({ status: 'pending_finance', action_log: newLog, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('team_id', ctx.member.team_id!)
+    .eq('org_id', ctx.org.id)
+    .eq('status', 'pending_manager')
+    .select('id')
 
   if (error) throw createError({ statusCode: 500, message: error.message })
+  if (!updated?.length) throw createError({ statusCode: 409, message: 'Already handled' })
+
+  const label = expenseLabel(expense)
+  await createNotifications(supabase, [
+    {
+      org_id: ctx.org.id,
+      user_id: expense.submitted_by,
+      type: 'expense_manager_approved',
+      title: 'Approved by your manager',
+      body: `Your ${label} is now with Finance for review.`,
+      expense_id: expense.id,
+    },
+    ...stepApprovers('finance', expense, members).map(user_id => ({
+      org_id: ctx.org.id,
+      user_id,
+      type: 'expense_to_finance',
+      title: 'New expense to review',
+      body: `A ${label} is waiting for Finance review.`,
+      expense_id: expense.id,
+    })),
+  ])
 
   // Notify finance (fire-and-forget) — trigger edge function
   supabase.functions.invoke('notify', {
