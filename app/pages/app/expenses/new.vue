@@ -21,6 +21,7 @@ const receiptFile = ref<File | null>(null)
 const receiptPreviewUrl = ref('')
 const ocrText = ref('')
 const ocrLoading = ref(false)
+const ocrFilled = reactive({ date: false, category: false })
 const submitting = ref(false)
 
 function setCategory(c: string) { form.category = c as ExpenseCategory }
@@ -31,16 +32,16 @@ async function handleFileChange(e: Event) {
   receiptFile.value = file
   receiptPreviewUrl.value = URL.createObjectURL(file)
   ocrLoading.value = true
+  ocrFilled.date = false
+  ocrFilled.category = false
   try {
     const { runOcr } = await import('~~/lib/ocr')
     const result = await runOcr(receiptPreviewUrl.value)
-    if (result.total) {
-      const m = result.total.match(/([\d,]+(?:\.\d{1,2})?)$/)
-      if (m?.[1]) form.amount = m[1].replace(/,/g, '')
-    }
+    if (result.amount) form.amount = String(result.amount)
     if (result.merchant && !form.vendor) form.vendor = result.merchant.slice(0, 60)
     ocrText.value = result.raw ?? ''
-    if (result.date && !form.expense_date) form.expense_date = result.date
+    if (result.isoDate) { form.expense_date = result.isoDate; ocrFilled.date = true }
+    if (result.category) { form.category = result.category; ocrFilled.category = true }
   } catch {
     // OCR failure is non-fatal
   } finally {
@@ -172,6 +173,14 @@ async function submit() {
                 <span class="text-muted-foreground">Vendor</span>
                 <span class="font-medium text-foreground">{{ form.vendor }}</span>
               </div>
+              <div v-if="ocrFilled.date" class="flex items-center justify-between text-sm">
+                <span class="text-muted-foreground">Date</span>
+                <span class="font-medium text-foreground">{{ form.expense_date }}</span>
+              </div>
+              <div v-if="ocrFilled.category" class="flex items-center justify-between text-sm">
+                <span class="text-muted-foreground">Category</span>
+                <span class="font-medium capitalize text-foreground">{{ form.category }}</span>
+              </div>
             </CardContent>
           </Card>
 
@@ -195,7 +204,7 @@ async function submit() {
             </div>
             <input type="file" accept="image/*" class="hidden" @change="handleFileChange" />
           </label>
-          <p class="text-[13px] text-muted-foreground">Amount, vendor, and date are extracted automatically</p>
+          <p class="text-[13px] text-muted-foreground">Amount, vendor, date, and category are extracted automatically</p>
         </div>
 
       </Card>
