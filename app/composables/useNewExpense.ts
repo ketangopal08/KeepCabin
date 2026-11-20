@@ -69,7 +69,7 @@ function createNewExpense() {
         body: { ...form, amount: Number(form.amount), receipt_url: publicUrl, ocr_text: ocrText.value || undefined },
       })
       toast.success('Expense submitted!')
-      router.push('/app/expenses')
+      router.push('/m/expenses')
     } catch (e: any) {
       if (showPlanLimitToast(e)) return
       toast.error(e?.data?.message ?? e?.message ?? 'Failed to submit')
