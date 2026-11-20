@@ -52,6 +52,8 @@ The mobile (PWA) UI is a separate set of routes under `/m`. Doing mobile work mu
 - Mobile components: `app/components/mobile/` (`Mobile*`). Mobile layout: `app/layouts/mobile.vue`.
 - Phones / installed PWA are sent from `/app/<path>` to `/m/<path>` automatically by `app/middleware/mobile-redirect.global.ts` whenever a matching page exists under `app/pages/m/` — creating the mobile page is enough.
 - Shared mobile building blocks: `MobilePageHeader`, `MobilePullToRefresh`, `MobileTracker`, `MobileTabBar` (role-based tabs), and the `m-rise` / `m-press` / `m-list` / `m-swap` classes in `app/layouts/mobile.vue`.
+- Mobile forms use the field-tile style: `<MobileField label icon chevron>` wrapping `<Input class="m-field-input">`, a summary `Card` (`rounded-2xl bg-muted/60`) at the top, option groups as chips in a bordered `rounded-3xl` section card (selected = `variant="outline"` + `border-2 border-foreground`), and `<MobileSubmitButton>` as the bottom pill action. Page headers stay as they are.
+- Haptics ONLY on the bottom tab bar and in-page tab switches (segmented tabs like All/Unread, Review/Payouts) — nowhere else. Use `haptic('selection')` from `app/composables/useHaptic.ts` (Android vibration + iOS 18 switch haptic); never call `navigator.vibrate` directly.
 - Do NOT edit, split, move or refactor any web file (`app/pages/app/**`, `app/layouts/app.vue`, `app/components/app/**`, etc.) as part of a mobile change. No "one route, two components" switching inside web pages.
 - If a mobile screen needs page logic, copy it into a composable (e.g. `app/composables/useNewExpense.ts`) — the web page keeps its own code unchanged.
 - Mobile links may point to `/app/*` web pages until that screen has a mobile version.

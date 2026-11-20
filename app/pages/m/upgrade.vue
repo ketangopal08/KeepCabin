@@ -6,9 +6,6 @@ import type { PlanId } from '~~/lib/plans'
 // Tab bar hidden: the screen has its own sticky plan CTA at the bottom.
 definePageMeta({ layout: 'mobile', middleware: 'mobile', hideTabBar: true, pageTransition: { name: 'm-page', mode: 'out-in' } })
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 const billing = ref<'monthly' | 'yearly'>('monthly')
 function setBilling(v: string) { billing.value = v as 'monthly' | 'yearly' }
@@ -152,7 +149,7 @@ function onScroll() {
     const d = Math.abs(child.offsetLeft + child.offsetWidth / 2 - center)
     if (d < bestDist) { bestDist = d; best = i }
   })
-  if (best !== active.value) { active.value = best; haptic() }
+  if (best !== active.value) { active.value = best }
 }
 
 function scrollToPlan(i: number, smooth = true) {
@@ -241,7 +238,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
         v-if="canManage && !status.trial && status.plan !== 'free' && status.plan !== 'enterprise' && !status.cancelAtPeriodEnd"
         variant="ghost"
         class="m-press mt-4 h-10 w-full rounded-full bg-background/10 text-[13px] font-semibold text-background hover:bg-background/15 hover:text-background"
-        @click="cancelOpen = true; haptic()"
+        @click="cancelOpen = true"
       >
         Cancel subscription
       </Button>
@@ -272,7 +269,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
           variant="ghost"
           class="m-press h-10 rounded-full text-[13px] font-semibold"
           :class="billing === t.id ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground hover:bg-transparent'"
-          @click="setBilling(t.id); haptic()"
+          @click="setBilling(t.id); haptic('selection')"
         >
           {{ t.label }}
         </Button>
@@ -361,7 +358,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
           size="icon-xs"
           class="rounded-full hover:bg-transparent"
           :aria-label="`Show ${p.name}`"
-          @click="scrollToPlan(i); haptic()"
+          @click="scrollToPlan(i)"
         >
           <span
             class="h-1.5 rounded-full transition-all duration-300"
@@ -416,7 +413,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
             variant="ghost"
             class="h-auto w-full items-start justify-between gap-3 rounded-none px-4 py-3.5 text-left font-normal whitespace-normal hover:bg-transparent"
             :aria-expanded="openFaq === i"
-            @click="openFaq = openFaq === i ? null : i; haptic()"
+            @click="openFaq = openFaq === i ? null : i"
           >
             <span class="text-[13.5px] font-semibold leading-snug text-foreground">{{ f.q }}</span>
             <span
@@ -449,7 +446,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
           <p class="text-[12.5px] text-muted-foreground">Talk to us about volume pricing, onboarding, or special requirements.</p>
         </div>
       </div>
-      <Button variant="outline" class="m-press mt-3 h-11 w-full rounded-full bg-background font-semibold" @click="choose(plans[3]!); haptic()">
+      <Button variant="outline" class="m-press mt-3 h-11 w-full rounded-full bg-background font-semibold" @click="choose(plans[3]!)">
         Contact sales
       </Button>
     </Card>
@@ -464,7 +461,7 @@ onMounted(() => nextTick(() => { if (!positioned) scrollToPlan(active.value, fal
           class="m-press h-13 w-full rounded-full text-[15px] font-semibold"
           :variant="isCurrent(activePlan) ? 'secondary' : 'default'"
           :disabled="ctaDisabled(activePlan)"
-          @click="choose(activePlan); haptic()"
+          @click="choose(activePlan)"
         >
           <Icon v-if="busyPlan === activePlan.id" name="solar:refresh-linear" class="size-4 animate-spin" />
           <Transition name="m-swap" mode="out-in">

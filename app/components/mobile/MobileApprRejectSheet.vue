@@ -18,9 +18,6 @@ function fmtDate(iso?: string | null) {
   return new Date(dateOnly ? `${iso}T00:00:00` : iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 </script>
 
 <template>
@@ -36,52 +33,60 @@ function haptic() {
         <SheetDescription>The submitter will see this reason and can resubmit.</SheetDescription>
       </SheetHeader>
 
-      <Card v-if="target" class="mt-4 flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 p-3 shadow-none ring-0">
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-[14px] font-semibold text-foreground">{{ target.vendor ?? 'Expense' }}</p>
-          <p class="text-[12px] capitalize text-muted-foreground">
-            {{ target.category }} · {{ fmtDate(target.expense_date ?? target.created_at) }}
+      <div class="mt-4 flex flex-col gap-3">
+        <Card v-if="target" class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold text-foreground">{{ target.vendor ?? 'Expense' }}</p>
+            <p class="mt-0.5 truncate text-[13px] capitalize text-muted-foreground">
+              {{ target.category }} · {{ fmtDate(target.expense_date ?? target.created_at) }}
+            </p>
+          </div>
+          <p class="shrink-0 text-[16px] font-semibold tabular-nums text-foreground">
+            ₹{{ Number(target.amount).toLocaleString('en-IN') }}
           </p>
-        </div>
-        <p class="shrink-0 text-[15px] font-semibold tabular-nums text-foreground">
-          ₹{{ Number(target.amount).toLocaleString('en-IN') }}
-        </p>
-      </Card>
+        </Card>
 
-      <div class="mt-4 flex flex-col gap-2.5">
-        <p class="text-[11.5px] font-medium tracking-wide text-muted-foreground uppercase">Reason</p>
-        <Input
-          v-model="reason"
-          placeholder="Reason for rejection…"
-          class="h-12 rounded-2xl px-4 text-base md:text-base"
-          @keydown.enter="emit('confirm')"
-        />
-        <div class="flex flex-wrap gap-2">
-          <Button
-            v-for="r in quickReasons"
-            :key="r"
-            size="sm"
-            :variant="reason === r ? 'default' : 'secondary'"
-            class="m-press h-9 rounded-full px-3.5 text-[12.5px] font-normal"
-            :class="reason === r ? 'bg-foreground text-background hover:bg-foreground/90' : 'text-muted-foreground'"
-            @click="reason = r; haptic()"
-          >
-            {{ r }}
-          </Button>
+        <MobileField label="Reason" icon="solar:chat-line-linear" input-id="appr-reject-reason">
+          <Input
+            id="appr-reject-reason"
+            v-model="reason"
+            placeholder="Reason for rejection…"
+            class="m-field-input"
+            @keydown.enter="emit('confirm')"
+          />
+        </MobileField>
+
+        <div class="rounded-3xl border border-border p-4">
+          <p class="text-[16px] font-semibold text-foreground">Quick reasons</p>
+          <p class="mt-0.5 text-[13px] text-muted-foreground">Tap one to use it as the reason.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <Button
+              v-for="r in quickReasons"
+              :key="r"
+              size="sm"
+              :variant="reason === r ? 'outline' : 'secondary'"
+              class="m-press h-9 rounded-xl px-3.5 text-[13px] font-medium"
+              :class="reason === r ? 'border-2 border-foreground' : ''"
+              @click="reason = r"
+            >
+              {{ r }}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div class="mt-6 grid grid-cols-2 gap-3">
-        <Button variant="secondary" class="m-press h-12 rounded-full text-[15px]" @click="open = false">
-          Cancel
-        </Button>
-        <Button
-          class="m-press h-12 gap-2 rounded-full bg-red-600 text-[15px] font-semibold text-white hover:bg-red-600/90"
-          :disabled="!target || busy || !reason.trim()"
-          @click="haptic(); emit('confirm')"
+      <div class="mt-5 flex flex-col gap-2">
+        <MobileSubmitButton
+          placement="sheet"
+          variant="destructive"
+          :loading="busy"
+          :disabled="!target || !reason.trim()"
+          @click="emit('confirm')"
         >
-          <Icon v-if="busy" name="solar:refresh-linear" class="size-5 animate-spin" />
           {{ busy ? 'Rejecting…' : 'Reject expense' }}
+        </MobileSubmitButton>
+        <Button variant="ghost" class="m-press h-12 w-full rounded-full text-[15px]" @click="open = false">
+          Cancel
         </Button>
       </div>
     </SheetContent>

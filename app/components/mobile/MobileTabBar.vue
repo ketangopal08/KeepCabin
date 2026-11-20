@@ -23,9 +23,6 @@ const tabs = computed<Tab[]>(() => {
   return [HOME, EXPENSES, INBOX, PROFILE]
 })
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 </script>
 
 <template>
@@ -47,7 +44,7 @@ function haptic() {
         ]"
         as-child
       >
-        <NuxtLink :to="t.to" :aria-label="t.label" @click="haptic">
+        <NuxtLink :to="t.to" :aria-label="t.label" @click="haptic('selection')">
           <Icon :name="t.icon" class="size-5 shrink-0" />
           <span
             class="overflow-hidden whitespace-nowrap text-[13px] font-semibold transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)]"

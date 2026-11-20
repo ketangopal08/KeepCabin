@@ -9,7 +9,6 @@ const props = withDefaults(defineProps<{
 
 const router = useRouter()
 function goBack() {
-  try { navigator.vibrate?.(8) } catch {}
   if (window.history.state?.back) router.back()
   else if (props.back) router.push(props.back)
 }

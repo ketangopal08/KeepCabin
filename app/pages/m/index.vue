@@ -33,9 +33,6 @@ const fmtINR = (v: number) => '₹' + v.toLocaleString('en-IN', { minimumFractio
 // Count-up animation for the balance
 const animatedBalance = useTransition(pendingReimbursement, { duration: 1100, transition: TransitionPresets.easeOutExpo })
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 // ── Current tracking: my latest expense still in the workflow ─────────────────
 const current = computed(() =>
@@ -116,7 +113,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         </p>
       </div>
       <Button variant="secondary" size="icon-lg" class="m-press relative rounded-full" as-child>
-        <NuxtLink to="/m/notifications" aria-label="Notifications" @click="haptic">
+        <NuxtLink to="/m/notifications" aria-label="Notifications">
           <Icon name="solar:bell-linear" class="size-5 text-red-500" :class="unread > 0 ? 'm-wiggle' : ''" />
           <span v-if="unread > 0" class="absolute top-2 right-2.5 size-2 rounded-full bg-red-500 ring-2 ring-secondary" />
         </NuxtLink>
@@ -141,7 +138,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
               size="icon-sm"
               class="m-press rounded-full text-background/80 hover:bg-background/10 hover:text-background"
               :aria-label="hideAmount ? 'Show amount' : 'Hide amount'"
-              @click="hideAmount = !hideAmount; haptic()"
+              @click="hideAmount = !hideAmount"
             >
               <Icon :name="hideAmount ? 'solar:eye-closed-linear' : 'solar:eye-linear'" class="size-4.5" />
             </Button>
@@ -154,12 +151,12 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
 
       <div class="mt-6 grid grid-cols-2 gap-3">
         <Button class="m-press h-12 rounded-full bg-background/90 font-semibold text-foreground hover:bg-background" as-child>
-          <NuxtLink to="/m/expenses/new" @click="haptic">
+          <NuxtLink to="/m/expenses/new">
             <Icon name="solar:document-add-linear" class="size-5" /> New Expense
           </NuxtLink>
         </Button>
         <Button class="m-press h-12 rounded-full bg-background/90 font-semibold text-foreground hover:bg-background" as-child>
-          <NuxtLink :to="current ? `/m/expenses/${current.id}` : '/m/expenses'" @click="haptic">
+          <NuxtLink :to="current ? `/m/expenses/${current.id}` : '/m/expenses'">
             <Icon name="solar:map-point-wave-linear" class="size-5" /> Track Expense
           </NuxtLink>
         </Button>
@@ -205,7 +202,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
         <p class="text-sm font-medium text-foreground">Nothing to track yet</p>
         <p class="text-[12.5px] text-muted-foreground">Submit an expense and follow it until it's paid.</p>
       </Card>
-      <NuxtLink v-else :to="`/m/expenses/${current.id}`" class="m-press block" @click="haptic">
+      <NuxtLink v-else :to="`/m/expenses/${current.id}`" class="m-press block">
         <Card class="gap-0 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -257,7 +254,6 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
           :to="`/m/expenses/${e.id}`"
           class="m-press m-rise block"
           :style="{ '--d': `${280 + i * 60}ms` }"
-          @click="haptic"
         >
           <Card class="grid grid-cols-2 gap-x-3 gap-y-3 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
             <div class="min-w-0">

@@ -8,9 +8,6 @@ const notifications = ref<Notification[]>([])
 const loading = ref(true)
 const supabase = useSupabase()
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 async function authHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession()
@@ -42,14 +39,12 @@ async function refresh() {
 }
 
 async function markAllRead() {
-  haptic()
   notifications.value = notifications.value.map(n => ({ ...n, read: true }))
   setUnread(0)
   await markRead({ all: true })
 }
 
 async function openNotification(n: Notification) {
-  haptic()
   if (!n.read) {
     n.read = true
     setUnread(notifications.value.filter(x => !x.read).length)
@@ -142,7 +137,7 @@ const groups = computed(() => {
           variant="ghost"
           class="m-press h-10 rounded-full text-[13px] font-semibold"
           :class="activeTab === t.id ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground hover:bg-transparent'"
-          @click="activeTab = t.id; haptic()"
+          @click="activeTab = t.id; haptic('selection')"
         >
           {{ t.label }}
           <Badge

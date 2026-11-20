@@ -94,9 +94,6 @@ function resetFilters() {
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 function expCode(e: Expense) {
   return `EXP-${e.id.replace(/-/g, '').slice(0, 3).toUpperCase()}-${e.id.replace(/-/g, '').slice(-3).toUpperCase()}`
 }
@@ -138,7 +135,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
           class="m-press rounded-full bg-foreground text-background hover:bg-foreground/90"
           as-child
         >
-          <NuxtLink to="/m/expenses/new" aria-label="New expense" @click="haptic">
+          <NuxtLink to="/m/expenses/new" aria-label="New expense">
             <Icon name="solar:add-circle-linear" class="size-5" />
           </NuxtLink>
         </Button>
@@ -226,7 +223,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
         :variant="activeFilter === t.id ? 'default' : 'secondary'"
         class="m-press h-9 shrink-0 rounded-full px-4 text-[13px]"
         :class="activeFilter === t.id ? 'bg-foreground text-background hover:bg-foreground/90' : ''"
-        @click="setFilter(t.id); haptic()"
+        @click="setFilter(t.id); haptic('selection')"
       >
         {{ t.label }}
         <span class="tabular-nums" :class="activeFilter === t.id ? 'text-background/60' : 'text-muted-foreground'">{{ t.count }}</span>
@@ -248,7 +245,7 @@ onMounted(async () => { await load(); await fetchExpenses() })
           {{ search ? 'Try a different search term.' : 'Submit your first expense to get started.' }}
         </p>
         <Button v-if="role === 'employee' && !search" class="m-press mt-2 h-11 rounded-full bg-foreground px-5 font-semibold text-background hover:bg-foreground/90" as-child>
-          <NuxtLink to="/m/expenses/new" @click="haptic">
+          <NuxtLink to="/m/expenses/new">
             <Icon name="solar:document-add-linear" class="size-5" /> New expense
           </NuxtLink>
         </Button>
@@ -267,7 +264,6 @@ onMounted(async () => { await load(); await fetchExpenses() })
               :to="`/m/expenses/${e.id}`"
               class="m-press m-rise block"
               :style="{ '--d': `${240 + Math.min(i, 8) * 60}ms` }"
-              @click="haptic"
             >
               <Card class="grid grid-cols-2 gap-x-3 gap-y-3 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
                 <div class="min-w-0">

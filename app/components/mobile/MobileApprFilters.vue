@@ -23,18 +23,13 @@ const activeCount = computed(() =>
   (['date', 'amount', 'sort', 'groupBy'] as const).filter(k => props.filters[k] !== DEFAULTS[k]).length,
 )
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 function setFilter(key: keyof ExpenseFilters, value: string) {
   props.filters[key] = value
-  haptic()
 }
 
 function reset() {
   for (const k of ['date', 'amount', 'sort', 'groupBy'] as const) props.filters[k] = DEFAULTS[k]
-  haptic()
 }
 </script>
 
@@ -53,7 +48,7 @@ function reset() {
         size="icon-lg"
         class="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full bg-foreground text-background transition-transform hover:bg-foreground/90 active:scale-90"
         aria-label="Filters"
-        @click="open = true; haptic()"
+        @click="open = true"
       >
         <Icon name="solar:filter-linear" class="size-5" />
         <span v-if="activeCount > 0" class="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-foreground" />
@@ -88,17 +83,17 @@ function reset() {
           <SheetDescription>Narrow down and sort the list.</SheetDescription>
         </SheetHeader>
 
-        <div class="mt-4 flex flex-col gap-4">
-          <div v-for="s in sections" :key="s.key">
-            <p class="mb-2 text-[11.5px] font-medium tracking-wide text-muted-foreground uppercase">{{ s.label }}</p>
-            <div class="flex flex-wrap gap-2">
+        <div class="mt-4 flex flex-col gap-3">
+          <div v-for="s in sections" :key="s.key" class="rounded-3xl border border-border p-4">
+            <p class="text-[16px] font-semibold text-foreground">{{ s.label }}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
               <Button
                 v-for="o in O[s.key]"
                 :key="o.value"
                 size="sm"
-                :variant="filters[s.key] === o.value ? 'default' : 'secondary'"
-                class="m-press h-9 rounded-full px-4 text-[13px]"
-                :class="filters[s.key] === o.value ? 'bg-foreground text-background hover:bg-foreground/90' : 'text-muted-foreground'"
+                :variant="filters[s.key] === o.value ? 'outline' : 'secondary'"
+                class="m-press h-9 rounded-xl px-3.5 text-[13px] font-medium"
+                :class="filters[s.key] === o.value ? 'border-2 border-foreground' : ''"
                 @click="setFilter(s.key, o.value)"
               >
                 {{ o.label }}
@@ -107,12 +102,12 @@ function reset() {
           </div>
         </div>
 
-        <div class="mt-6 grid grid-cols-2 gap-3">
-          <Button variant="secondary" class="m-press h-12 rounded-full text-[15px]" :disabled="activeCount === 0" @click="reset">
-            Reset
-          </Button>
-          <Button class="m-press h-12 rounded-full bg-foreground text-[15px] text-background hover:bg-foreground/90" @click="open = false">
+        <div class="mt-5 flex flex-col gap-2">
+          <MobileSubmitButton placement="sheet" @click="open = false">
             Show results
+          </MobileSubmitButton>
+          <Button variant="ghost" class="m-press h-12 w-full rounded-full text-[15px]" :disabled="activeCount === 0" @click="reset">
+            Reset
           </Button>
         </div>
       </SheetContent>

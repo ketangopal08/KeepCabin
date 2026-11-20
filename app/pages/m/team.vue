@@ -15,9 +15,6 @@ const inviteEmail = ref('')
 const loading = ref(false)
 const showInvite = ref(false)
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 async function fetchMembers() {
   const teamId = ctx.value?.member?.team_id
@@ -39,7 +36,6 @@ const { membersAtCap, load: loadBilling, refresh: refreshBilling } = useBilling(
 onMounted(() => loadBilling())
 
 function openInvite() {
-  haptic()
   if (membersAtCap.value) { navigateTo('/m/upgrade'); return }
   showInvite.value = true
 }
@@ -160,28 +156,48 @@ async function refreshAll() {
         </SheetDescription>
       </SheetHeader>
 
-      <div class="flex flex-col gap-1.5 pb-4">
-        <label class="text-[12.5px] font-medium text-foreground">Email address</label>
-        <Input
-          v-model="inviteEmail"
-          type="email"
-          inputmode="email"
-          autocomplete="email"
-          placeholder="employee@company.com"
-          class="h-12 rounded-2xl text-base md:text-base"
-          @keydown.enter.prevent="sendInvite"
-        />
+      <div class="flex flex-col gap-3 pb-2">
+        <!-- Context card -->
+        <Card class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold text-foreground">{{ ctx?.team?.name ?? 'My Team' }}</p>
+            <p class="mt-0.5 text-[13px] text-muted-foreground">{{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}</p>
+          </div>
+          <div v-if="members.length" class="flex shrink-0 -space-x-2">
+            <div
+              v-for="m in members.slice(0, 3)"
+              :key="m.id"
+              class="flex size-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-background"
+              :style="{ background: personColor(m.email ?? m.user_id) }"
+            >{{ personInitials(m.full_name ?? m.email) }}</div>
+            <div
+              v-if="members.length > 3"
+              class="flex size-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold text-foreground ring-2 ring-background"
+            >+{{ members.length - 3 }}</div>
+          </div>
+          <TeamAvatar v-else-if="ctx?.team?.name" :name="ctx.team.name" size="md" />
+        </Card>
+
+        <MobileField label="Email address" icon="solar:letter-linear" input-id="team-invite-email">
+          <Input
+            id="team-invite-email"
+            v-model="inviteEmail"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="employee@company.com"
+            class="m-field-input"
+            @keydown.enter.prevent="sendInvite"
+          />
+        </MobileField>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <Button :disabled="loading" class="m-press h-13 w-full rounded-full text-[15px] font-semibold" @click="sendInvite">
-          <Icon v-if="loading" name="solar:refresh-linear" class="size-4.5 animate-spin" />
-          <Icon v-else name="solar:letter-linear" class="size-4.5" />
-          {{ loading ? 'Sending…' : 'Send invite' }}
-          <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
-        </Button>
-        <Button variant="ghost" class="h-11 w-full rounded-full" @click="showInvite = false">Cancel</Button>
-      </div>
+      <MobileSubmitButton placement="sheet" :loading="loading" @click="sendInvite">
+        <Icon v-if="!loading" name="solar:letter-linear" class="size-4.5" />
+        {{ loading ? 'Sending…' : 'Send invite' }}
+        <Icon v-if="membersAtCap" name="solar:crown-linear" class="size-4 text-amber-500" />
+      </MobileSubmitButton>
+      <Button variant="ghost" class="mt-1 h-11 w-full rounded-full" @click="showInvite = false">Cancel</Button>
     </SheetContent>
   </Sheet>
   </div>

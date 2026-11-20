@@ -45,9 +45,6 @@ const availableRoles = computed(() =>
 const financeHeads = computed(() => members.value.filter(m => m.role === 'finance'))
 const currentManager = computed(() => members.value.find(m => m.role === 'manager'))
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 function roleVariant(r: string) {
   if (r === 'owner')   return 'warning'
@@ -103,7 +100,6 @@ const { membersAtCap, load: loadBilling, refresh: refreshBilling } = useBilling(
 onMounted(() => loadBilling())
 
 function openInvite() {
-  haptic()
   if (membersAtCap.value) { navigateTo('/m/upgrade'); return }
   inviteEmail.value = ''
   inviteRole.value = isOwner.value ? (isFinanceTeam.value ? 'finance' : 'manager') : 'employee'
@@ -169,7 +165,6 @@ async function setAsManager(member: any) {
 async function confirmSetManager() {
   const m = confirmManager.value
   if (!m) return
-  haptic()
   await setAsManager(m)
   confirmManager.value = null
 }
@@ -293,7 +288,7 @@ async function confirmSetManager() {
               size="sm"
               class="m-press h-9 w-full gap-1.5 rounded-full text-[13px]"
               :disabled="changingManager"
-              @click="haptic(); confirmManager = m"
+              @click="confirmManager = m"
             >
               <Icon name="solar:crown-linear" class="size-4" />
               Set as manager
@@ -316,55 +311,68 @@ async function confirmSetManager() {
         <SheetDescription class="text-[13px]">Send an email invite to add someone to this team.</SheetDescription>
       </SheetHeader>
 
-      <div class="flex flex-col gap-4 pb-4">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[12.5px] font-medium text-foreground">Email address</label>
+      <div class="flex flex-col gap-3 pb-2">
+        <!-- Context card -->
+        <Card class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold text-foreground">{{ team?.name ?? 'Team' }}</p>
+            <p class="mt-0.5 text-[13px] text-muted-foreground">{{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}</p>
+          </div>
+          <div v-if="members.length" class="flex shrink-0 -space-x-2">
+            <div
+              v-for="m in members.slice(0, 3)"
+              :key="m.id"
+              class="flex size-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-background"
+              :style="{ background: personColor(m.email) }"
+            >{{ personInitials(m.full_name ?? m.email) }}</div>
+            <div
+              v-if="members.length > 3"
+              class="flex size-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold text-foreground ring-2 ring-background"
+            >+{{ members.length - 3 }}</div>
+          </div>
+          <TeamAvatar v-else-if="team?.name" :name="team.name" size="md" />
+        </Card>
+
+        <MobileField label="Email address" icon="solar:letter-linear" input-id="team-detail-invite-email">
           <Input
+            id="team-detail-invite-email"
             v-model="inviteEmail"
             type="email"
             inputmode="email"
             autocomplete="email"
             placeholder="colleague@company.com"
-            class="h-12 rounded-2xl text-base md:text-base"
+            class="m-field-input"
             @keydown.enter="sendInvite"
           />
-        </div>
+        </MobileField>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-[12.5px] font-medium text-foreground">Role</label>
-          <div class="flex flex-col gap-2">
+        <!-- Role -->
+        <Card class="gap-0 rounded-3xl border border-border p-4 shadow-none ring-0">
+          <p class="text-[16px] font-semibold text-foreground">Role</p>
+          <p class="mt-0.5 text-[13px] text-muted-foreground">Choose what they can do in this team.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
             <Button
               v-for="r in availableRoles"
               :key="r"
-              variant="outline"
-              class="m-press h-auto w-full items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 text-left whitespace-normal"
-              :class="inviteRole === r ? 'border-foreground bg-muted/40' : 'border-border'"
-              @click="inviteRole = r; haptic()"
+              :variant="inviteRole === r ? 'outline' : 'secondary'"
+              class="m-press h-10 rounded-xl px-4 text-[13px] font-semibold capitalize"
+              :class="inviteRole === r ? 'border-2 border-foreground' : 'border-2 border-transparent'"
+              @click="inviteRole = r"
             >
-              <span class="flex min-w-0 flex-col items-start">
-                <span class="text-[13px] font-semibold capitalize text-foreground">{{ isFinanceTeam && r === 'finance' ? 'Finance manager' : r }}</span>
-                <span class="text-[11.5px] font-normal leading-tight text-muted-foreground">{{ roleDesc(r) }}</span>
-              </span>
-              <Icon
-                :name="inviteRole === r ? 'solar:check-circle-bold' : 'solar:check-circle-linear'"
-                class="size-5 shrink-0"
-                :class="inviteRole === r ? 'text-foreground' : 'text-muted-foreground/40'"
-              />
+              {{ isFinanceTeam && r === 'finance' ? 'Finance manager' : r }}
             </Button>
           </div>
-        </div>
+          <p class="mt-3 text-[13px] text-muted-foreground">{{ roleDesc(inviteRole) }}</p>
+        </Card>
 
         <p v-if="inviteError" class="text-[12px] text-destructive">{{ inviteError }}</p>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <Button :disabled="inviteLoading || !inviteEmail.trim()" class="m-press h-13 w-full rounded-full text-[15px] font-semibold" @click="sendInvite">
-          <Icon v-if="inviteLoading" name="solar:refresh-linear" class="size-4.5 animate-spin" />
-          <Icon v-else name="solar:letter-linear" class="size-4.5" />
-          {{ inviteLoading ? 'Sending…' : 'Send invite' }}
-        </Button>
-        <Button variant="ghost" class="h-11 w-full rounded-full" @click="inviteOpen = false">Cancel</Button>
-      </div>
+      <MobileSubmitButton placement="sheet" :loading="inviteLoading" :disabled="!inviteEmail.trim()" @click="sendInvite">
+        <Icon v-if="!inviteLoading" name="solar:letter-linear" class="size-4.5" />
+        {{ inviteLoading ? 'Sending…' : 'Send invite' }}
+      </MobileSubmitButton>
+      <Button variant="ghost" class="mt-1 h-11 w-full rounded-full" @click="inviteOpen = false">Cancel</Button>
     </SheetContent>
   </Sheet>
 
@@ -387,7 +395,7 @@ async function confirmSetManager() {
           <Icon v-else name="solar:crown-linear" class="size-4.5" />
           Set as manager
         </Button>
-        <Button variant="ghost" class="h-11 w-full rounded-full" :disabled="changingManager" @click="confirmManager = null">Cancel</Button>
+        <Button variant="ghost" class="h-12 w-full rounded-full" :disabled="changingManager" @click="confirmManager = null">Cancel</Button>
       </div>
     </DialogContent>
   </Dialog>

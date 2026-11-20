@@ -19,9 +19,6 @@ const filtered = computed(() =>
     : teams.value
 )
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 function fmtDate(iso?: string | null) {
   return iso ? new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
@@ -48,7 +45,7 @@ onMounted(fetchTeams)
     <MobilePageHeader title="Teams" back="/m/settings">
       <template #action>
         <!-- Web shows this owner-only button without an action yet; kept identical. -->
-        <Button v-if="role === 'owner'" variant="secondary" size="icon-lg" class="m-press rounded-full" aria-label="New team" @click="haptic">
+        <Button v-if="role === 'owner'" variant="secondary" size="icon-lg" class="m-press rounded-full" aria-label="New team">
           <Icon name="solar:add-linear" class="size-5" />
         </Button>
       </template>
@@ -88,7 +85,7 @@ onMounted(fetchTeams)
           <p class="text-[12.5px] text-muted-foreground">
             {{ search ? 'Try a different search term.' : 'Create your first team to get started.' }}
           </p>
-          <Button v-if="role === 'owner' && !search" variant="outline" class="m-press mt-2 h-11 gap-1.5 rounded-full px-5" @click="haptic">
+          <Button v-if="role === 'owner' && !search" variant="outline" class="m-press mt-2 h-11 gap-1.5 rounded-full px-5">
             <Icon name="solar:add-linear" class="size-4" /> New team
           </Button>
         </Card>
@@ -100,7 +97,6 @@ onMounted(fetchTeams)
             :to="`/m/teams/${team.id}`"
             class="m-press m-rise block"
             :style="{ '--d': `${200 + i * 50}ms` }"
-            @click="haptic"
           >
             <Card class="flex-row items-center gap-3 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
               <TeamAvatar :name="team.name" />
