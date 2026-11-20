@@ -2,6 +2,7 @@ import { getOrgContext } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
 import type { OrgRole } from '~~/lib/supabase'
 import { assertWithinLimit } from '~~/lib/billing'
+import { roleForTeam } from '~~/lib/teamRoles'
 
 export default defineEventHandler(async (event) => {
   const ctx = await getOrgContext(event)
@@ -27,6 +28,14 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   const supabase = createClient(config.public.supabaseUrl, config.supabaseServiceKey)
+
+  // People invited into the Finance team get the finance role (that role is what grants Finance work)
+  if (body.team_id) {
+    const { data: team } = await supabase
+      .from('teams').select('name').eq('id', body.team_id).eq('org_id', ctx.org.id).maybeSingle()
+    if (!team) throw createError({ statusCode: 404, message: 'Team not found' })
+    body.role = roleForTeam(body.role, team.name)
+  }
 
 // Get inviter's display name from auth user metadata
   const authToken = (getHeader(event, 'authorization') ?? '').replace('Bearer ', '')

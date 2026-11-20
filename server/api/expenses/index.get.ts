@@ -21,7 +21,15 @@ export default defineEventHandler(async (event) => {
 
   const { data, error } = await query
   if (error) throw createError({ statusCode: 500, message: error.message })
-  const rows = data ?? []
+  let rows = data ?? []
+
+  // Finance only sees expenses a manager has approved (plus their own submissions).
+  if (ctx.member.role === 'finance') {
+    rows = rows.filter((e: any) =>
+      e.submitted_by === ctx.member.user_id ||
+      (e.action_log ?? []).some((l: any) => l?.action === 'approved'),
+    )
+  }
   if (!rows.length) return rows
 
   // Add who submitted each expense (name + email live in Supabase Auth, not in org_members)
