@@ -18,7 +18,32 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  modules: ['@nuxt/icon'],
+  modules: ['@nuxt/icon', '@vite-pwa/nuxt'],
+  // Installable PWA — opens straight into the mobile UI at /m (web UI unaffected).
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'KeepCabin',
+      short_name: 'KeepCabin',
+      description: 'Expenses & reimbursements on the go',
+      start_url: '/m',
+      scope: '/',
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#f5f5f5',
+      theme_color: '#0a0a0a',
+      icons: [
+        { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+    },
+    generateSW: {
+      navigateFallback: null,
+      globPatterns: ['**/*.{js,css,png,svg,ico,woff2}'],
+    },
+    client: { installPrompt: true },
+    devOptions: { enabled: false },
+  },
   // Solar icon set (https://icon-sets.iconify.design/solar/) bundled locally — only used icons ship.
   icon: {
     mode: 'svg',
@@ -30,6 +55,8 @@ export default defineNuxtConfig({
   routeRules: {
     '/app': { ssr: false },
     '/app/**': { ssr: false },
+    '/m': { ssr: false },
+    '/m/**': { ssr: false },
   },
   // UI components registered without path prefix so <Button>, <Card>, <Sidebar> etc. work directly.
   // The full ~/components scan still runs (for landing/ and app/ prefixed components),
