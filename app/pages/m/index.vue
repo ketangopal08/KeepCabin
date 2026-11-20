@@ -154,7 +154,7 @@ onMounted(async () => { await load(); refreshUnread(); await fetchAll() })
 
       <div class="mt-6 grid grid-cols-2 gap-3">
         <Button class="m-press h-12 rounded-full bg-background/90 font-semibold text-foreground hover:bg-background" as-child>
-          <NuxtLink to="/app/expenses/new" @click="haptic">
+          <NuxtLink to="/m/expenses/new" @click="haptic">
             <Icon name="solar:document-add-linear" class="size-5" /> New Expense
           </NuxtLink>
         </Button>

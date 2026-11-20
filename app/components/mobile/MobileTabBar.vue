@@ -18,6 +18,7 @@ function haptic() {
 
 <template>
   <nav
+    v-if="!route.meta.hideTabBar"
     class="m-tabbar fixed inset-x-0 z-40 flex justify-center px-4"
     style="bottom: max(env(safe-area-inset-bottom), 1rem)"
     aria-label="Primary"

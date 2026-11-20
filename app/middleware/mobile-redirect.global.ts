@@ -1,7 +1,8 @@
-// Phones (or the installed PWA) visiting the web dashboard home go to the mobile UI.
-// Only /app → /m for now; extend MOBILE_ROUTES as more mobile screens are built.
+// Phones (or the installed PWA) visiting a web page that has a mobile version go to it.
+// Add an entry to MOBILE_ROUTES for each new mobile screen.
 const MOBILE_ROUTES: Record<string, string> = {
   '/app': '/m',
+  '/app/expenses/new': '/m/expenses/new',
 }
 
 export default defineNuxtRouteMiddleware((to) => {
