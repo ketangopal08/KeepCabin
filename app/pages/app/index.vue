@@ -24,7 +24,7 @@ const totalThisMonth = computed(() =>
   expenses.value.filter(e => e.created_at.startsWith(currentMonth) && e.status !== 'rejected')
     .reduce((s, e) => s + Number(e.amount), 0)
 )
-const pendingCount = computed(() => expenses.value.filter(e => e.status.includes('pending')).length)
+const pendingCount = computed(() => expenses.value.filter(e => e.status.includes('pending') || e.status === 'scheduled').length)
 
 // ── Setup steps ───────────────────────────────────────────────────────────────
 const setupSteps = computed(() => [
@@ -33,7 +33,7 @@ const setupSteps = computed(() => [
   { label: 'Invite team members',         done: members.value.length > 1,  href: '/app/org' },
   { label: 'Submit your first expense',   done: expenses.value.length > 0, href: '/app/expenses/new' },
   { label: 'Get an expense approved',
-    done: expenses.value.some(e => ['pending_finance', 'paid'].includes(e.status)),
+    done: expenses.value.some(e => ['pending_finance', 'scheduled', 'paid'].includes(e.status)),
     href: '/app/approvals' },
 ])
 

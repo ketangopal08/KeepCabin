@@ -6,8 +6,10 @@ import { toast } from 'vue-sonner'
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
 const supabase     = useSupabase()
+const { ctx, load } = useOrgContext()
 const expenses     = ref<Expense[]>([])
 const loading      = ref(true)
+const loadError    = ref(false)
 const rejectingId  = ref<string | null>(null)
 const rejectReason = ref('')
 const rejectTarget = computed(() => expenses.value.find(e => e.id === rejectingId.value) ?? null)
@@ -66,14 +68,17 @@ function fmtDate(iso: string) {
 }
 
 async function fetchPending() {
+  loadError.value = false
   try {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { await navigateTo('/login'); return }
+    await load()
     const all = await $fetch<Expense[]>('/api/expenses' as string, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
-    expenses.value = all.filter(e => e.status === 'pending_manager')
+    expenses.value = all.filter(e => e.status === 'pending_manager' && e.submitted_by !== ctx.value?.member.user_id)
   } catch (e: any) {
+    loadError.value = true
     toast.error(e?.data?.message ?? 'Failed to load approvals')
   } finally {
     loading.value = false
@@ -127,13 +132,25 @@ onMounted(fetchPending)
   <AppPage>
 
     <!-- Header -->
-    <AppPageHeader title="Approvals" description="Review and approve expenses submitted by your team." />
+    <AppPageHeader title="Approvals" description="Review expenses from your team." />
 
     <!-- Tabs -->
     <AppPageTabs model-value="pending" :tabs="[{ id: 'pending', label: 'Pending', count: loading ? undefined : expenses.length }]" />
 
 
-    <AppTableCard>
+    <Card v-if="!loading && loadError" class="items-center gap-2 rounded-xl py-20 text-center">
+      <Icon name="solar:danger-circle-linear" class="size-8 text-destructive" />
+      <p class="text-[15px] font-medium text-foreground">Couldn't load approvals</p>
+      <Button variant="outline" class="mt-2 h-9 rounded-lg px-4" @click="fetchPending">Retry</Button>
+    </Card>
+
+    <Card v-else-if="!loading && expenses.length === 0" class="items-center gap-2 rounded-xl py-20 text-center">
+      <Icon name="solar:check-circle-linear" class="size-8 text-emerald-500" />
+      <p class="text-[15px] font-medium text-foreground">You're all caught up</p>
+      <p class="text-sm text-muted-foreground">New requests from your team will show up here.</p>
+    </Card>
+
+    <AppTableCard v-else>
       <template #toolbar>
         <AppExpenseToolbar v-model:search="search" :filters="filters" />
       </template>
@@ -164,7 +181,8 @@ onMounted(fetchPending)
       <Table v-else>
         <TableHeader>
           <TableRow class="hover:bg-transparent">
-            <TableHead>Name</TableHead>
+            <TableHead>Expense</TableHead>
+            <TableHead>Submitted by</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Amount</TableHead>
@@ -174,7 +192,7 @@ onMounted(fetchPending)
         <TableBody>
           <template v-for="g in groups" :key="g.key">
             <TableRow v-if="g.label" class="bg-muted/40 hover:bg-muted/40">
-              <TableCell :colspan="5" class="py-2 text-[12.5px] font-medium text-foreground">
+              <TableCell :colspan="6" class="py-2 text-[12.5px] font-medium text-foreground">
                 {{ g.label }} <span class="ml-1 font-normal text-muted-foreground">{{ g.items.length }}</span>
               </TableCell>
             </TableRow>
@@ -204,6 +222,20 @@ onMounted(fetchPending)
                     <div class="min-w-0">
                       <p class="truncate text-sm font-medium text-foreground">{{ e.vendor ?? 'Expense' }}</p>
                       <p v-if="e.description" class="mt-0.5 max-w-[320px] truncate text-[12.5px] text-muted-foreground">{{ e.description }}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div class="flex items-center gap-2.5">
+                    <div
+                      class="flex size-7 shrink-0 items-center justify-center rounded-full text-[10.5px] font-semibold text-white"
+                      :style="{ background: personColor(e.submitter_email ?? e.submitted_by) }"
+                    >
+                      {{ personInitials(e.submitter_name ?? e.submitter_email) }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="max-w-[200px] truncate text-sm text-foreground">{{ e.submitter_name ?? e.submitter_email ?? 'Unknown' }}</p>
+                      <p v-if="e.submitter_name && e.submitter_email" class="max-w-[200px] truncate text-[12px] text-muted-foreground">{{ e.submitter_email }}</p>
                     </div>
                   </div>
                 </TableCell>

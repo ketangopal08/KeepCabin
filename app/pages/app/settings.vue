@@ -3,11 +3,13 @@ import { useSupabase } from '~~/lib/supabase'
 import { Copy, Check, Eye, EyeOff, Trash2, User, ShieldCheck, CreditCard, Bell, Palette, Building2 } from '@lucide/vue'
 import { PLANS } from '~~/lib/plans'
 import { toast } from 'vue-sonner'
+import { nextPayoutDate } from '~~/lib/payouts'
+import type { PayoutSchedule } from '~~/lib/payouts'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 
 const supabase = useSupabase()
-const { ctx }  = useOrgContext()
+const { ctx, load: loadOrgContext, clear: clearOrgContext }  = useOrgContext()
 const { isDark, toggle } = useTheme()
 const { colorId, select: selectColor, clear: clearColor } = useAccentColor()
 
@@ -215,6 +217,43 @@ function toggleNotif(key: string) {
 }
 
 // ── Org ───────────────────────────────────────────────────────────────────
+// ── Payout schedule (owner) ───────────────────────────────────────────────
+const PAYOUT_OPTIONS: { value: PayoutSchedule; label: string }[] = [
+  { value: 'semi_monthly', label: 'Twice a month — 15th & last day' },
+  { value: 'monthly',      label: 'Monthly — last day' },
+  { value: 'weekly',       label: 'Weekly — every Friday' },
+]
+const payoutSchedule = ref<PayoutSchedule>('semi_monthly')
+const payoutSaving = ref(false)
+watch(() => ctx.value?.org?.payout_schedule, (v) => { if (v) payoutSchedule.value = v }, { immediate: true })
+const nextPayoutLabel = computed(() =>
+  new Date(`${nextPayoutDate(payoutSchedule.value, new Date())}T00:00:00Z`)
+    .toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }),
+)
+async function setPayoutSchedule(value: PayoutSchedule) {
+  if (value === payoutSchedule.value || payoutSaving.value) return
+  const previous = payoutSchedule.value
+  payoutSchedule.value = value
+  payoutSaving.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    await $fetch('/api/orgs/payout-schedule' as string, {
+      method: 'PATCH',
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      body: { schedule: value },
+    })
+    // Refresh the cached org context so the new schedule survives navigating away and back
+    clearOrgContext()
+    await loadOrgContext()
+    toast.success('Payout schedule updated')
+  } catch (e: any) {
+    payoutSchedule.value = previous
+    toast.error(e?.data?.message ?? 'Could not update payout schedule')
+  } finally {
+    payoutSaving.value = false
+  }
+}
+
 const copied = ref(false)
 function copyOrgId() {
   if (!ctx.value?.org?.id) return
@@ -760,6 +799,29 @@ async function deleteOrg() {
               <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">Your current permission level in this organization. Roles control what you can view, approve, and manage. Only an owner can change your role.</p>
             </div>
             <Badge variant="secondary" class="capitalize text-[11.5px] mt-0.5">{{ ctx?.member?.role }}</Badge>
+          </div>
+
+          <div v-if="role === 'owner'" class="flex items-start gap-20 py-4 border-b border-dashed border-border">
+            <div class="w-[300px] shrink-0">
+              <p class="text-[13px] font-medium text-foreground">Payout schedule</p>
+              <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">When approved expenses are reimbursed. Expenses approved by Finance are paid on the next payout date.</p>
+            </div>
+            <div class="flex-1">
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  v-for="opt in PAYOUT_OPTIONS"
+                  :key="opt.value"
+                  :variant="payoutSchedule === opt.value ? 'default' : 'outline'"
+                  size="sm"
+                  class="text-[12px]"
+                  :disabled="payoutSaving"
+                  @click="setPayoutSchedule(opt.value)"
+                >
+                  {{ opt.label }}
+                </Button>
+              </div>
+              <p class="mt-2 text-[12px] text-muted-foreground">Next payout: {{ nextPayoutLabel }}</p>
+            </div>
           </div>
 
           <!-- Danger zone -->

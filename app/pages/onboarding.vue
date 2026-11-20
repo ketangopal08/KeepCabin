@@ -2,6 +2,8 @@
 import { useSupabase } from '~~/lib/supabase'
 import { toast } from 'vue-sonner'
 import { PLANS } from '~~/lib/plans'
+import { planManagerInvites } from '~~/lib/onboardingInvites'
+import type { TeamDraft } from '~~/lib/onboardingInvites'
 
 definePageMeta({ layout: false })
 
@@ -17,7 +19,11 @@ const sizes = ['1-10', '11-50', '51-200', '200+']
 type OStep = 'org' | 'team' | 'plan'
 const ostep           = ref<OStep>('org')
 const sessionToken    = ref('')
-const customTeams     = ref<string[]>([])
+const teams           = ref<TeamDraft[]>([])      // Finance first, then custom teams (with ids + manager email)
+const customTeams     = computed(() => teams.value.filter(t => !t.isFinance))
+const financeTeam     = computed(() => teams.value.find(t => t.isFinance) ?? null)
+const financeSelf     = ref(false)
+const invitesSending  = ref(false)
 const newTeamName     = ref('')
 const teamLoading     = ref(false)
 
@@ -66,11 +72,12 @@ async function handleCreate() {
       body: { name: orgName.value.trim(), size: orgSize.value },
     })
     // Auto-create Finance team
-    await $fetch('/api/teams', {
+    const finance = await $fetch<{ id: string; name: string }>('/api/teams' as string, {
       method: 'POST',
       headers: { Authorization: `Bearer ${session!.access_token}` },
       body: { name: 'Finance' },
     })
+    teams.value = [{ id: finance.id, name: 'Finance', isFinance: true, managerEmail: '' }]
     ostep.value = 'team'
   } catch (e: any) {
     toast.error(e?.data?.message ?? 'Something went wrong.')
@@ -84,17 +91,43 @@ async function handleAddTeam() {
   if (!name) return
   teamLoading.value = true
   try {
-    await $fetch('/api/teams', {
+    const created = await $fetch<{ id: string; name: string }>('/api/teams' as string, {
       method: 'POST',
       headers: { Authorization: `Bearer ${sessionToken.value}` },
       body: { name },
     })
-    customTeams.value.push(name)
+    teams.value.push({ id: created.id, name: created.name ?? name, isFinance: false, managerEmail: '' })
     newTeamName.value = ''
   } catch (e: any) {
     toast.error(e?.data?.message ?? 'Could not add team.')
   } finally {
     teamLoading.value = false
+  }
+}
+
+// Step 2 → 3: invite a manager for each team (failures don't block onboarding)
+async function handleTeamsContinue() {
+  const { invites, errors } = planManagerInvites(teams.value, financeSelf.value)
+  if (errors.length) { toast.error(errors[0]!); return }
+  invitesSending.value = true
+  let sent = 0
+  try {
+    for (const inv of invites) {
+      try {
+        await $fetch('/api/invites/send' as string, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${sessionToken.value}` },
+          body: { email: inv.email, role: inv.role, team_id: inv.team_id },
+        })
+        sent++
+      } catch (e: any) {
+        toast.error(`${inv.team_name}: ${e?.data?.message ?? 'Could not send invite.'}`)
+      }
+    }
+    if (sent) toast.success(`Invites sent to ${sent} manager${sent === 1 ? '' : 's'}`)
+    ostep.value = 'plan'
+  } finally {
+    invitesSending.value = false
   }
 }
 
@@ -236,11 +269,12 @@ onUnmounted(() => {
         <div v-else-if="ostep === 'team'" class="flex flex-col gap-5 w-full max-w-[420px]">
           <div>
             <h1 style="font-size:1.6rem;font-weight:400;color:#333">Set up your team</h1>
-            <p class="text-[14px] text-gray-500 mt-1">Your Finance team is ready. Add more teams or continue.</p>
+            <p class="text-[14px] text-gray-500 mt-1">Your Finance team is ready. Add a manager for each team, or add more teams.</p>
           </div>
 
           <!-- Finance card (pre-created) -->
-          <div class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50">
+          <div class="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50">
+          <div class="flex items-center gap-3">
             <div class="size-9 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
               <svg class="size-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
@@ -256,25 +290,50 @@ onUnmounted(() => {
               </svg>
             </div>
           </div>
+            <template v-if="financeTeam">
+              <Input
+                v-model="financeTeam.managerEmail"
+                type="email"
+                placeholder="Finance manager's email"
+                :disabled="financeSelf"
+                class="h-9 rounded-lg bg-white dark:bg-white text-[13px] text-gray-900 dark:text-gray-900 border-gray-200 dark:border-gray-200 placeholder:text-gray-400 shadow-none disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-100"
+              />
+              <label class="flex items-center gap-2 text-[12.5px] text-gray-600 select-none cursor-pointer">
+                <Checkbox
+                  v-model="financeSelf"
+                  class="border-gray-300 dark:border-gray-300 bg-white dark:bg-white data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 data-[state=checked]:text-white"
+                />
+                I'll handle finance myself
+              </label>
+            </template>
+          </div>
 
           <!-- Added custom teams -->
           <div v-if="customTeams.length" class="flex flex-col gap-2">
             <div
               v-for="team in customTeams"
-              :key="team"
-              class="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white"
+              :key="team.id"
+              class="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 bg-white"
             >
+            <div class="flex items-center gap-3">
               <div class="size-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                 <svg class="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
                 </svg>
               </div>
-              <span class="flex-1 text-[13px] font-medium text-gray-900">{{ team }}</span>
+              <span class="flex-1 text-[13px] font-medium text-gray-900">{{ team.name }}</span>
               <div class="size-5 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
                 <svg class="size-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M20 6L9 17l-5-5"/>
                 </svg>
               </div>
+            </div>
+              <Input
+                v-model="team.managerEmail"
+                type="email"
+                placeholder="Manager's email (optional)"
+                class="h-9 rounded-lg bg-white dark:bg-white text-[13px] text-gray-900 dark:text-gray-900 border-gray-200 dark:border-gray-200 placeholder:text-gray-400 shadow-none"
+              />
             </div>
           </div>
 
@@ -305,10 +364,15 @@ onUnmounted(() => {
 
           <!-- Continue -->
           <button
-            class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all flex items-center justify-center gap-2"
-            @click="ostep = 'plan'"
+            class="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            :disabled="invitesSending"
+            @click="handleTeamsContinue"
           >
-            <span>Continue</span>
+            <svg v-if="invitesSending" class="animate-spin size-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+              <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <span>{{ invitesSending ? 'Sending invites…' : 'Continue' }}</span>
             <svg class="size-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6"/>
             </svg>

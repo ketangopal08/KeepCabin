@@ -49,7 +49,7 @@ const sum = (list: Expense[]) => list.reduce((t, e) => t + Number(e.amount || 0)
 const stats = computed(() => {
   const list = monthExpenses.value
   const paid = list.filter(e => e.status === 'paid')
-  const pending = list.filter(e => e.status === 'pending_manager' || e.status === 'pending_finance')
+  const pending = list.filter(e => e.status === 'pending_manager' || e.status === 'pending_finance' || e.status === 'scheduled')
   const rejected = list.filter(e => e.status === 'rejected')
   return [
     { label: 'Total submitted', value: inr(sum(list)), sub: `${list.length} expense${list.length === 1 ? '' : 's'}`, icon: 'solar:bill-list-linear' },
@@ -78,6 +78,7 @@ const statusBadge: Record<string, { label: string; variant: 'success' | 'warning
   paid: { label: 'Paid', variant: 'success' },
   pending_manager: { label: 'Awaiting manager', variant: 'warning' },
   pending_finance: { label: 'Awaiting finance', variant: 'info' },
+  scheduled: { label: 'Scheduled', variant: 'info' },
   rejected: { label: 'Rejected', variant: 'danger' },
 }
 

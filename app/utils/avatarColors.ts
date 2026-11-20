@@ -11,6 +11,22 @@ export const AVATAR_COLORS = [
   '#388bfd', // blue
 ]
 
+/** Stable avatar colour for a person (same email/id → same colour). */
+export function personColor(key: string | null | undefined): string {
+  const s = key ?? '?'
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]!
+}
+
+/** "Ketan Gopal" → "KG", "ketan@co.com" → "KE" */
+export function personInitials(nameOrEmail: string | null | undefined): string {
+  const s = (nameOrEmail ?? '').trim()
+  if (!s) return '?'
+  if (s.includes('@')) return s.split('@')[0]!.slice(0, 2).toUpperCase()
+  return s.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
 /** Team-tile gradients (scale step 2 → step 5 of the same hue) — white glyph on top. */
 export const TEAM_GRADIENTS: [string, string][] = [
   ['#56d364', '#238636'], // green

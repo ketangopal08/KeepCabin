@@ -2,9 +2,12 @@ import { getOrgContext, requireRole } from '~~/lib/org'
 import { createClient } from '@supabase/supabase-js'
 import type { ActionLogEntry } from '~~/lib/supabase'
 import { assertWithinLimit } from '~~/lib/billing'
+import { createNotifications, expenseLabel } from '~~/lib/notifications'
+import { loadMembers } from '~~/lib/expenseActions'
+import { stepApprovers } from '~~/lib/payouts'
 
 export default defineEventHandler(async (event) => {
-  const ctx = requireRole(await getOrgContext(event), 'employee')
+  const ctx = requireRole(await getOrgContext(event), 'employee', 'manager', 'finance')
   const config = useRuntimeConfig()
   const supabase = createClient(config.public.supabaseUrl, config.supabaseServiceKey)
 
@@ -51,5 +54,16 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) throw createError({ statusCode: 500, message: error.message })
+
+  const members = await loadMembers(ctx.org.id)
+  await createNotifications(supabase, stepApprovers('manager', data, members).map(user_id => ({
+    org_id: ctx.org.id,
+    user_id,
+    type: 'expense_submitted',
+    title: 'New expense to review',
+    body: `A ${expenseLabel(data)} is waiting for your review.`,
+    expense_id: data.id,
+  })))
+
   return data
 })

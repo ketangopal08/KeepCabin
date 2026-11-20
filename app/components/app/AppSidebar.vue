@@ -70,12 +70,14 @@ const workspaceItems = computed(() => {
     { label: 'My Team', icon: 'solar:users-group-rounded-linear', href: '/app/team' },
   ]
   if (role.value === 'finance') return [
-    { label: 'Payments', icon: 'solar:card-linear', href: '/app/payments' },
+    { label: 'Payouts', icon: 'solar:card-linear', href: '/app/payments' },
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
     { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: showPremium.value },
   ]
   if (role.value === 'owner') return [
     { label: 'All Expenses', icon: 'solar:bill-list-linear', href: '/app/expenses' },
+    { label: 'Approvals', icon: 'solar:check-circle-linear', href: '/app/approvals' },
+    { label: 'Payouts', icon: 'solar:card-linear', href: '/app/payments' },
     { label: 'Reports', icon: 'solar:file-download-linear', href: '/app/reports', premium: showPremium.value },
     { label: 'Organization', icon: 'solar:buildings-2-linear', href: '/app/org', premium: showPremium.value },
   ]

@@ -23,6 +23,10 @@ const userInitials = computed(() => {
 })
 const role = computed(() => ctx.value?.member?.role)
 
+// Bell dot: only when there are unread notifications (re-checked on every page change)
+const { unread: unreadNotifications, refresh: refreshUnread } = useUnreadNotifications()
+watch(() => [route.path, ctx.value?.org?.id], () => { if (ctx.value?.org?.id) refreshUnread() }, { immediate: true })
+
 // Profile photo (user_metadata.avatar_url) — updates live after upload/remove in Settings.
 const avatarUrl = ref<string>('')
 watch(user, (u: any) => { avatarUrl.value = u?.user_metadata?.avatar_url ?? '' }, { immediate: true })
@@ -110,7 +114,7 @@ const showAction = computed(() => {
       <Button variant="outline" size="icon" class="relative rounded-lg" as-child>
         <NuxtLink to="/app/notifications">
           <Icon name="solar:bell-linear" class="size-4" />
-          <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
+          <span v-if="unreadNotifications > 0" class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
         </NuxtLink>
       </Button>
       <Button variant="outline" size="icon" class="overflow-hidden rounded-full p-0 text-[11px] font-semibold" as-child>
