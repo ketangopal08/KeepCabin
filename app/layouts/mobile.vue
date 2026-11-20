@@ -57,6 +57,30 @@ html.m-app-root body {
 .m-app input,
 .m-app textarea { user-select: text; }
 
+/* Input that blends into a <MobileField> tile (global: sheets/dialogs are teleported out of .m-app).
+   Unlayered CSS, so it wins over the shadcn Input's utility classes. 16px keeps iOS from zooming. */
+.m-field-input {
+  height: 1.5rem !important;
+  min-width: 0;
+  width: 100%;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 16px !important;
+  font-weight: 500;
+  color: inherit;
+}
+.m-field-input::placeholder { color: hsl(var(--muted-foreground)); font-weight: 400; }
+/* iOS centers date values and Android shows a calendar icon — left-align, hide the icon (tap opens the picker) */
+.m-field-input[type="date"],
+.m-field-input[type="month"] { -webkit-appearance: none; appearance: none; text-align: left; }
+.m-field-input::-webkit-calendar-picker-indicator { display: none; }
+.m-field-input[type="date"]::-webkit-date-and-time-value,
+.m-field-input[type="month"]::-webkit-date-and-time-value { text-align: left; }
+
 /* Press feedback — scale down while finger is on it */
 .m-press {
   transition: transform 160ms cubic-bezier(.2, .8, .2, 1), filter 160ms;

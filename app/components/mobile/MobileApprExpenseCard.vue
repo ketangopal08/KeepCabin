@@ -40,14 +40,11 @@ function fmtDate(iso?: string | null) {
   return new Date(dateOnly ? `${iso}T00:00:00` : iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 </script>
 
 <template>
   <Card class="gap-0 rounded-3xl border-0 bg-muted/60 p-0 shadow-none ring-0">
-    <NuxtLink :to="`/m/expenses/${e.id}`" class="m-press block p-4 pb-3" @click="haptic">
+    <NuxtLink :to="`/m/expenses/${e.id}`" class="m-press block p-4 pb-3">
       <!-- Vendor + amount -->
       <div class="flex items-center gap-3">
         <div v-if="logo" class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white">
@@ -111,7 +108,7 @@ function haptic() {
         variant="secondary"
         class="m-press h-12 gap-2 rounded-full bg-background text-[15px] font-semibold text-red-600 hover:bg-background/80 dark:text-red-400"
         :disabled="rejecting"
-        @click="haptic(); emit('reject')"
+        @click="emit('reject')"
       >
         <Icon name="solar:close-circle-linear" class="size-5" />
         Reject
@@ -119,7 +116,7 @@ function haptic() {
       <Button
         class="m-press h-12 gap-2 rounded-full bg-foreground text-[15px] font-semibold text-background hover:bg-foreground/90"
         :disabled="approving"
-        @click="haptic(); emit('approve')"
+        @click="emit('approve')"
       >
         <Icon v-if="approving" name="solar:refresh-linear" class="size-5 animate-spin" />
         <Icon v-else name="solar:check-circle-linear" class="size-5" />

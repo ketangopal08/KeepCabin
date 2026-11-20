@@ -111,9 +111,6 @@ function money2(n: number | string) {
   return `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession()
@@ -358,7 +355,7 @@ onMounted(loadAll)
             variant="ghost"
             class="m-press h-11 gap-2 rounded-full text-[14px] font-semibold"
             :class="tab === t.id ? 'bg-foreground text-background hover:bg-foreground hover:text-background' : 'text-muted-foreground'"
-            @click="tab = t.id; haptic()"
+            @click="tab = t.id; haptic('selection')"
           >
             {{ t.label }}
             <Badge
@@ -444,7 +441,7 @@ onMounted(loadAll)
                   class="m-press size-11 rounded-full bg-background hover:bg-background/80"
                   aria-label="Previous cycle"
                   :disabled="cycleIdx === 0"
-                  @click="stepCycle(-1); haptic()"
+                  @click="stepCycle(-1)"
                 >
                   <Icon name="solar:alt-arrow-left-linear" class="size-5" />
                 </Button>
@@ -462,7 +459,7 @@ onMounted(loadAll)
                   class="m-press size-11 rounded-full bg-background hover:bg-background/80"
                   aria-label="Next cycle"
                   :disabled="cycleIdx >= cycleOptions.length - 1"
-                  @click="stepCycle(1); haptic()"
+                  @click="stepCycle(1)"
                 >
                   <Icon name="solar:alt-arrow-right-linear" class="size-5" />
                 </Button>
@@ -512,7 +509,7 @@ onMounted(loadAll)
                   <Button
                     v-if="p.status === 'scheduled'"
                     class="m-press mt-4 h-12 w-full gap-2 rounded-full bg-foreground text-[15px] font-semibold text-background hover:bg-foreground/90"
-                    @click="openPay(p.id); haptic()"
+                    @click="openPay(p.id)"
                   >
                     <Icon name="solar:card-linear" class="size-5" />
                     Pay {{ money(p.amount) }}
@@ -550,42 +547,54 @@ onMounted(loadAll)
           </SheetDescription>
         </SheetHeader>
 
-        <Card v-if="payExpenses.length" class="mt-4 max-h-60 gap-0 overflow-y-auto rounded-2xl border-0 bg-muted/60 py-1 shadow-none ring-0">
-          <template v-for="(e, i) in payExpenses" :key="e.id">
-            <Separator v-if="i > 0" class="mx-4 w-auto bg-border/60" />
-            <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-              <div class="min-w-0">
-                <p class="truncate text-[14px] text-foreground">{{ e.vendor ?? 'Expense' }}</p>
-                <p class="text-[11.5px] text-muted-foreground">{{ fmtDate(e.expense_date ?? e.created_at) }}</p>
-              </div>
-              <p class="shrink-0 text-[14px] font-semibold tabular-nums text-foreground">{{ money2(e.amount) }}</p>
+        <div class="mt-4 flex flex-col gap-3">
+          <Card v-if="payTarget" class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-[16px] font-semibold text-foreground">{{ payTarget.employee_name ?? payTarget.employee_email ?? 'Unknown' }}</p>
+              <p class="mt-0.5 truncate text-[13px] tabular-nums text-muted-foreground">
+                {{ money2(payTarget.amount) }} · {{ payTarget.expense_count }} {{ payTarget.expense_count === 1 ? 'expense' : 'expenses' }}
+              </p>
             </div>
-          </template>
-        </Card>
+            <div
+              class="flex size-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
+              :style="{ background: personColor(payTarget.employee_email ?? payTarget.user_id) }"
+            >
+              {{ personInitials(payTarget.employee_name ?? payTarget.employee_email) }}
+            </div>
+          </Card>
 
-        <div class="mt-4 flex flex-col gap-2.5">
-          <p class="text-[11.5px] font-medium tracking-wide text-muted-foreground uppercase">UTR / Reference number</p>
-          <Input
-            v-model="utr"
-            placeholder="UTR / Reference no."
-            autocapitalize="characters"
-            autocomplete="off"
-            class="h-12 rounded-2xl px-4 font-mono text-base md:text-base"
-            @keydown.enter="pay()"
-          />
+          <Card v-if="payExpenses.length" class="max-h-60 gap-0 overflow-y-auto rounded-3xl border border-border py-1 shadow-none ring-0">
+            <template v-for="(e, i) in payExpenses" :key="e.id">
+              <Separator v-if="i > 0" class="mx-4 w-auto bg-border/60" />
+              <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div class="min-w-0">
+                  <p class="truncate text-[14px] text-foreground">{{ e.vendor ?? 'Expense' }}</p>
+                  <p class="text-[12px] text-muted-foreground">{{ fmtDate(e.expense_date ?? e.created_at) }}</p>
+                </div>
+                <p class="shrink-0 text-[14px] font-semibold tabular-nums text-foreground">{{ money2(e.amount) }}</p>
+              </div>
+            </template>
+          </Card>
+
+          <MobileField label="UTR / Reference number" icon="solar:document-text-linear" input-id="pay-utr">
+            <Input
+              id="pay-utr"
+              v-model="utr"
+              placeholder="UTR / Reference no."
+              autocapitalize="characters"
+              autocomplete="off"
+              class="m-field-input font-mono"
+              @keydown.enter="pay()"
+            />
+          </MobileField>
         </div>
 
-        <div class="mt-6 grid grid-cols-2 gap-3">
-          <Button variant="secondary" class="m-press h-12 rounded-full text-[15px]" @click="payOpen = false">
+        <div class="mt-5 flex flex-col gap-2">
+          <MobileSubmitButton placement="sheet" :loading="paying" :disabled="!utr.trim()" @click="pay()">
+            {{ paying ? 'Saving…' : payTarget ? `Pay ${money2(payTarget.amount)}` : 'Confirm' }}
+          </MobileSubmitButton>
+          <Button variant="ghost" class="m-press h-12 w-full rounded-full text-[15px]" @click="payOpen = false">
             Cancel
-          </Button>
-          <Button
-            class="m-press h-12 gap-2 rounded-full bg-foreground text-[15px] font-semibold text-background hover:bg-foreground/90"
-            :disabled="paying || !utr.trim()"
-            @click="haptic(); pay()"
-          >
-            <Icon v-if="paying" name="solar:refresh-linear" class="size-5 animate-spin" />
-            {{ paying ? 'Saving…' : 'Confirm' }}
           </Button>
         </div>
       </SheetContent>

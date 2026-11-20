@@ -9,7 +9,6 @@ const pull = ref(0)
 const refreshing = ref(false)
 const dragging = ref(false)
 let startY: number | null = null
-let armed = false // haptic fired once per pull
 
 function onStart(e: TouchEvent) {
   if (refreshing.value || window.scrollY > 0) { startY = null; return }
@@ -22,13 +21,8 @@ function onMove(e: TouchEvent) {
   dragging.value = true
   // rubber-band resistance
   pull.value = Math.min(MAX, dy * 0.5)
-  if (pull.value >= THRESHOLD && !armed) {
-    armed = true
-    try { navigator.vibrate?.(10) } catch {}
-  }
 }
 async function onEnd() {
-  armed = false
   dragging.value = false
   if (startY === null) return
   startY = null

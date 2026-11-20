@@ -57,17 +57,12 @@ const filtered = computed(() => {
     .filter(f => !q || f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q))
 })
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 function toggleTopic(id: TopicId) {
-  haptic()
   activeTopic.value = activeTopic.value === id ? null : id
   openIndex.value = null
 }
 function toggleFaq(i: number) {
-  haptic()
   openIndex.value = openIndex.value === i ? null : i
 }
 const topicTitle = (id: TopicId) => topics.find(t => t.id === id)?.title ?? ''
@@ -129,7 +124,7 @@ const topicTitle = (id: TopicId) => topics.find(t => t.id === id)?.title ?? ''
           variant="link"
           size="sm"
           class="h-auto shrink-0 p-0 text-[13px] text-foreground"
-          @click="activeTopic = null; search = ''; haptic()"
+          @click="activeTopic = null; search = ''"
         >
           Clear filters
         </Button>
@@ -184,7 +179,7 @@ const topicTitle = (id: TopicId) => topics.find(t => t.id === id)?.title ?? ''
         </div>
       </div>
       <Button class="m-press mt-4 h-12 w-full rounded-full bg-background font-semibold text-foreground hover:bg-background/90" as-child>
-        <a href="mailto:hello@keepcabin.com?subject=KeepCabin%20support" @click="haptic">
+        <a href="mailto:hello@keepcabin.com?subject=KeepCabin%20support">
           <Icon name="solar:letter-linear" class="size-5" /> Contact support
         </a>
       </Button>

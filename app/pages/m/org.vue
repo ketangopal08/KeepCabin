@@ -11,7 +11,7 @@ const { ctx, load } = useOrgContext()
 
 type Tab = 'members' | 'teams' | 'invites'
 const activeTab = ref<Tab>('teams')
-function setTab(id: string) { activeTab.value = id as Tab; haptic() }
+function setTab(id: string) { activeTab.value = id as Tab; haptic('selection') }
 
 const role = computed(() => ctx.value?.member?.role)
 
@@ -39,16 +39,13 @@ watch(availableRoles, (roles) => {
   if (!roles.includes(inviteRole.value)) inviteRole.value = roles[0] ?? 'employee'
 }, { immediate: true })
 
-function setInviteRole(r: string) { inviteRole.value = r as 'manager' | 'finance' | 'employee'; haptic() }
+function setInviteRole(r: string) { inviteRole.value = r as 'manager' | 'finance' | 'employee' }
 
 // ── Create team sheet ────────────────────────────────────────────────────────
 const showTeamDialog = ref(false)
 const newTeamName = ref('')
 const newTeamLoading = ref(false)
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 // ── API calls ────────────────────────────────────────────────────────────────
 async function fetchTeams() {
@@ -77,12 +74,10 @@ async function fetchMembers() {
 const { membersAtCap, teamsAtCap, load: loadBilling, refresh: refreshBilling } = useBilling()
 onMounted(() => loadBilling())
 function openTeamDialog() {
-  haptic()
   if (teamsAtCap.value) { navigateTo('/m/upgrade'); return }
   showTeamDialog.value = true
 }
 function openInviteDialog() {
-  haptic()
   if (membersAtCap.value) { navigateTo('/m/upgrade'); return }
   showInviteDialog.value = true
 }
@@ -263,7 +258,6 @@ onMounted(async () => {
           :to="`/m/teams/${t.id}`"
           class="m-press m-rise block"
           :style="{ '--d': `${200 + i * 50}ms` }"
-          @click="haptic"
         >
           <Card class="flex-row items-center gap-3 rounded-3xl border-0 bg-muted/60 p-4 shadow-none ring-0">
             <TeamAvatar :name="t.name" size="md" />
@@ -338,73 +332,83 @@ onMounted(async () => {
         </SheetDescription>
       </SheetHeader>
 
-      <div class="flex flex-col gap-4 pb-4">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[12.5px] font-medium text-foreground">Email address</label>
+      <div class="flex flex-col gap-3 pb-2">
+        <!-- Context card -->
+        <Card class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold capitalize text-foreground">{{ ctx?.org?.name ?? 'Your organization' }}</p>
+            <p class="mt-0.5 text-[13px] text-muted-foreground">{{ members.length }} {{ members.length === 1 ? 'member' : 'members' }}</p>
+          </div>
+          <div v-if="members.length" class="flex shrink-0 -space-x-2">
+            <div
+              v-for="m in members.slice(0, 3)"
+              :key="m.id"
+              class="flex size-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-background"
+              :style="{ background: personColor(m.email) }"
+            >{{ personInitials(m.full_name ?? m.email) }}</div>
+            <div
+              v-if="members.length > 3"
+              class="flex size-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold text-foreground ring-2 ring-background"
+            >+{{ members.length - 3 }}</div>
+          </div>
+        </Card>
+
+        <MobileField label="Email address" icon="solar:letter-linear" input-id="org-invite-email">
           <Input
+            id="org-invite-email"
             v-model="inviteEmail"
             type="email"
             inputmode="email"
             autocomplete="email"
             placeholder="colleague@company.com"
-            class="h-12 rounded-2xl text-base md:text-base"
+            class="m-field-input"
             @keydown.enter="sendInvite"
           />
-        </div>
+        </MobileField>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-[12.5px] font-medium text-foreground">Role</label>
-          <div class="flex flex-col gap-2">
+        <!-- Role -->
+        <Card class="gap-0 rounded-3xl border border-border p-4 shadow-none ring-0">
+          <p class="text-[16px] font-semibold text-foreground">Role</p>
+          <p class="mt-0.5 text-[13px] text-muted-foreground">Choose what they can do in your organization.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
             <Button
               v-for="r in availableRoles"
               :key="r"
-              variant="outline"
-              class="m-press h-auto w-full items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 text-left whitespace-normal"
-              :class="inviteRole === r ? 'border-foreground bg-muted/40' : 'border-border'"
+              :variant="inviteRole === r ? 'outline' : 'secondary'"
+              class="m-press h-10 rounded-xl px-4 text-[13px] font-semibold capitalize"
+              :class="inviteRole === r ? 'border-2 border-foreground' : 'border-2 border-transparent'"
               @click="setInviteRole(r)"
             >
-              <span class="flex min-w-0 flex-col items-start">
-                <span class="text-[13px] font-semibold capitalize text-foreground">{{ r }}</span>
-                <span class="text-[11.5px] font-normal leading-tight text-muted-foreground">{{ roleDesc(r) }}</span>
-              </span>
-              <Icon
-                :name="inviteRole === r ? 'solar:check-circle-bold' : 'solar:check-circle-linear'"
-                class="size-5 shrink-0"
-                :class="inviteRole === r ? 'text-foreground' : 'text-muted-foreground/40'"
-              />
+              {{ r }}
             </Button>
           </div>
-        </div>
+          <p class="mt-3 text-[13px] text-muted-foreground">{{ roleDesc(inviteRole) }}</p>
+        </Card>
 
         <!-- Team selector (manager only) -->
-        <div v-if="inviteRole === 'manager'" class="flex flex-col gap-2">
-          <label class="text-[12.5px] font-medium text-foreground">
-            Assign to team
-            <span class="font-normal text-muted-foreground">(optional)</span>
-          </label>
-          <div class="flex flex-wrap gap-2">
+        <Card v-if="inviteRole === 'manager'" class="gap-0 rounded-3xl border border-border p-4 shadow-none ring-0">
+          <p class="text-[16px] font-semibold text-foreground">Assign to team</p>
+          <p class="mt-0.5 text-[13px] text-muted-foreground">Optional — the team this manager will approve for.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
             <Button
               v-for="opt in [{ id: '', name: 'No team yet' }, ...teams]"
               :key="opt.id || 'none'"
-              size="sm"
-              :variant="inviteTeamId === opt.id ? 'default' : 'outline'"
-              class="m-press h-9 rounded-full px-4 text-[13px]"
-              @click="inviteTeamId = opt.id; haptic()"
+              :variant="inviteTeamId === opt.id ? 'outline' : 'secondary'"
+              class="m-press h-10 rounded-xl px-4 text-[13px] font-semibold"
+              :class="inviteTeamId === opt.id ? 'border-2 border-foreground' : 'border-2 border-transparent'"
+              @click="inviteTeamId = opt.id"
             >
               {{ opt.name }}
             </Button>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <Button :disabled="inviteLoading || !inviteEmail.trim()" class="m-press h-13 w-full rounded-full text-[15px] font-semibold" @click="sendInvite">
-          <Icon v-if="inviteLoading" name="solar:refresh-linear" class="size-4.5 animate-spin" />
-          <Icon v-else name="solar:letter-linear" class="size-4.5" />
-          {{ inviteLoading ? 'Sending…' : 'Send invite' }}
-        </Button>
-        <Button variant="ghost" class="h-11 w-full rounded-full" @click="showInviteDialog = false">Cancel</Button>
-      </div>
+      <MobileSubmitButton placement="sheet" :loading="inviteLoading" :disabled="!inviteEmail.trim()" @click="sendInvite">
+        <Icon v-if="!inviteLoading" name="solar:letter-linear" class="size-4.5" />
+        {{ inviteLoading ? 'Sending…' : 'Send invite' }}
+      </MobileSubmitButton>
+      <Button variant="ghost" class="mt-1 h-11 w-full rounded-full" @click="showInviteDialog = false">Cancel</Button>
     </SheetContent>
   </Sheet>
 
@@ -419,34 +423,52 @@ onMounted(async () => {
         </SheetDescription>
       </SheetHeader>
 
-      <div class="flex flex-col gap-4 pb-4">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[12.5px] font-medium text-foreground">Team name</label>
+      <div class="flex flex-col gap-3 pb-2">
+        <!-- Context card -->
+        <Card class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold capitalize text-foreground">{{ ctx?.org?.name ?? 'Your organization' }}</p>
+            <p class="mt-0.5 text-[13px] text-muted-foreground">{{ teams.length }} {{ teams.length === 1 ? 'team' : 'teams' }}</p>
+          </div>
+          <div v-if="teams.length" class="flex shrink-0 -space-x-2">
+            <TeamAvatar
+              v-for="t in teams.slice(0, 3)"
+              :key="t.id"
+              :name="t.name"
+              size="sm"
+              class="ring-2 ring-background"
+            />
+            <div
+              v-if="teams.length > 3"
+              class="flex size-7 items-center justify-center rounded-lg bg-background text-[11px] font-semibold text-foreground ring-2 ring-background"
+            >+{{ teams.length - 3 }}</div>
+          </div>
+        </Card>
+
+        <MobileField label="Team name" icon="solar:users-group-rounded-linear" input-id="org-team-name">
           <Input
+            id="org-team-name"
             v-model="newTeamName"
             placeholder="e.g. Engineering, Sales, Marketing…"
-            class="h-12 rounded-2xl text-base md:text-base"
+            class="m-field-input"
             @keydown.enter="createTeam"
           />
-        </div>
+        </MobileField>
 
         <!-- Live preview -->
-        <Card v-if="newTeamName.trim()" class="flex-row items-center gap-3.5 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+        <Card v-if="newTeamName.trim()" class="flex-row items-center gap-3.5 rounded-3xl border border-border px-4 py-3.5 shadow-none ring-0">
           <TeamAvatar :name="newTeamName" size="lg" />
           <div class="min-w-0">
-            <p class="truncate text-sm font-semibold text-foreground">{{ newTeamName }}</p>
-            <p class="text-[11.5px] text-muted-foreground">New team — no members yet</p>
+            <p class="truncate text-[16px] font-semibold text-foreground">{{ newTeamName }}</p>
+            <p class="text-[13px] text-muted-foreground">New team — no members yet</p>
           </div>
         </Card>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <Button :disabled="newTeamLoading || !newTeamName.trim()" class="m-press h-13 w-full rounded-full text-[15px] font-semibold" @click="createTeam">
-          <Icon v-if="newTeamLoading" name="solar:refresh-linear" class="size-4.5 animate-spin" />
-          {{ newTeamLoading ? 'Creating…' : 'Create team' }}
-        </Button>
-        <Button variant="ghost" class="h-11 w-full rounded-full" @click="showTeamDialog = false; newTeamName = ''">Cancel</Button>
-      </div>
+      <MobileSubmitButton placement="sheet" :loading="newTeamLoading" :disabled="!newTeamName.trim()" @click="createTeam">
+        {{ newTeamLoading ? 'Creating…' : 'Create team' }}
+      </MobileSubmitButton>
+      <Button variant="ghost" class="mt-1 h-11 w-full rounded-full" @click="showTeamDialog = false; newTeamName = ''">Cancel</Button>
     </SheetContent>
   </Sheet>
   </div>

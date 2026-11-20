@@ -63,7 +63,6 @@ async function fetchExpense() {
 onMounted(async () => { await load(); await fetchExpense() })
 
 async function approve() {
-  haptic()
   approving.value = true
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -104,14 +103,10 @@ async function submitReject() {
 }
 
 // ── Mobile presentation helpers ───────────────────────────────────────────────
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 function expCode(e: Expense) {
   return `EXP-${e.id.replace(/-/g, '').slice(0, 3).toUpperCase()}-${e.id.replace(/-/g, '').slice(-3).toUpperCase()}`
 }
 async function copy(text: string, label = 'Copied') {
-  haptic()
   try {
     await navigator.clipboard.writeText(text)
     toast.success(label)
@@ -230,7 +225,7 @@ function tlDate(iso: string) {
             variant="secondary"
             class="m-press h-13 rounded-full text-[15px] font-semibold"
             :disabled="approving"
-            @click="haptic(); rejectOpen = true"
+            @click="rejectOpen = true"
           >
             <Icon name="solar:close-circle-linear" class="size-5 text-red-500" /> Reject
           </Button>
@@ -240,7 +235,7 @@ function tlDate(iso: string) {
           :variant="canApproveOrReject ? 'secondary' : 'default'"
           class="m-press h-13 w-full rounded-full text-[15px] font-semibold"
           :class="canApproveOrReject ? '' : 'bg-foreground text-background hover:bg-foreground/90'"
-          @click="haptic(); receiptZoom = true"
+          @click="receiptZoom = true"
         >
           <Icon name="solar:gallery-linear" class="size-5" /> View receipt
         </Button>
@@ -339,7 +334,7 @@ function tlDate(iso: string) {
               <Icon name="solar:copy-linear" class="size-4.5" />
             </Button>
             <Button size="icon-lg" class="m-press shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90" as-child>
-              <a :href="`mailto:${expense.submitter_email}`" aria-label="Email submitter" @click="haptic">
+              <a :href="`mailto:${expense.submitter_email}`" aria-label="Email submitter">
                 <Icon name="solar:letter-linear" class="size-4.5" />
               </a>
             </Button>
@@ -405,16 +400,30 @@ function tlDate(iso: string) {
             Provide a reason for rejection. This will be visible to the employee.
           </DialogDescription>
         </DialogHeader>
-        <div class="py-2">
-          <Input
-            v-model="rejectReason"
-            placeholder="e.g. Missing receipt, wrong category…"
-            class="h-12 rounded-full px-4 text-base md:text-base"
-            @keydown.enter="submitReject"
-          />
+        <div class="flex flex-col gap-3 py-2">
+          <Card v-if="expense" class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-[16px] font-semibold text-foreground">{{ expense.vendor ?? 'Expense' }}</p>
+              <p class="mt-0.5 truncate text-[13px] capitalize text-muted-foreground">
+                {{ expense.category }} · {{ expense.expense_date ? fmtDate(expense.expense_date) : fmtDate(expense.created_at) }}
+              </p>
+            </div>
+            <p class="shrink-0 text-[16px] font-semibold tabular-nums text-foreground">
+              ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
+            </p>
+          </Card>
+          <MobileField label="Reason" icon="solar:chat-line-linear" input-id="exp-reject-reason">
+            <Input
+              id="exp-reject-reason"
+              v-model="rejectReason"
+              placeholder="e.g. Missing receipt, wrong category…"
+              class="m-field-input"
+              @keydown.enter="submitReject"
+            />
+          </MobileField>
         </div>
         <DialogFooter class="grid grid-cols-2 gap-2.5">
-          <Button variant="secondary" class="m-press h-12 rounded-full" @click="rejectOpen = false">Cancel</Button>
+          <Button variant="ghost" class="m-press h-12 rounded-full" @click="rejectOpen = false">Cancel</Button>
           <Button
             variant="destructive"
             class="m-press h-12 rounded-full"

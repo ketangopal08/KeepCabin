@@ -17,9 +17,6 @@ onMounted(() => loadBilling())
 const monthLocked = computed(() => exportLocked.value && selectedMonth.value !== thisMonth)
 const downloading = ref(false)
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
 
 // ── Data (real expenses for this workspace) ─────────────────────────────────
 const expenses = ref<Expense[]>([])
@@ -95,7 +92,6 @@ const statusBadge: Record<string, { label: string; variant: 'success' | 'warning
 
 // ── Month navigation ────────────────────────────────────────────────────────
 function shiftMonth(delta: number) {
-  haptic()
   const [y, m] = selectedMonth.value.split('-').map(Number) as [number, number]
   const d = new Date(Date.UTC(y, m - 1 + delta, 1))
   selectedMonth.value = d.toISOString().slice(0, 7)
@@ -119,7 +115,6 @@ const recentMonths = computed(() => {
   })
 })
 function pickMonth(id: string) {
-  haptic()
   selectedMonth.value = id
   monthSheetOpen.value = false
 }
@@ -127,7 +122,6 @@ function pickMonth(id: string) {
 const exportColumns = ['Expense ID', 'Date', 'Employee', 'Team', 'Vendor', 'Category', 'Amount (₹)', 'Description', 'Status', 'UTR Number', 'Submitted at', 'Paid at']
 
 async function downloadCSV() {
-  haptic()
   downloading.value = true
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -167,7 +161,7 @@ async function downloadCSV() {
         <Button
           variant="secondary"
           class="m-press h-11 min-w-0 flex-1 gap-2 rounded-full text-[14px] font-semibold"
-          @click="haptic(); monthSheetOpen = true"
+          @click="monthSheetOpen = true"
         >
           <Icon name="solar:calendar-linear" class="size-4.5" />
           <span class="truncate">{{ monthLabel }}</span>
@@ -223,7 +217,7 @@ async function downloadCSV() {
           <template v-else>Free plan exports the current month only.</template>
         </p>
         <Button size="sm" class="m-press h-9 shrink-0 rounded-full px-4 font-semibold" as-child>
-          <NuxtLink to="/m/upgrade" @click="haptic">Upgrade</NuxtLink>
+          <NuxtLink to="/m/upgrade">Upgrade</NuxtLink>
         </Button>
       </Card>
 
@@ -240,7 +234,7 @@ async function downloadCSV() {
         <p class="text-[12.5px] text-muted-foreground">
           Once your team submits expenses dated this month, you'll see totals, breakdowns and a CSV export here.
         </p>
-        <Button v-if="selectedMonth !== thisMonth" variant="outline" class="m-press mt-2 h-11 rounded-full px-5" @click="haptic(); selectedMonth = thisMonth">
+        <Button v-if="selectedMonth !== thisMonth" variant="outline" class="m-press mt-2 h-11 rounded-full px-5" @click="selectedMonth = thisMonth">
           Go to current month
         </Button>
       </Card>
@@ -327,27 +321,42 @@ async function downloadCSV() {
         <SheetDescription class="text-[13px]">Expenses whose date falls in this month are shown and exported.</SheetDescription>
       </SheetHeader>
 
-      <div class="flex flex-col gap-4 pb-4">
-        <div class="flex flex-wrap gap-2">
-          <Button
-            v-for="mo in recentMonths"
-            :key="mo.id"
-            size="sm"
-            :variant="selectedMonth === mo.id ? 'default' : 'outline'"
-            class="m-press h-9 gap-1 rounded-full px-4 text-[13px]"
-            @click="pickMonth(mo.id)"
-          >
-            {{ mo.label }}
-            <Icon v-if="exportLocked && mo.id !== thisMonth" name="solar:crown-linear" class="size-3.5 text-amber-500" />
-          </Button>
+      <div class="mt-4 flex flex-col gap-3">
+        <Card class="flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[16px] font-semibold text-foreground">{{ monthLabel }}</p>
+            <p class="mt-0.5 truncate text-[13px] text-muted-foreground">{{ monthExpenses.length }} {{ monthExpenses.length === 1 ? 'expense' : 'expenses' }}</p>
+          </div>
+          <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-background text-foreground">
+            <Icon name="solar:calendar-linear" class="size-5" />
+          </div>
+        </Card>
+
+        <div class="rounded-3xl border border-border p-4">
+          <p class="text-[16px] font-semibold text-foreground">Recent months</p>
+          <p class="mt-0.5 text-[13px] text-muted-foreground">Tap a month to view it.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <Button
+              v-for="mo in recentMonths"
+              :key="mo.id"
+              size="sm"
+              :variant="selectedMonth === mo.id ? 'outline' : 'secondary'"
+              class="m-press h-9 gap-1 rounded-xl px-3.5 text-[13px] font-medium"
+              :class="selectedMonth === mo.id ? 'border-2 border-foreground' : ''"
+              @click="pickMonth(mo.id)"
+            >
+              {{ mo.label }}
+              <Icon v-if="exportLocked && mo.id !== thisMonth" name="solar:crown-linear" class="size-3.5 text-amber-500" />
+            </Button>
+          </div>
         </div>
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[12.5px] font-medium text-foreground">Or pick any month</label>
-          <Input v-model="selectedMonth" type="month" :max="thisMonth" class="h-12 rounded-2xl text-base md:text-base" />
-        </div>
+
+        <MobileField label="Or pick any month" icon="solar:calendar-linear" input-id="rp-month" chevron>
+          <Input id="rp-month" v-model="selectedMonth" type="month" :max="thisMonth" class="m-field-input" />
+        </MobileField>
       </div>
 
-      <Button class="m-press h-13 w-full rounded-full text-[15px] font-semibold" @click="haptic(); monthSheetOpen = false">Done</Button>
+      <MobileSubmitButton placement="sheet" class="mt-5" @click="monthSheetOpen = false">Done</MobileSubmitButton>
     </SheetContent>
   </Sheet>
   </div>

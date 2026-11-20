@@ -11,26 +11,26 @@ const CATEGORY_ICONS: Record<string, string> = {
   accommodation: 'solar:bed-linear',
   other: 'solar:box-linear',
 }
+const CATEGORY_DOT: Record<string, string> = {
+  food: 'bg-amber-500',
+  travel: 'bg-sky-500',
+  accommodation: 'bg-violet-500',
+  other: 'bg-muted-foreground',
+}
+const categoryLabel = (c: string) => (c === 'accommodation' ? 'Stay' : c.charAt(0).toUpperCase() + c.slice(1))
 
 const autoFilled = computed(() => !ocrLoading.value && !!receiptPreviewUrl.value && !!(form.amount || form.vendor))
+const receiptSubtitle = computed(() => {
+  if (!receiptPreviewUrl.value) return 'Scan or pick a photo — we fill in the rest'
+  if (ocrLoading.value) return 'Reading receipt…'
+  return autoFilled.value ? 'Auto-filled from receipt' : 'Fill in the details below'
+})
 
-function haptic() {
-  try { navigator.vibrate?.(8) } catch {}
-}
-
-function pickCategory(c: string) {
-  haptic()
-  setCategory(c)
-}
-
-function onSubmit() {
-  haptic()
-  submit()
-}
+const receiptOpen = ref(false)
 </script>
 
 <template>
-  <div class="ne-mobile min-h-full pb-12">
+  <div class="ne-mobile min-h-full pb-28">
 
     <!-- Header -->
     <div class="mb-5 flex items-center gap-3">
@@ -45,143 +45,115 @@ function onSubmit() {
       </div>
     </div>
 
-    <!-- ── Receipt ── -->
-    <Card class="ne-rise mb-4 gap-0 overflow-hidden rounded-3xl py-0">
+    <div class="flex flex-col gap-3">
+      <!-- ── Receipt summary card ── -->
+      <Card class="m-rise flex-row items-center gap-3 rounded-2xl border-0 bg-muted/60 px-4 py-3.5 shadow-none ring-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-[16px] font-semibold text-foreground">Receipt</p>
+          <p class="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-muted-foreground">
+            <Icon v-if="ocrLoading" name="solar:refresh-linear" class="size-3.5 shrink-0 animate-spin" />
+            <Icon v-else-if="autoFilled" name="solar:stars-linear" class="size-3.5 shrink-0 text-primary" />
+            {{ receiptSubtitle }}
+          </p>
+        </div>
 
-      <!-- Empty: camera-first -->
-      <div v-if="!receiptPreviewUrl" class="flex flex-col items-center gap-4 px-5 py-8 text-center">
-        <div class="flex size-14 items-center justify-center rounded-2xl bg-muted">
-          <Icon name="solar:document-text-linear" class="size-7 text-muted-foreground" />
-        </div>
-        <div>
-          <p class="text-[15px] font-semibold text-foreground">Add your receipt</p>
-          <p class="mt-1 text-[13px] text-muted-foreground">Amount, vendor, date and category are read automatically</p>
-        </div>
-        <div class="grid w-full grid-cols-2 gap-2">
-          <Button class="ne-press h-12 rounded-2xl text-[14px]" as="label">
+        <!-- Uploaded: thumbnail (tap to view) + replace -->
+        <template v-if="receiptPreviewUrl">
+          <Button variant="ghost" class="ne-press size-12 shrink-0 overflow-hidden rounded-xl bg-background p-0 hover:bg-background" aria-label="View receipt" @click="receiptOpen = true">
+            <img :src="receiptPreviewUrl" alt="" class="size-full object-cover">
+          </Button>
+          <Button variant="secondary" size="icon-lg" class="ne-press shrink-0 rounded-full bg-background" as="label" aria-label="Replace receipt">
+            <Icon name="solar:refresh-linear" class="size-5" />
+            <input type="file" accept="image/*" class="hidden" @change="handleFileChange">
+          </Button>
+        </template>
+
+        <!-- Empty: camera + gallery -->
+        <template v-else>
+          <Button size="icon-lg" class="ne-press shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90" as="label" aria-label="Scan receipt">
             <Icon name="solar:camera-linear" class="size-5" />
-            Scan
             <input type="file" accept="image/*" capture="environment" class="hidden" @change="handleFileChange">
           </Button>
-          <Button variant="outline" class="ne-press h-12 rounded-2xl text-[14px]" as="label">
+          <Button variant="secondary" size="icon-lg" class="ne-press shrink-0 rounded-full bg-background" as="label" aria-label="Pick from gallery">
             <Icon name="solar:gallery-linear" class="size-5" />
-            Gallery
             <input type="file" accept="image/*" class="hidden" @change="handleFileChange">
           </Button>
-        </div>
+        </template>
+      </Card>
+
+      <!-- ── Amount ── -->
+      <MobileField label="Amount" input-id="ne-amount" class="m-rise" style="--d: 40ms">
+        <span class="flex items-center gap-1">
+          <span class="text-muted-foreground">₹</span>
+          <Input
+            id="ne-amount"
+            v-model="form.amount"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            class="m-field-input tabular-nums"
+          />
+        </span>
+      </MobileField>
+
+      <!-- ── Vendor ── -->
+      <MobileField label="Vendor" icon="solar:shop-linear" input-id="ne-vendor" class="m-rise" style="--d: 80ms">
+        <Input id="ne-vendor" v-model="form.vendor" type="text" placeholder="Swiggy, Uber, Hotel…" class="m-field-input" />
+      </MobileField>
+
+      <!-- ── Date + Category ── -->
+      <div class="m-rise grid grid-cols-2 gap-3" style="--d: 120ms">
+        <MobileField :label="ocrFilled.date ? 'Date · from receipt' : 'Date'" icon="solar:calendar-linear" input-id="ne-date" chevron>
+          <Input id="ne-date" v-model="form.expense_date" type="date" class="m-field-input" />
+        </MobileField>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" class="ne-press h-auto w-full p-0 font-normal hover:bg-transparent">
+              <MobileField as="span" :label="ocrFilled.category ? 'Category · auto' : 'Category'" chevron>
+                <span class="flex items-center gap-2">
+                  <span class="size-2 shrink-0 rounded-full" :class="CATEGORY_DOT[form.category] ?? 'bg-muted-foreground'" />
+                  <span class="truncate">{{ categoryLabel(form.category) }}</span>
+                </span>
+              </MobileField>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-48 rounded-2xl">
+            <DropdownMenuRadioGroup :model-value="form.category" @update:model-value="(v) => setCategory(String(v))">
+              <DropdownMenuRadioItem v-for="c in categories" :key="c" :value="c" class="gap-2 py-2.5">
+                <Icon :name="CATEGORY_ICONS[c] ?? 'solar:box-linear'" class="size-4 text-muted-foreground" />
+                {{ categoryLabel(c) }}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      <!-- Uploaded -->
-      <div v-else>
-        <div class="relative bg-muted/40">
-          <img :src="receiptPreviewUrl" alt="Receipt" class="max-h-64 w-full object-contain">
-          <div v-if="ocrLoading" class="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
-            <div class="flex items-center gap-2 rounded-full bg-card px-4 py-2 shadow-sm">
-              <svg class="size-4 shrink-0 animate-spin text-muted-foreground" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25" />
-                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-              </svg>
-              <span class="text-[13px] font-medium text-foreground">Reading receipt…</span>
-            </div>
-          </div>
-        </div>
-        <Separator />
-        <div class="flex items-center justify-between gap-3 px-4 py-3">
-          <Badge v-if="autoFilled" variant="secondary" class="gap-1.5 rounded-full">
-            <Icon name="solar:stars-linear" class="size-3.5 text-primary" />
-            Auto-filled from receipt
-          </Badge>
-          <span v-else-if="!ocrLoading" class="text-[13px] text-muted-foreground">Fill in the details below</span>
-          <span v-else />
-          <Button variant="ghost" size="sm" class="ne-press shrink-0 rounded-full" as="label">
-            <Icon name="solar:refresh-linear" class="size-4" />
-            Replace
-            <input type="file" accept="image/*" class="hidden" @change="handleFileChange">
-          </Button>
-        </div>
-      </div>
-    </Card>
-
-    <!-- ── Amount ── -->
-    <Card class="ne-rise mb-4 gap-0 rounded-3xl px-5 py-5" style="--d: 60ms">
-      <label for="ne-amount" class="text-[13px] text-muted-foreground">Amount</label>
-      <div class="mt-1 flex items-center gap-1">
-        <span class="text-3xl font-semibold text-muted-foreground">₹</span>
-        <Input
-          id="ne-amount"
-          v-model="form.amount"
-          type="number"
-          inputmode="decimal"
-          min="0"
-          step="0.01"
-          placeholder="0.00"
-          class="h-12 border-0 px-1 text-3xl font-semibold shadow-none focus-visible:ring-0 md:text-3xl"
-        />
-      </div>
-    </Card>
-
-    <!-- ── Category ── -->
-    <div class="ne-rise mb-4" style="--d: 120ms">
-      <p class="mb-2 px-1 text-[13px] text-muted-foreground">Category</p>
-      <div class="grid grid-cols-4 gap-2">
-        <Button
-          v-for="c in categories"
-          :key="c"
-          :variant="form.category === c ? 'default' : 'outline'"
-          class="ne-press flex h-auto flex-col gap-1.5 rounded-2xl px-1 py-3 text-[12px] capitalize"
-          @click="pickCategory(c)"
-        >
-          <Icon :name="CATEGORY_ICONS[c] ?? 'solar:box-linear'" class="size-5" />
-          <span class="max-w-full truncate">{{ c === 'accommodation' ? 'Stay' : c }}</span>
-        </Button>
-      </div>
+      <!-- ── Description ── -->
+      <MobileField label="Description" icon="solar:pen-linear" input-id="ne-desc" class="m-rise" style="--d: 160ms">
+        <Input id="ne-desc" v-model="form.description" type="text" placeholder="What was this for?" class="m-field-input" />
+      </MobileField>
     </div>
 
-    <!-- ── Details ── -->
-    <Card class="ne-rise gap-0 rounded-3xl py-0" style="--d: 180ms">
-      <div class="flex items-center gap-3 px-4 py-3">
-        <Icon name="solar:shop-linear" class="size-5 shrink-0 text-muted-foreground" />
-        <div class="min-w-0 flex-1">
-          <label for="ne-vendor" class="text-[12px] text-muted-foreground">Vendor</label>
-          <Input id="ne-vendor" v-model="form.vendor" type="text" placeholder="Swiggy, Uber, Hotel…" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
-        </div>
-      </div>
-      <Separator />
-      <div class="flex items-center gap-3 px-4 py-3">
-        <Icon name="solar:calendar-linear" class="size-5 shrink-0 text-muted-foreground" />
-        <div class="min-w-0 flex-1">
-          <label for="ne-date" class="text-[12px] text-muted-foreground">
-            Date
-            <span v-if="ocrFilled.date" class="text-primary"> · from receipt</span>
-          </label>
-          <Input id="ne-date" v-model="form.expense_date" type="date" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
-        </div>
-      </div>
-      <Separator />
-      <div class="flex items-center gap-3 px-4 py-3">
-        <Icon name="solar:pen-linear" class="size-5 shrink-0 text-muted-foreground" />
-        <div class="min-w-0 flex-1">
-          <label for="ne-desc" class="text-[12px] text-muted-foreground">Description</label>
-          <Input id="ne-desc" v-model="form.description" type="text" placeholder="What was this for?" class="h-8 border-0 px-0 text-base shadow-none focus-visible:ring-0 md:text-base" />
-        </div>
-      </div>
-    </Card>
+    <!-- ── Submit ── -->
+    <MobileSubmitButton placement="page" :loading="submitting" :disabled="ocrLoading" @click="submit">
+      <template v-if="submitting">Submitting…</template>
+      <template v-else-if="ocrLoading">Reading receipt…</template>
+      <template v-else>Submit for approval<span v-if="Number(form.amount) > 0"> · ₹{{ form.amount }}</span></template>
+    </MobileSubmitButton>
 
-    <!-- ── Sticky submit ── -->
-    <div
-      class="fixed inset-x-0 bottom-0 z-40 bg-background/90 px-4 pt-3 backdrop-blur-xl"
-      style="padding-bottom: max(env(safe-area-inset-bottom), 1rem)"
-    >
-      <Button :disabled="submitting || ocrLoading" class="ne-press h-13 w-full rounded-full text-[15px] font-semibold" @click="onSubmit">
-        <svg v-if="submitting" class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25" />
-          <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-        </svg>
-        <template v-if="submitting">Submitting…</template>
-        <template v-else-if="ocrLoading">Reading receipt…</template>
-        <template v-else>Submit for approval<span v-if="Number(form.amount) > 0"> · ₹{{ form.amount }}</span></template>
-      </Button>
-    </div>
+    <!-- ── Receipt viewer ── -->
+    <Sheet v-model:open="receiptOpen">
+      <SheetContent side="bottom" class="max-h-[92dvh] gap-3 rounded-t-3xl px-4 pt-5" style="padding-bottom: max(env(safe-area-inset-bottom), 1rem)">
+        <SheetHeader class="p-0">
+          <SheetTitle>Receipt</SheetTitle>
+          <SheetDescription class="sr-only">Uploaded receipt image</SheetDescription>
+        </SheetHeader>
+        <img v-if="receiptPreviewUrl" :src="receiptPreviewUrl" alt="Receipt" class="max-h-[75dvh] w-full rounded-2xl bg-muted object-contain">
+      </SheetContent>
+    </Sheet>
 
   </div>
 </template>
@@ -196,16 +168,7 @@ function onSubmit() {
 .ne-press:active {
   transform: scale(.97);
 }
-@keyframes ne-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
-}
-.ne-rise {
-  animation: ne-rise 480ms cubic-bezier(.16, 1, .3, 1) backwards;
-  animation-delay: var(--d, 0ms);
-}
 @media (prefers-reduced-motion: reduce) {
-  .ne-rise { animation: none; }
   .ne-press { transition: none; }
 }
 </style>
