@@ -148,6 +148,30 @@ async function submitReject() {
           <p class="text-2xl font-medium leading-none tabular-nums text-foreground">
             ₹{{ Number(expense.amount).toLocaleString('en-IN') }}
           </p>
+          <template v-if="canApproveOrReject">
+            <Separator orientation="vertical" class="mx-2 !h-7" />
+            <Button
+              variant="outline"
+              class="h-9 gap-2 rounded-lg px-4"
+              :disabled="approving"
+              @click="approve"
+            >
+              <svg v-if="approving" class="size-4 shrink-0 animate-spin text-emerald-500" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
+                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <Icon v-else name="solar:check-circle-linear" class="size-4 text-emerald-500" />
+              {{ approving ? 'Approving…' : 'Approve' }}
+            </Button>
+            <Button
+              variant="outline"
+              class="h-9 gap-2 rounded-lg px-4"
+              :disabled="approving"
+              @click="rejectOpen = true"
+            >
+              <Icon name="solar:close-circle-linear" class="size-4 text-red-500" /> Reject
+            </Button>
+          </template>
         </template>
       </AppPageHeader>
 
@@ -164,30 +188,6 @@ async function submitReject() {
 
         <!-- Right (30%): action + details + receipt -->
         <div class="flex flex-col gap-4 lg:col-span-3">
-          <Card v-if="canApproveOrReject" class="gap-0 rounded-xl px-6 py-5">
-            <p class="mb-3 text-[14px] font-medium text-foreground">Your action</p>
-            <div class="flex gap-2">
-              <Button
-                class="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
-                :disabled="approving"
-                @click="approve"
-              >
-                <svg v-if="approving" class="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"/>
-                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                </svg>
-                <Icon name="solar:check-linear" v-else class="size-3.5" />
-                {{ approving ? 'Approving…' : 'Approve' }}
-              </Button>
-              <Button
-                variant="outline"
-                class="flex-1 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/20"
-                @click="rejectOpen = true"
-              >
-                <Icon name="solar:close-linear" class="size-3.5" /> Reject
-              </Button>
-            </div>
-          </Card>
           <Card class="gap-0 rounded-xl px-6 py-5">
             <p class="mb-4 text-[14px] font-medium text-foreground">Details</p>
             <div class="flex flex-col gap-3">

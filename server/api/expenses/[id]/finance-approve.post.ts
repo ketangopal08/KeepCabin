@@ -43,14 +43,29 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, message: error.message })
   }
 
-  await createNotifications(supabase, [{
-    org_id: ctx.org.id,
-    user_id: expense.submitted_by,
-    type: 'expense_scheduled',
-    title: `Approved — will be paid on ${short}`,
-    body: `Your ${expenseLabel(expense)} will be paid on ${full}.`,
-    expense_id: expense.id,
-  }])
+  // Team manager(s) also hear that Finance approved what they sent on
+  const managers = members
+    .filter(m => m.role === 'manager' && m.team_id === expense.team_id && m.user_id !== expense.submitted_by && m.user_id !== ctx.member.user_id)
+    .map(m => m.user_id)
+
+  await createNotifications(supabase, [
+    {
+      org_id: ctx.org.id,
+      user_id: expense.submitted_by,
+      type: 'expense_scheduled',
+      title: `Approved — will be paid on ${short}`,
+      body: `Your ${expenseLabel(expense)} will be paid on ${full}.`,
+      expense_id: expense.id,
+    },
+    ...managers.map(user_id => ({
+      org_id: ctx.org.id,
+      user_id,
+      type: 'expense_finance_approved',
+      title: 'Approved by Finance',
+      body: `The ${expenseLabel(expense)} you approved will be paid on ${full}.`,
+      expense_id: expense.id,
+    })),
+  ])
 
   return { ok: true, payout_id: payoutId, cycle_date: cycle }
 })
